@@ -1,5 +1,7 @@
 # MCP 启动、测试与 AgentArts 接入
 
+最近本地验证：2026-10-22。业务测试 7/7，标准 Streamable HTTP 客户端已发现并调用两个必选工具；没有声称已完成 AgentArts 云端接入。
+
 ## 1. 实现概况
 
 - 服务目录：`mcp_server/`
@@ -52,6 +54,8 @@ $env:MCP_PORT = "8010"
 ```powershell
 .\.venv-mcp\Scripts\python.exe .\mcp_server\smoke_client.py --url http://127.0.0.1:8010/mcp
 ```
+
+smoke client 对本地 HTTP 客户端关闭系统代理继承，避免代理将 `127.0.0.1` 请求错误转发为 502。
 
 本次实测工具发现结果：
 

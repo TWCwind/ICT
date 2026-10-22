@@ -10,8 +10,16 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $backendDir = Join-Path $root "backend"
 $frontendDir = Join-Path $root "frontend-vue"
+$seedDir = Join-Path $root "roadshow-seed"
 $resultsDir = Join-Path $root "test-results"
 New-Item -ItemType Directory -Force -Path $resultsDir | Out-Null
+$runtimeDataDir = Join-Path $resultsDir ("runtime-data-" + [guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Force -Path $runtimeDataDir | Out-Null
+if (Test-Path -LiteralPath $seedDir) {
+  Get-ChildItem -LiteralPath $seedDir -Force | Copy-Item -Destination $runtimeDataDir -Recurse -Force
+} else {
+  Get-ChildItem -LiteralPath (Join-Path $backendDir "data") -Force | Copy-Item -Destination $runtimeDataDir -Recurse -Force
+}
 
 function Write-Step($message) {
   Write-Host ""
@@ -68,7 +76,8 @@ try {
   Start-Sleep -Seconds 1
 
   $env:PYTHONPATH = $backendDir
-  $env:DEMO_MODE = "true"
+  $env:DATA_DIR = $runtimeDataDir
+  $env:ROADSHOW_BACKEND_PORT = "$BackendPort"
   $backend = Start-Process -FilePath "python" -WorkingDirectory $backendDir -ArgumentList @(
     "-m", "uvicorn", "app.main:app",
     "--host", $HostAddr,
@@ -103,7 +112,7 @@ try {
     Write-Step "Frontend E2E"
     Push-Location $frontendDir
     $env:PLAYWRIGHT_BASE_URL = "http://$HostAddr`:$FrontendPort"
-    Invoke-Checked { npm run test:e2e -- --project=msedge --workers=1 } "frontend E2E"
+    Invoke-Checked { npm run test:roadshow -- --project=msedge --workers=1 } "roadshow E2E"
     Pop-Location
   }
 } catch {

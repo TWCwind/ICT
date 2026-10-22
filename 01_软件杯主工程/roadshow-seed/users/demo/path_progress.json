@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "plan_key": "roadshow-event-path",
+  "pass_threshold": 80,
+  "current_stage_id": "roadshow-stage-2",
+  "stages": {
+    "roadshow-stage-1": {
+      "id": "roadshow-stage-1",
+      "status": "completed",
+      "mastery": 100,
+      "answered_count": 0,
+      "correct_count": 0,
+      "target_count": 0,
+      "accuracy": 0,
+      "answers": {},
+      "question_bank_ids": [],
+      "active_question_bank_id": ""
+    },
+    "roadshow-stage-2": {
+      "id": "roadshow-stage-2",
+      "status": "current",
+      "mastery": 0,
+      "answered_count": 0,
+      "correct_count": 0,
+      "target_count": 0,
+      "accuracy": 0,
+      "answers": {},
+      "question_bank_ids": [],
+      "active_question_bank_id": ""
+    },
+    "roadshow-stage-3": {
+      "id": "roadshow-stage-3",
+      "status": "locked",
+      "mastery": 0,
+      "answered_count": 0,
+      "correct_count": 0,
+      "target_count": 0,
+      "accuracy": 0,
+      "answers": {},
+      "question_bank_ids": [],
+      "active_question_bank_id": ""
+    },
+    "roadshow-stage-4": {
+      "id": "roadshow-stage-4",
+      "status": "locked",
+      "mastery": 0,
+      "answered_count": 0,
+      "correct_count": 0,
+      "target_count": 0,
+      "accuracy": 0,
+      "answers": {},
+      "question_bank_ids": [],
+      "active_question_bank_id": ""
+    },
+    "roadshow-stage-5": {
+      "id": "roadshow-stage-5",
+      "status": "locked",
+      "mastery": 0,
+      "answered_count": 0,
+      "correct_count": 0,
+      "target_count": 0,
+      "accuracy": 0,
+      "answers": {},
+      "question_bank_ids": [],
+      "active_question_bank_id": ""
+    },
+    "roadshow-stage-6": {
+      "id": "roadshow-stage-6",
+      "status": "locked",
+      "mastery": 0,
+      "answered_count": 0,
+      "correct_count": 0,
+      "target_count": 0,
+      "accuracy": 0,
+      "answers": {},
+      "question_bank_ids": [],
+      "active_question_bank_id": ""
+    }
+  },
+  "branches": [],
+  "updated_at": "2026-10-22T12:59:47.321195+00:00"
+}

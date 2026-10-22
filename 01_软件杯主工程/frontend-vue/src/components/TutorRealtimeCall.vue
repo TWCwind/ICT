@@ -1488,6 +1488,7 @@ onBeforeUnmount(() => {
               <span class="digital-human-glow"></span>
               <span class="digital-human-floor"></span>
               <div class="digital-human-portrait" :class="{ 'sdk-visible': xingyuanSdkVisible && connected }">
+                <div class="digital-human-rig" aria-hidden="true"></div>
                 <div
                   id="xingyuan-avatar-sdk"
                   ref="xingyuanSdkMountRef"

@@ -126,9 +126,14 @@ def test_exercises_generate_and_submit():
         assert_true("correct" in submitted and "analysis" in submitted, "exercise diagnosis contract missing")
         return
     stats = assert_success(get(f"/api/exercise/stats?student_id={LOCAL_STUDENT_ID}"), "exercise stats")
-    assert_true((stats.get("stats") or {}).get("total", 0) > 0, "bundled diagnosis records empty")
+    exercise_stats = stats.get("stats") or {}
+    assert_true(exercise_stats.get("total", 0) > 0, "bundled diagnosis records empty")
     wrong_book = assert_success(get(f"/api/exercise/wrong-book?student_id={LOCAL_STUDENT_ID}"), "wrong book")
-    assert_true(bool(wrong_book.get("records")), "bundled wrong-book records empty")
+    wrong_records = wrong_book.get("records") or []
+    if exercise_stats.get("wrong", 0) > 0:
+        assert_true(bool(wrong_records), "wrong answers exist but wrong-book records are empty")
+    else:
+        assert_true(not wrong_records, "wrong-book contains records despite zero wrong answers")
 
 
 def test_knowledge_and_multimodal_boundary():

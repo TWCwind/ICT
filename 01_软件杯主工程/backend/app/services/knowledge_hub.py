@@ -42,8 +42,13 @@ def _material_path(*parts: str) -> Path:
 COURSE_DIR = _material_path("课程资料")
 SAMPLE_DIR = _material_path("生成示例")
 PATH_OUTPUT_DIR = _material_path("第三点_学习路径规划与资源推送", "输出结果")
-TEXTBOOK_DIR = PROJECT_ROOT / "uploads" / "textbooks"
-CHAPTER_KNOWLEDGE_DIR = TEXTBOOK_DIR / "chapter_knowledge"
+def _textbook_dir() -> Path:
+    """Resolve教材 data from the active DATA_DIR, including roadshow runtime data."""
+    return settings.data_path / "uploads" / "textbooks"
+
+
+def _chapter_knowledge_dir() -> Path:
+    return _textbook_dir() / "chapter_knowledge"
 
 # Knowledge-graph concepts are selected from course semantics first.  The
 # source documents in the demo library are converted books, so their opening
@@ -78,7 +83,11 @@ GRAPH_DOMAIN_CONCEPTS = (
     "云计算", "设备接入", "数据采集",
     "安全需求", "威胁建模", "身份认证", "访问控制", "输入验证", "安全编码", "漏洞分析",
     "代码审计", "渗透测试", "加密", "SQL注入", "跨站脚本",
-    "软件工程", "软件过程", "需求工程", "需求分析", "用例建模", "软件设计", "体系结构",
+    "软件工程", "软件过程", "需求工程", "需求分析", "需求访谈", "用户故事", "用例建模",
+    "业务场景", "系统边界", "干系人", "问题域", "业务目标", "需求访谈", "用户故事", "需求分类",
+    "需求优先级", "用例图", "参与者", "用例规约", "主成功场景", "扩展场景", "领域模型", "实体",
+    "属性", "关联", "类图", "非功能需求", "性能指标", "可用性", "可靠性", "可维护性",
+    "验收条件", "验收标准", "需求追踪", "变更控制", "需求评审", "测试证据", "软件设计", "体系结构",
     "详细设计", "软件测试", "软件维护", "配置管理", "项目管理", "质量保证", "UML", "敏捷开发",
     "机器学习", "监督学习", "无监督学习", "回归", "分类", "聚类", "特征工程", "模型训练",
     "模型评估", "过拟合", "交叉验证", "决策树", "支持向量机", "神经网络", "scikit-learn",
@@ -164,6 +173,13 @@ GRAPH_COURSE_CONCEPT_HINTS = (
     (("软件工程",), (
         "软件工程", "软件过程", "需求工程", "需求分析", "用例建模", "软件设计", "体系结构",
         "详细设计", "软件测试", "软件维护", "配置管理", "项目管理", "质量保证", "UML", "敏捷开发",
+    )),
+    (("软件需求分析", "需求分析与建模", "需求建模", "演示讲义"), (
+        "业务场景", "系统边界", "干系人", "问题域", "业务目标", "需求访谈", "用户故事", "需求分类",
+        "需求优先级", "用例图", "参与者", "用例规约", "主成功场景", "扩展场景", "领域模型", "实体",
+        "属性", "关联", "类图", "非功能需求", "性能指标", "可用性", "可靠性", "可维护性",
+        "验收条件", "验收标准", "需求追踪", "变更控制", "需求评审", "测试证据", "需求工程", "需求分析",
+        "用例建模", "软件测试", "质量保证", "UML",
     )),
     (("python机器学习", "机器学习快速入门"), (
         "Python", "机器学习", "监督学习", "无监督学习", "回归", "分类", "聚类", "特征工程",
@@ -365,10 +381,12 @@ def ingest_textbook(student_id: str, filename: str, content: bytes) -> dict[str,
         raise ValueError("教材中可识别的正文过少，无法生成知识结构")
 
     textbook_id = hashlib.sha256(content).hexdigest()[:16]
-    TEXTBOOK_DIR.mkdir(parents=True, exist_ok=True)
-    CHAPTER_KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+    textbook_dir = _textbook_dir()
+    chapter_knowledge_dir = _chapter_knowledge_dir()
+    textbook_dir.mkdir(parents=True, exist_ok=True)
+    chapter_knowledge_dir.mkdir(parents=True, exist_ok=True)
     stored_name = f"{textbook_id}{suffix}"
-    (TEXTBOOK_DIR / stored_name).write_bytes(content)
+    (textbook_dir / stored_name).write_bytes(content)
 
     chapters = _build_uploaded_textbook_chapters(text, Path(safe_name).stem)
     payload = {
@@ -380,8 +398,8 @@ def ingest_textbook(student_id: str, filename: str, content: bytes) -> dict[str,
         "total_kp_count": sum(len(item.get("keywords", [])) for item in chapters),
         "chapters": chapters,
     }
-    write_json(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json", payload)
-    index_path = CHAPTER_KNOWLEDGE_DIR / "index.json"
+    write_json(chapter_knowledge_dir / f"book_{textbook_id}.json", payload)
+    index_path = chapter_knowledge_dir / "index.json"
     index = read_json(index_path, {})
     if not isinstance(index, dict):
         index = {}
@@ -553,6 +571,7 @@ def graph_data(
             "documents": 1,
             "chapters": chapter_count,
             "concepts": concept_count,
+            "resources": len([node for node in nodes if node["kind"] == "resource"]),
             "relations": len(edges),
         },
     }
@@ -561,23 +580,29 @@ def graph_data(
 def _graph_sources(student_id: str) -> list[dict[str, Any]]:
     sources: list[dict[str, Any]] = []
     seen_titles: set[str] = set()
-    index = _read_json_file(CHAPTER_KNOWLEDGE_DIR / "index.json")
+    chapter_knowledge_dir = _chapter_knowledge_dir()
+    index = _read_json_file(chapter_knowledge_dir / "index.json")
     if isinstance(index, dict):
         for textbook_id, metadata in index.items():
             owner = str(metadata.get("student_id") or "") if isinstance(metadata, dict) else ""
             if owner and owner != student_id:
                 continue
-            payload = _read_json_file(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json")
+            payload = _read_json_file(chapter_knowledge_dir / f"book_{textbook_id}.json")
             if not isinstance(payload, dict):
                 continue
             title = Path(str(payload.get("filename") or metadata.get("filename") or textbook_id)).stem
             chapters = _deduplicate_chapters(payload.get("chapters") or [])
+            # Do not expose stale conversion artefacts as a course.  In
+            # particular, video recommendation notes and one-chunk caches
+            # used to appear as "validation·第1部分" in the graph.
+            if not chapters or all(not chapter.get("keywords") for chapter in chapters):
+                continue
             sources.append(
                 {
                     "id": f"textbook:{textbook_id}",
                     "title": title,
                     "source_type": "uploaded_textbook",
-                    "path": str(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json"),
+                    "path": str(chapter_knowledge_dir / f"book_{textbook_id}.json"),
                     "summary": f"由上传教材自动解析，共识别 {len(chapters)} 个章节。",
                     "chapters": chapters,
                 }
@@ -674,7 +699,7 @@ def _build_course_graph(
                 per_chapter * 2,
             )
             keywords = _clean_course_keywords(
-                [*semantic_keywords, *(chapter.get("keywords") or [])],
+                [*(chapter.get("keywords") or []), *semantic_keywords],
                 source["title"],
             )[:per_chapter]
             chapter_node = {
@@ -727,8 +752,18 @@ def _build_course_graph(
             resource_text = " ".join(
                 [str(resource.get("title", "")), " ".join(map(str, resource.get("tags", []))), str(resource.get("type", ""))]
             )
-            related = source_filter == "generated" or source["title"] in resource_text or any(
-                concept in resource_text for concept in list(concept_nodes)[:20]
+            resource_text_lower = resource_text.lower()
+            resource_type = str(resource.get("type", "")).lower()
+            resource_meta = resource.get("meta") if isinstance(resource.get("meta"), dict) else {}
+            is_local_course_resource = bool(resource_meta.get("local_only")) or resource_type in {
+                "lecture_doc", "reading", "practice_case"
+            }
+            is_video_recommendation = any(marker in resource_text_lower for marker in ("视频推荐", "b站", "腾讯视频", "youtube"))
+            related = (
+                source_filter == "generated"
+                or source["title"].lower() in resource_text_lower
+                or any(concept in resource_text_lower for concept in list(concept_nodes)[:20])
+                or (is_local_course_resource and not is_video_recommendation)
             )
             if not related:
                 continue
@@ -864,6 +899,8 @@ def _deduplicate_chapters(chapters: list[dict[str, Any]]) -> list[dict[str, Any]
     display_titles: dict[str, tuple[int, str]] = {}
     for chapter in chapters:
         display_title = _chapter_display_title(chapter)
+        if _is_stale_chapter_title(display_title):
+            continue
         title = re.sub(r"\s+", "", display_title).lower()
         if not title:
             continue
@@ -890,6 +927,15 @@ def _chapter_display_title(chapter: dict[str, Any]) -> str:
     if re.match(r"第\s*\d+\s*章", first_line) and len(first_line) <= 80:
         return first_line
     return original
+
+
+def _is_stale_chapter_title(title: str) -> bool:
+    normalized = re.sub(r"\s+", "", str(title or "")).lower()
+    return bool(
+        not normalized
+        or re.search(r"(?:book_|textbook_|第1部分|第01部分|视频推荐|b站|腾讯视频)", normalized, re.I)
+        or re.fullmatch(r"[0-9a-f]{16,32}", normalized)
+    )
 
 
 def _clean_keywords(values: list[Any], title: str = "") -> list[str]:

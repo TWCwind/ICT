@@ -1,0 +1,26 @@
+[
+  {
+    "id": "roadshow-exercise-1",
+    "question_id": "roadshow:requirements:1",
+    "source": "路演本地演示题库",
+    "type": "single_choice",
+    "stem": "下列哪项最适合作为性能指标？",
+    "answer": "B",
+    "correct_answer": "B",
+    "correct": true,
+    "analysis": "响应时间和并发量都是可以测量和验收的性能指标。",
+    "tags": ["非功能需求", "性能指标"]
+  },
+  {
+    "id": "roadshow-exercise-2",
+    "question_id": "roadshow:requirements:2",
+    "source": "路演本地演示题库",
+    "type": "single_choice",
+    "stem": "用例规约中用于描述正常业务路径的部分是（ ）。",
+    "answer": "A",
+    "correct_answer": "A",
+    "correct": true,
+    "analysis": "主成功场景描述参与者和系统完成目标时的正常步骤。",
+    "tags": ["用例规约", "主成功场景"]
+  }
+]

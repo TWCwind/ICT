@@ -1,0 +1,32 @@
+[
+  {
+    "id": "roadshow-resource-lecture",
+    "student_id": "demo",
+    "type": "lecture_doc",
+    "title": "演示讲义：软件需求分析与建模",
+    "tags": ["软件需求分析与建模", "演示讲义", "章节正文"],
+    "content_uri": "files/demo/软件需求分析与建模-演示讲义.md",
+    "meta": {"source": "roadshow_lecture", "local_only": true},
+    "created_at": "2026-10-22T00:03:00+08:00"
+  },
+  {
+    "id": "roadshow-resource-checklist",
+    "student_id": "demo",
+    "type": "reading",
+    "title": "需求验收与追踪清单",
+    "tags": ["验收标准", "需求追踪", "变更控制"],
+    "content_uri": "files/demo/需求验收与追踪清单.md",
+    "meta": {"source": "roadshow_lecture_companion", "local_only": true},
+    "created_at": "2026-10-22T00:04:00+08:00"
+  },
+  {
+    "id": "roadshow-resource-practice",
+    "student_id": "demo",
+    "type": "practice_case",
+    "title": "课程资源平台用例建模练习",
+    "tags": ["用例图", "参与者", "领域模型"],
+    "content_uri": "files/demo/课程资源平台用例建模练习.md",
+    "meta": {"source": "roadshow_practice", "local_only": true},
+    "created_at": "2026-10-22T00:05:00+08:00"
+  }
+]

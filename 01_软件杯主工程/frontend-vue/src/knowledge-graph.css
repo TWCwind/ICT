@@ -364,6 +364,7 @@
 .graph-stage {
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 34px minmax(0, 1fr) 36px;
   min-height: 0;
   overflow: hidden;
@@ -1583,5 +1584,89 @@
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* Roadshow graph controls: keep the SVG coordinate system and the HTML nodes
+   in one scaled layer so foreignObject hit targets never drift from labels. */
+.graph-zoom-layer {
+  transform-origin: top left;
+  min-height: 100%;
+}
+
+.graph-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding-left: 9px;
+  border-left: 1px solid #dbe7f5;
+}
+
+.graph-zoom-controls button {
+  min-width: 44px;
+  min-height: 32px;
+  border: 1px solid #d8e5f4;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: #315b8f;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.graph-zoom-controls button:hover,
+.graph-zoom-controls button:focus-visible {
+  color: #1f5be0;
+  border-color: #8fb8f6;
+  background: #f3f8ff;
+}
+
+.graph-zoom-controls output {
+  min-width: 42px;
+  color: #294a70;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  text-align: center;
+}
+
+.kg-node:focus-visible,
+.graph-zoom-controls button:focus-visible,
+.graph-tools button:focus-visible,
+.course-filter-panel button:focus-visible,
+.course-filter-panel select:focus-visible,
+.course-filter-panel input:focus-visible,
+.course-detail-panel button:focus-visible {
+  outline: 3px solid rgba(35, 98, 255, 0.42);
+  outline-offset: 2px;
+}
+
+.graph-scroll {
+  overscroll-behavior: auto;
+  touch-action: pan-x pan-y;
+}
+
+.resource-links button,
+.linked-pills button,
+.detail-actions button,
+.graph-tools button,
+.mobile-panel-toggle,
+.relation-toggle,
+.filter-command-grid button {
+  min-height: 44px;
+}
+
+@media (max-width: 720px) {
+  .graph-zoom-controls {
+    width: 100%;
+    margin: 4px 0 0;
+    padding: 5px 0 0;
+    border-left: 0;
+    border-top: 1px solid #dbe7f5;
+  }
+
+  .graph-zoom-controls button {
+    flex: 1 1 auto;
   }
 }

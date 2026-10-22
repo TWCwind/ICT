@@ -1,0 +1,96 @@
+{
+  "textbook_id": "roadshow-requirements",
+  "filename": "软件需求分析与建模-演示讲义.md",
+  "content_hash": "roadshow-requirements",
+  "core_topic": "软件需求分析与建模",
+  "source_type": "lecture",
+  "source_document": "files/demo/软件需求分析与建模-演示讲义.md",
+  "chapter_count": 6,
+  "total_kp_count": 30,
+  "chapters": [
+    {
+      "chapter_title": "业务场景与范围",
+      "chapter_index": 0,
+      "keywords": ["业务场景", "系统边界", "干系人", "问题域", "业务目标"],
+      "summary": "从业务问题、目标用户和价值出发，明确系统边界与干系人责任。",
+      "char_count": 248,
+      "knowledge_points": [
+        {"id": "kp-business-scene", "title": "业务场景", "keywords": ["业务场景"], "chapter": "业务场景与范围"},
+        {"id": "kp-system-boundary", "title": "系统边界", "keywords": ["系统边界"], "chapter": "业务场景与范围"},
+        {"id": "kp-stakeholder", "title": "干系人", "keywords": ["干系人"], "chapter": "业务场景与范围"},
+        {"id": "kp-problem-domain", "title": "问题域", "keywords": ["问题域"], "chapter": "业务场景与范围"},
+        {"id": "kp-business-goal", "title": "业务目标", "keywords": ["业务目标"], "chapter": "业务场景与范围"}
+      ]
+    },
+    {
+      "chapter_title": "需求获取与表达",
+      "chapter_index": 1,
+      "keywords": ["需求访谈", "用户故事", "需求分类", "需求优先级", "验收条件"],
+      "summary": "通过访谈、观察和原型采集证据，用用户故事和验收条件表达需求。",
+      "char_count": 286,
+      "knowledge_points": [
+        {"id": "kp-requirement-interview", "title": "需求访谈", "keywords": ["需求访谈"], "chapter": "需求获取与表达"},
+        {"id": "kp-user-story", "title": "用户故事", "keywords": ["用户故事"], "chapter": "需求获取与表达"},
+        {"id": "kp-requirement-category", "title": "需求分类", "keywords": ["需求分类"], "chapter": "需求获取与表达"},
+        {"id": "kp-requirement-priority", "title": "需求优先级", "keywords": ["需求优先级"], "chapter": "需求获取与表达"},
+        {"id": "kp-acceptance-condition", "title": "验收条件", "keywords": ["验收条件"], "chapter": "需求获取与表达"}
+      ]
+    },
+    {
+      "chapter_title": "用例与行为建模",
+      "chapter_index": 2,
+      "keywords": ["用例图", "参与者", "用例规约", "主成功场景", "扩展场景"],
+      "summary": "用参与者、用例和规约描述系统行为，为测试设计提供依据。",
+      "char_count": 274,
+      "knowledge_points": [
+        {"id": "kp-use-case-diagram", "title": "用例图", "keywords": ["用例图"], "chapter": "用例与行为建模"},
+        {"id": "kp-actor", "title": "参与者", "keywords": ["参与者"], "chapter": "用例与行为建模"},
+        {"id": "kp-use-case-spec", "title": "用例规约", "keywords": ["用例规约"], "chapter": "用例与行为建模"},
+        {"id": "kp-main-success-scenario", "title": "主成功场景", "keywords": ["主成功场景"], "chapter": "用例与行为建模"},
+        {"id": "kp-extension-scenario", "title": "扩展场景", "keywords": ["扩展场景"], "chapter": "用例与行为建模"}
+      ]
+    },
+    {
+      "chapter_title": "领域结构建模",
+      "chapter_index": 3,
+      "keywords": ["领域模型", "类图", "实体", "属性", "关联"],
+      "summary": "从用例和场景抽取领域对象，使用类图表达结构、职责和关联。",
+      "char_count": 262,
+      "knowledge_points": [
+        {"id": "kp-domain-model", "title": "领域模型", "keywords": ["领域模型"], "chapter": "领域结构建模"},
+        {"id": "kp-class-diagram", "title": "类图", "keywords": ["类图"], "chapter": "领域结构建模"},
+        {"id": "kp-entity", "title": "实体", "keywords": ["实体"], "chapter": "领域结构建模"},
+        {"id": "kp-attribute", "title": "属性", "keywords": ["属性"], "chapter": "领域结构建模"},
+        {"id": "kp-association", "title": "关联", "keywords": ["关联"], "chapter": "领域结构建模"}
+      ]
+    },
+    {
+      "chapter_title": "质量与约束",
+      "chapter_index": 4,
+      "keywords": ["非功能需求", "性能指标", "可用性", "可靠性", "可维护性"],
+      "summary": "把质量属性转化为性能、可用性、安全和维护方面的可度量约束。",
+      "char_count": 258,
+      "knowledge_points": [
+        {"id": "kp-nonfunctional", "title": "非功能需求", "keywords": ["非功能需求"], "chapter": "质量与约束"},
+        {"id": "kp-performance", "title": "性能指标", "keywords": ["性能指标"], "chapter": "质量与约束"},
+        {"id": "kp-usability", "title": "可用性", "keywords": ["可用性"], "chapter": "质量与约束"},
+        {"id": "kp-reliability", "title": "可靠性", "keywords": ["可靠性"], "chapter": "质量与约束"},
+        {"id": "kp-maintainability", "title": "可维护性", "keywords": ["可维护性"], "chapter": "质量与约束"}
+      ]
+    },
+    {
+      "chapter_title": "验证与变更",
+      "chapter_index": 5,
+      "keywords": ["验收标准", "需求追踪", "变更控制", "需求评审", "测试证据"],
+      "summary": "通过验收、追踪和变更控制形成可交付、可回归的需求闭环。",
+      "char_count": 270,
+      "knowledge_points": [
+        {"id": "kp-acceptance-standard", "title": "验收标准", "keywords": ["验收标准"], "chapter": "验证与变更"},
+        {"id": "kp-requirement-trace", "title": "需求追踪", "keywords": ["需求追踪"], "chapter": "验证与变更"},
+        {"id": "kp-change-control", "title": "变更控制", "keywords": ["变更控制"], "chapter": "验证与变更"},
+        {"id": "kp-requirement-review", "title": "需求评审", "keywords": ["需求评审"], "chapter": "验证与变更"},
+        {"id": "kp-test-evidence", "title": "测试证据", "keywords": ["测试证据"], "chapter": "验证与变更"}
+      ]
+    }
+  ]
+}

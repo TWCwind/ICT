@@ -1,6 +1,6 @@
 # AgentArts 可调用接口契约
 
-更新时间：2026-10-03
+更新时间：2026-10-22
 
 本清单来自源码路由、服务层和本地运行结果，不以旧说明文档代替实际实现。主后端统一响应为：
 
@@ -27,6 +27,7 @@
 | 练习诊断提交 | `POST /api/exercise/answer` | `student_id`、`question_id`、`answer` | `submit_exercise_answer`；写入练习记录和阶段进度 | 单测通过 |
 | 练习统计 | `GET /api/exercise/stats?student_id=demo` | `student_id` | `exercise_records.json` | `demo` 有 2 条测试记录，验收通过 |
 | 错题诊断 | `GET /api/exercise/wrong-book?student_id=demo` | `student_id` | 错题记录、标签统计、能力雷达 | 验收通过 |
+| 知识图谱 | `GET /api/knowledge/map?student_id=demo&max_nodes=56` | `student_id`、`max_nodes` | `knowledge_hub` 解析演示讲义、章节知识 JSON 和本地资源 | demo 实测 6 章、30 知识点、3 资源 |
 | 知识检索 | `GET /api/knowledge/search` | `student_id`、`query` 等 | `knowledge_hub.search_index` | 路由与验收通过 |
 | 评估状态 | `GET /api/evaluate/overview?student_id=demo` | `student_id` | 画像、知识掌握度、练习和事件证据 | 集成测试通过 |
 

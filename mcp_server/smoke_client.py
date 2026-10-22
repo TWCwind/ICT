@@ -4,12 +4,32 @@ import argparse
 import asyncio
 import json
 
+import httpx
 from mcp import ClientSession
+from mcp.shared._httpx_utils import McpHttpClientFactory
 from mcp.client.streamable_http import streamablehttp_client
 
 
+def local_http_client_factory(
+    headers: dict[str, str] | None = None,
+    timeout: httpx.Timeout | None = None,
+    auth: httpx.Auth | None = None,
+) -> httpx.AsyncClient:
+    """Keep local MCP verification off machine-level HTTP proxy settings."""
+
+    kwargs: dict[str, object] = {"trust_env": False}
+    if headers is not None:
+        kwargs["headers"] = headers
+    if timeout is not None:
+        kwargs["timeout"] = timeout
+    if auth is not None:
+        kwargs["auth"] = auth
+    return httpx.AsyncClient(**kwargs)
+
+
 async def run(url: str) -> None:
-    async with streamablehttp_client(url) as (read_stream, write_stream, _):
+    factory: McpHttpClientFactory = local_http_client_factory
+    async with streamablehttp_client(url, httpx_client_factory=factory) as (read_stream, write_stream, _):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
             tools = await session.list_tools()

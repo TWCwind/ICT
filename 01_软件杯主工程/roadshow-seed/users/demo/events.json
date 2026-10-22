@@ -1,0 +1,33 @@
+[
+  {
+    "id": "roadshow-event-profile",
+    "student_id": "demo",
+    "event_type": "profile_snapshot",
+    "payload": {"source": "roadshow_seed", "topic": "软件需求分析与建模"},
+    "created_at": "2026-10-22T00:01:00+08:00"
+  },
+  {
+    "id": "roadshow-event-path",
+    "student_id": "demo",
+    "event_type": "path_plan",
+    "payload": {
+      "title": "软件需求分析与建模路演学习路径",
+      "path": {
+        "title": "软件需求分析与建模路演学习路径",
+        "strategy": ["先建立业务语境，再完成行为与结构建模", "用验收标准和追踪矩阵形成验证闭环"],
+        "rationale": "路径阶段来自演示讲义的六个章节，并绑定本地讲义、案例和验收清单。",
+        "dynamic_rules": ["完成每阶段检查点后再开放下一阶段", "优先复习画像中的用例图与非功能需求薄弱点"],
+        "nodes": [
+          {"id": "roadshow-stage-1", "step": 1, "title": "业务场景与范围", "goal": "明确业务目标、系统边界和干系人", "status": "completed", "checkpoint": "能说清系统服务对象与边界", "resources": ["演示讲义：软件需求分析与建模"], "tasks": ["阅读第一章", "整理干系人清单"]},
+          {"id": "roadshow-stage-2", "step": 2, "title": "需求获取与表达", "goal": "把访谈材料转成用户故事和需求分类", "status": "current", "checkpoint": "完成一组可验收的用户故事", "resources": ["演示讲义：软件需求分析与建模"], "tasks": ["练习需求访谈", "写出用户故事"]},
+          {"id": "roadshow-stage-3", "step": 3, "title": "用例与行为建模", "goal": "用参与者、用例图和用例规约描述系统行为", "status": "locked", "checkpoint": "完成课程资源平台用例图", "resources": ["课程资源平台用例建模练习"], "tasks": ["识别参与者", "补齐主成功场景"]},
+          {"id": "roadshow-stage-4", "step": 4, "title": "领域结构建模", "goal": "从业务概念抽取实体、属性、关联和类图", "status": "locked", "checkpoint": "提交一份领域模型草图", "resources": ["课程资源平台用例建模练习"], "tasks": ["整理领域模型", "检查类图关系"]},
+          {"id": "roadshow-stage-5", "step": 5, "title": "质量与约束", "goal": "把非功能需求转成性能、可用性和可靠性指标", "status": "locked", "checkpoint": "每条指标都有测量方法", "resources": ["需求验收与追踪清单"], "tasks": ["补齐性能指标", "检查可用性约束"]},
+          {"id": "roadshow-stage-6", "step": 6, "title": "验证与变更", "goal": "用验收标准、需求追踪和变更控制闭合验证链", "status": "locked", "checkpoint": "完成评审记录与变更说明", "resources": ["需求验收与追踪清单"], "tasks": ["建立需求追踪", "准备验收证据"]}
+        ]
+      },
+      "created_by": "roadshow_seed"
+    },
+    "created_at": "2026-10-22T00:02:00+08:00"
+  }
+]

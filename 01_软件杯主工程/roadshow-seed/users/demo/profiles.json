@@ -1,0 +1,17 @@
+[
+  {
+    "id": "roadshow-profile-demo",
+    "student_id": "demo",
+    "knowledge_base_level": "beginner",
+    "cognitive_style": "visual",
+    "mistake_patterns": "容易混淆相邻概念，需要把需求表达和模型验证结合起来。",
+    "modality_preference": "visual",
+    "pace_preference": "moderate, step-by-step",
+    "motivation_style": "achievement-oriented",
+    "evidence": {
+      "weak_points": ["用例图与需求访谈的边界", "非功能需求的可度量表达"],
+      "keywords": ["用例图", "需求访谈", "性能指标", "验收标准"]
+    },
+    "created_at": "2026-10-22T00:00:00+08:00"
+  }
+]

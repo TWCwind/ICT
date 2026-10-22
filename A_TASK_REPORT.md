@@ -1,56 +1,62 @@
-# 队友 A 工程任务报告
+# 队友 A 路演维护任务报告
 
-完成日期：2026-10-03
+完成日期：2026-10-22（Asia/Shanghai）
 
-## 完成内容
+## 结论
 
-1. 从原协作 ZIP 建立独立开发工作区，未修改原 ZIP。
-2. 检查 FastAPI 后端、Vue 前端、脚本、测试和两类项目数据。
-3. 修复 FastAPI 依赖漂移、Windows 受限目录下的 Vite 构建、无密钥健康状态、多模态异常处理和过期验收断言。
-4. 后端健康检查、41 项单测、12 项验收、3 项集成流程全部通过。
-5. 前端类型检查、ESLint、生产构建和生产文件 HTTP 访问全部通过。
-6. 实现独立 MCP 服务，复用原业务服务和 `JobDatabase`：
-   - `get_student_profile`
-   - `get_role_competency`
-   - `get_project_status`（附加完成）
-7. 完成 MCP 7 项业务测试和标准 Streamable HTTP 协议调用。
-8. 生成接口契约、接入说明、测试结果和无密钥配置模板。
+路演版已在本地真实服务上完成复核：后端健康检查通过，前端生产构建通过，后端验收、集成、单测和前端 E2E 全部通过；未接入公网 AgentArts，也没有把“已接入”作为完成条件。
 
-## 关键修改
+工作区：`C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区`
 
-- `01_软件杯主工程/backend/requirements.txt`：FastAPI 限制为 0.115 系列。
-- `01_软件杯主工程/backend/app/api/routers/delivery.py`：真实 demo_mode、稳定 request_id、无密钥多模态错误封装。
-- `01_软件杯主工程/frontend-vue/scripts/build-production.mjs`：程序化生产构建。
-- `01_软件杯主工程/frontend-vue/scripts/dev-server.mjs`：程序化开发服务入口。
-- `01_软件杯主工程/frontend-vue/package.json`：接入新的 Windows 兼容脚本，并保留 `build:vite`、`dev:vite` 原始入口。
-- `01_软件杯主工程/tests/backend_acceptance.py`：按真实有密钥/无密钥状态验收。
-- `01_软件杯主工程/tests/integration_flow.py`：使用协作包的真实 `demo` 证据完成离线闭环验证。
-- `mcp_server/`：MCP 服务、数据适配、测试和调用客户端。
+原始 ZIP 未修改。主工程工作目录为 `01_软件杯主工程`，路演启动使用 `01_软件杯主工程\start-roadshow.ps1`，根目录同时提供无中文路径依赖的包装脚本。
 
-## 数据真实性
+## 本轮完成内容
 
-- 学生工具读取软件杯主工程内已有 `demo` 学生画像、事件和练习记录。
-- 岗位工具读取服创模块的结构化岗位画像，并复用原 `JobDatabase`。
-- `skill_level` 是根据原 `experience_require` 显式推导的展示层级，响应中保留原始值和推导依据。
-- 无模型密钥时不生成伪造资源或回答。
+- 以本地 ICAN-T 工程结构和现有业务服务为基线复查，未复制一套并行业务逻辑。
+- 新增干净的 `roadshow-seed`，启动时复制到隔离 runtime 数据目录，避免旧 JSON 缓存和运行数据覆盖路演数据。
+- 重建演示知识图谱：6 个语义章节、30 个知识点、3 个本地资源；章节和知识点均可在演示讲义正文中定位。
+- 过滤 `book_`、`textbook_`、哈希文件名、内部上传 ID 和视频推荐标题，防止它们成为章节名或教材。
+- 修复知识图谱四列布局、缩放、滚轮、键盘焦点、节点选择、全屏降级和移动端滚动；资源节点在 1280/1024/768 尺寸均可见。
+- 修复普通新学习者继承 demo 课程的问题；未登录/新学习者图谱节点数为 0，内置演示账号登录后才使用 demo 数据。
+- 完善练习中心 Canvas 无障碍属性、键盘缩放、错题星系空状态、动画清理和 reduced-motion 行为。
+- 修复头像回退表面、Tutor 标题响应式、空搜索无反馈、练习阶段按钮无可观察变化等路演交互问题。
+- 路演启动脚本不调用外部模型；无真实密钥时健康状态明确为 demo/local 模式，生成类接口返回可解释结果。
+- 修正历史验收断言：有错题时必须有错题记录；答题全部正确时错题本应为空，不再要求伪造错题。
+- MCP 服务复用现有 `profile_overview`、`path_overview`、`exercise_summary` 和 `JobDatabase`，完成 `get_student_profile`、`get_role_competency`、`get_project_status`。
 
-## 交付入口
+## 实际接口统计
 
-- MCP 接入：`MCP_INTEGRATION.md`
-- HTTP/MCP 契约：`API_CONTRACT_AGENTARTS.md`
-- 测试记录：`TEST_RESULTS.md`
-- 环境变量模板：`.env.example`
-- MCP 安装/启动/测试：`install_mcp.ps1`、`start_mcp.ps1`、`test_mcp.ps1`
+真实运行 `http://127.0.0.1:8000` 得到：
+
+| 项目 | 实际结果 |
+|---|---:|
+| `/api/health` | ready，`mode=roadshow`，未配置外部模型 |
+| demo 图谱章节 | 6 |
+| demo 图谱知识点 | 30 |
+| demo 图谱资源 | 3 |
+| demo 学习路径阶段 | 6 |
+| 新学习者图谱节点 | 0 |
+
+章节为：业务场景与范围、需求获取与表达、用例与行为建模、领域结构建模、质量与约束、验证与变更。
+
+## 截图与人工验收
+
+专项测试生成 30 张截图，目录：
+
+`01_软件杯主工程\frontend-vue\test-results\roadshow-screenshots\`
+
+覆盖 1440x900、1280x720、1024x768、768x1024、390x844 五种尺寸，以及首页、练习诊断、知识图谱、资源工坊、学习路径、评估进化六个页面。已逐批人工查看截图，确认无乱码、固定数据替代接口统计、哈希章节名、资源列整体裁切、按钮遮挡、移动端页面横向溢出和大片空白。
+
+## 交付文件
+
+- `A_TASK_REPORT.md`：本报告。
+- `TEST_RESULTS.md`：可复现命令和实际结果。
+- `MCP_INTEGRATION.md`：MCP 工具、启动及 AgentArts 接入方法。
+- `API_CONTRACT_AGENTARTS.md`：源码与运行结果对应的接口契约。
+- `.env.example`：仅包含占位变量，不含真实密钥。
 
 ## 仍需人工处理
 
-1. 申请或确认 AgentArts 团队空间。
-2. 将 MCP 服务部署到公网 HTTPS 地址，并在网关启用鉴权、限流和日志脱敏。
-3. 在 AgentArts 创建自定义 Streamable HTTP MCP，完成云端工具发现和调用截图。
-4. 接入真实学生数据前完成授权、脱敏和数据生命周期设计。
-5. 如需模型生成功能，在本机或部署环境的 `.env` 中填写真实配置；不得提交 `.env`。
-
-## 最终存放说明
-
-桌面原 ZIP 未修改。桌面上最初解压的原始工程已在复制最终版本前保留为独立备份；本报告所在目录为完成修复、测试和 MCP 实现后的最终开发工作区。
-
+1. AgentArts 云端需要公网 HTTPS 地址、团队空间和鉴权配置；本地 `127.0.0.1` 不能作为云端接入地址。
+2. 若接入真实学生数据，需要先完成授权、脱敏、审计和生命周期设计。
+3. 前端构建仍提示少数 chunk 超过 500 kB，不影响本轮路演；后续可继续按页面拆分动态模块。

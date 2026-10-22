@@ -12,9 +12,10 @@ function argument(name, fallback) {
 const host = argument('--host', '127.0.0.1')
 const port = Number(argument('--port', '5173'))
 const root = process.cwd()
+const backendPort = Number(process.env.ROADSHOW_BACKEND_PORT || '8000')
 const backendAgent = new Agent({ keepAlive: true, maxSockets: 32, maxFreeSockets: 8 })
 const backendProxy = {
-  target: 'http://127.0.0.1:8000',
+  target: `http://127.0.0.1:${backendPort}`,
   changeOrigin: true,
   ws: true,
   agent: backendAgent,

@@ -228,6 +228,7 @@ const selectedWrongRecordIds = ref<string[]>([])
 const openCourseFolders = ref<Record<string, boolean>>({})
 const exerciseRadarImpact = ref<Record<string, number>>({})
 const galaxyCanvas = ref<HTMLCanvasElement | null>(null)
+const prefersReducedMotion = ref(false)
 const activeGalaxyTag = ref('')
 const galaxyAngle = ref(0)
 const galaxyZoom = ref(1)
@@ -952,7 +953,12 @@ function switchDirect(page: WorkshopPageKey) {
 }
 
 function trySwitchPage(page: WorkshopPageKey) {
-  if (page === activePage.value) return
+  if (page === activePage.value) {
+    if (page === 'builder') {
+      closedLoopStatus.value = '已定位到当前阶段题库定制区，可继续调整难度、数量和题型。'
+    }
+    return
+  }
   if (activePage.value === 'diagnosis' && page !== 'diagnosis' && exercisePageRef.value?.hasActiveExam?.()) {
     pendingPage.value = page
     showExamLeaveDialog.value = true
@@ -1972,7 +1978,7 @@ function animateTagGalaxy() {
     line.geometry.attributes.position.needsUpdate = true
   }
   galaxyRenderer.render(galaxyScene, galaxyCamera)
-  galaxyFrame = window.requestAnimationFrame(animateTagGalaxy)
+  if (!prefersReducedMotion.value) galaxyFrame = window.requestAnimationFrame(animateTagGalaxy)
 }
 
 function drawTagGalaxy() {
@@ -2380,6 +2386,44 @@ function onGalaxyWheel(event: WheelEvent) {
   galaxyZoom.value = Math.max(0.62, Math.min(1.9, Number(nextZoom.toFixed(2))))
 }
 
+function onGalaxyKeydown(event: KeyboardEvent) {
+  if (event.key === '+' || event.key === '=') {
+    event.preventDefault()
+    galaxyZoom.value = Math.min(1.9, Number((galaxyZoom.value + 0.08).toFixed(2)))
+    return
+  }
+  if (event.key === '-' || event.key === '_') {
+    event.preventDefault()
+    galaxyZoom.value = Math.max(0.62, Number((galaxyZoom.value - 0.08).toFixed(2)))
+    return
+  }
+  if (event.key === '0') {
+    event.preventDefault()
+    galaxyZoom.value = 1
+    return
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    activeGalaxyTag.value = ''
+    galaxyMouse.active = false
+    galaxyCanvas.value?.blur()
+    return
+  }
+  const tags = tagGalaxy.value.nodes.map((node: any) => String(node.tag))
+  if (!tags.length) return
+  const currentIndex = Math.max(0, tags.indexOf(activeGalaxyTag.value))
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+    event.preventDefault()
+    activeGalaxyTag.value = tags[(currentIndex + 1) % tags.length]
+  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    activeGalaxyTag.value = tags[(currentIndex - 1 + tags.length) % tags.length]
+  } else if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    activeGalaxyTag.value = tags[currentIndex]
+  }
+}
+
 const activeGalaxyNode = computed(() => {
   return tagGalaxy.value.nodes.find((node: any) => node.tag === activeGalaxyTag.value) || tagGalaxy.value.nodes[0] || null
 })
@@ -2632,6 +2676,7 @@ watch(activeGalaxyTag, () => {
 })
 
 onMounted(async () => {
+  prefersReducedMotion.value = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   loadMasteredGalaxyStars()
   void loadWrongBook()
   await loadPathContext()
@@ -2659,28 +2704,28 @@ onBeforeUnmount(() => {
         <p>智能练习 · 精准诊断 · 个性提升</p>
       </div>
       <nav class="workshop-nav practice-workshop-nav" aria-label="练习诊断导航">
-        <button type="button" :class="{ active: activePage === 'builder' }" @click="trySwitchPage('builder')">
+        <button type="button" :class="{ active: activePage === 'builder' }" :aria-current="activePage === 'builder' ? 'page' : undefined" @click="trySwitchPage('builder')">
           <span class="practice-workshop-icon">▤</span>
           <span class="practice-workshop-copy">
             <strong>题库定制</strong>
             <small>按路径阶段设置难度、数量与题型</small>
           </span>
         </button>
-        <button type="button" :class="{ active: activePage === 'diagnosis' }" @click="trySwitchPage('diagnosis')">
+        <button type="button" :class="{ active: activePage === 'diagnosis' }" :aria-current="activePage === 'diagnosis' ? 'page' : undefined" @click="trySwitchPage('diagnosis')">
           <span class="practice-workshop-icon">✓</span>
           <span class="practice-workshop-copy">
             <strong>智能做题</strong>
             <small>训练、考试与即时诊断</small>
           </span>
         </button>
-        <button type="button" :class="{ active: activePage === 'wrongBook' }" @click="trySwitchPage('wrongBook')">
+        <button type="button" :class="{ active: activePage === 'wrongBook' }" :aria-current="activePage === 'wrongBook' ? 'page' : undefined" @click="trySwitchPage('wrongBook')">
           <span class="practice-workshop-icon">▧</span>
           <span class="practice-workshop-copy">
             <strong>错题本</strong>
             <small>复盘、重做与错因沉淀</small>
           </span>
         </button>
-        <button type="button" :class="{ active: activePage === 'tagGalaxy' }" @click="trySwitchPage('tagGalaxy')">
+        <button type="button" :class="{ active: activePage === 'tagGalaxy' }" :aria-current="activePage === 'tagGalaxy' ? 'page' : undefined" @click="trySwitchPage('tagGalaxy')">
           <span class="practice-workshop-icon">◎</span>
           <span class="practice-workshop-copy">
             <strong>知识点诊断</strong>
@@ -3167,10 +3212,15 @@ onBeforeUnmount(() => {
         </div>
         <div class="tag-galaxy-body">
           <div class="tag-galaxy-stage">
+            <p id="tag-galaxy-keyboard-help" class="sr-only">错题星系。聚焦后使用加号和减号缩放，0 恢复 100%，方向键选择标签，Enter 或空格确认，Escape 清除焦点。</p>
             <canvas
               ref="galaxyCanvas"
+              tabindex="0"
+              role="application"
               aria-label="错题标签星系"
+              aria-describedby="tag-galaxy-keyboard-help"
               @click="onGalaxyClick"
+              @keydown="onGalaxyKeydown"
               @mousemove="onGalaxyPointerMove"
               @mouseleave="onGalaxyPointerLeave"
               @wheel.prevent="onGalaxyWheel"

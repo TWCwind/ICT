@@ -44,7 +44,10 @@ class OpenAICompatibleClient:
         attempts = 3
         for attempt in range(attempts):
             try:
-                async with httpx.AsyncClient(timeout=self._timeout) as client:
+                # Local model endpoints must bypass inherited HTTP(S) proxy
+                # settings.  Otherwise localhost test/roadshow calls can be
+                # sent to a proxy and surface as an unrelated 502 response.
+                async with httpx.AsyncClient(timeout=self._timeout, trust_env=False) as client:
                     resp = await client.post(f"{self._base_url}{self._chat_path}", json=payload, headers=self._headers())
                     resp.raise_for_status()
                     return resp.json()
@@ -72,7 +75,7 @@ class OpenAICompatibleClient:
         payload = {**payload, "stream": True}
         try:
             timeout = httpx.Timeout(self._timeout, connect=min(self._timeout, 15))
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
                 async with client.stream(
                     "POST",
                     f"{self._base_url}{self._chat_path}",
@@ -104,7 +107,12 @@ class OpenAICompatibleClient:
                             yield str(content)
         except httpx.HTTPStatusError as e:
             status_code = e.response.status_code if e.response is not None else "unknown"
-            detail = (await e.response.aread()).decode(errors="replace")[:800] if e.response is not None else ""
+            detail = ""
+            if e.response is not None:
+                try:
+                    detail = e.response.text[:800]
+                except (httpx.StreamClosed, RuntimeError):
+                    detail = ""
             raise RuntimeError(f"LLM 流式请求失败：HTTP {status_code} {detail}") from e
         except httpx.TimeoutException as e:
             raise RuntimeError(f"LLM 流式请求超时：{self._timeout} 秒内没有收到响应。") from e

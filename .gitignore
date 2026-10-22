@@ -6,4 +6,9 @@
 **/__pycache__/
 **/*.pyc
 **/test-results/
+roadshow-data/
+roadshow-logs/
+**/roadshow-data/
+**/roadshow-logs/
+**/roadshow-seed/app.db
 
