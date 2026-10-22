@@ -3,7 +3,8 @@ param(
   [int]$BackendPort = 8000,
   [int]$FrontendPort = 5173,
   [switch]$SkipInstall,
-  [switch]$SkipE2E
+  [switch]$SkipE2E,
+  [switch]$GeneratedFlow
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,7 +16,13 @@ $resultsDir = Join-Path $root "test-results"
 New-Item -ItemType Directory -Force -Path $resultsDir | Out-Null
 $runtimeDataDir = Join-Path $resultsDir ("runtime-data-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $runtimeDataDir | Out-Null
-if (Test-Path -LiteralPath $seedDir) {
+$generatedDataDir = Join-Path $resultsDir "generated-dataset"
+if ($GeneratedFlow) {
+  Write-Host "==== Generate isolated test dataset ====" -ForegroundColor Cyan
+  & python (Join-Path $root "tests\generate_test_dataset.py") "--output" $generatedDataDir
+  if ($LASTEXITCODE -ne 0) { throw "generated dataset failed with exit code $LASTEXITCODE" }
+  Get-ChildItem -LiteralPath $generatedDataDir -Force | Copy-Item -Destination $runtimeDataDir -Recurse -Force
+} elseif (Test-Path -LiteralPath $seedDir) {
   Get-ChildItem -LiteralPath $seedDir -Force | Copy-Item -Destination $runtimeDataDir -Recurse -Force
 } else {
   Get-ChildItem -LiteralPath (Join-Path $backendDir "data") -Force | Copy-Item -Destination $runtimeDataDir -Recurse -Force
@@ -97,6 +104,11 @@ try {
   Write-Step "Integration flow"
   Invoke-Checked { python (Join-Path $root "tests\integration_flow.py") "http://$HostAddr`:$BackendPort" } "integration flow"
 
+  if ($GeneratedFlow) {
+    Write-Step "Generated full flow"
+    Invoke-Checked { python (Join-Path $root "tests\generated_full_flow.py") "http://$HostAddr`:$BackendPort" } "generated full flow"
+  }
+
   Write-Step "Backend unit tests"
   Push-Location $backendDir
   $env:PYTHONPATH = $backendDir
@@ -113,6 +125,9 @@ try {
     Push-Location $frontendDir
     $env:PLAYWRIGHT_BASE_URL = "http://$HostAddr`:$FrontendPort"
     Invoke-Checked { npm run test:roadshow -- --project=msedge --workers=1 } "roadshow E2E"
+    if ($GeneratedFlow) {
+      Invoke-Checked { npm run test:generated-flow -- --project=msedge --workers=1 } "generated flow E2E"
+    }
     Pop-Location
   }
 } catch {

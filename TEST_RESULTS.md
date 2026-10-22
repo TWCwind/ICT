@@ -82,3 +82,41 @@ cd C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区
 - Vite 提示 `ExerciseCenterPage`、`EvaluatePage` 等少数 chunk 超过 500 kB；构建仍成功，未影响页面或测试。
 - AgentArts 公网安装未执行，原因是当前没有公网 HTTPS 地址和 AgentArts 团队空间凭据；这不是本地工程失败。
 - 无真实模型密钥时不伪造模型生成内容，相关接口按项目契约返回本地数据或可解释错误。
+
+## 5. 隔离测试数据与完整流程结果
+
+生成命令：
+
+```powershell
+cd C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区\01_ICT主工程
+python .\tests\generate_test_dataset.py --output .\test-results\generated-dataset
+```
+
+一键完整命令：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 -SkipInstall -GeneratedFlow
+```
+
+生成数据集标识为 `test/generated/full-flow-v1`，包含 3 个学生、5 个岗位、1 门课程、6 个章节、30 个知识点、2 个资源、练习和错题、学习记录、学习计划、能力画像更新记录及异常输入场景。服务运行时使用独立 `test-results\runtime-data-*`，没有覆盖原有演示数据。
+
+本轮真实结果：
+
+| 检查项 | 结果 |
+|---|---:|
+| 后端验收 | 12/12 通过 |
+| 集成流程 | 3/3 通过 |
+| 生成数据全流程 | 6/6 通过 |
+| 后端单元测试 | 44/44 通过 |
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| 前端构建 | 通过 |
+| 原有路演 E2E | 16/16 通过 |
+| 生成数据路演 E2E | 2/2 通过 |
+
+新增前端验收生成 30 张截图，位于 `frontend-vue\test-results\generated-flow\`，覆盖 1440x900、1280x720、1024x768、768x1024、390x844 五种尺寸，以及首页、练习诊断、知识图谱、资源工坊、学习路径、评估进化六个页面。截图已人工查看，确认知识图谱在平板可见四列，手机端可纵向滚动，页面统计与接口统计一致。
+
+## 6. 当前限制
+
+- `npx playwright test e2e/interaction-qa.spec.ts --project=msedge --workers=1` 已单独在本地路演服务上执行并通过 3/3；若单独运行，需要先启动本地路演服务。
+- AgentArts 云端尚未安装验证，因为没有公网 HTTPS 地址、团队空间和鉴权凭据；本地 MCP 已实际调用，不代表云端已接入。
