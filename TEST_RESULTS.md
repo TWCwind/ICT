@@ -7,7 +7,7 @@
 启动命令：
 
 ```powershell
-cd C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区\01_软件杯主工程
+cd C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区\01_ICT主工程
 powershell -NoProfile -ExecutionPolicy Bypass -File .\start-roadshow.ps1 -NoBrowser
 ```
 
@@ -24,7 +24,7 @@ GET /api/knowledge/map?student_id=new-roadshow-user  200，nodes=0
 
 ## 2. 必须命令
 
-在 `01_软件杯主工程\frontend-vue` 执行：
+在 `01_ICT主工程\frontend-vue` 执行：
 
 | 命令 | 结果 |
 |---|---|
@@ -36,7 +36,7 @@ GET /api/knowledge/map?student_id=new-roadshow-user  200，nodes=0
 
 `interaction-qa.spec.ts` 还生成了 30 张五尺寸截图，并检查控制台错误、500 API、页面统计、图谱章节/知识点、键盘缩放、错题星系和移动端表现。
 
-在 `01_软件杯主工程` 执行：
+在 `01_ICT主工程` 执行：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 -SkipInstall

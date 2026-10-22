@@ -8,7 +8,7 @@
 
 工作区：`C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区`
 
-原始 ZIP 未修改。主工程工作目录为 `01_软件杯主工程`，路演启动使用 `01_软件杯主工程\start-roadshow.ps1`，根目录同时提供无中文路径依赖的包装脚本。
+原始 ZIP 未修改。主工程工作目录为 `01_ICT主工程`，路演启动使用 `01_ICT主工程\start-roadshow.ps1`，根目录同时提供无中文路径依赖的包装脚本。
 
 ## 本轮完成内容
 
@@ -43,7 +43,7 @@
 
 专项测试生成 30 张截图，目录：
 
-`01_软件杯主工程\frontend-vue\test-results\roadshow-screenshots\`
+`01_ICT主工程\frontend-vue\test-results\roadshow-screenshots\`
 
 覆盖 1440x900、1280x720、1024x768、768x1024、390x844 五种尺寸，以及首页、练习诊断、知识图谱、资源工坊、学习路径、评估进化六个页面。已逐批人工查看截图，确认无乱码、固定数据替代接口统计、哈希章节名、资源列整体裁切、按钮遮挡、移动端页面横向溢出和大片空白。
 

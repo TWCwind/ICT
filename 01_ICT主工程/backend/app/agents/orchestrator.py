@@ -1249,7 +1249,7 @@ class Orchestrator:
         if model_configured:
             llm = get_glm_client() if use_glm else get_llm_client_for("generate")
             
-            # 引入软件杯优质Prompt模板
+            # 引入 ICT 优质 Prompt 模板
             if spec.key == "lecture":
                 system = (
                     "你是高校课程资源生成智能体，负责生成严谨、结构完整、适合学生自学的中文 Markdown 课程讲解文档。"

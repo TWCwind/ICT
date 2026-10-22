@@ -79,7 +79,7 @@ smoke client 对本地 HTTP 客户端关闭系统代理继承，避免代理将 
 {"name": "get_role_competency", "arguments": {"role_id": "job_001"}}
 ```
 
-两次调用均通过标准 MCP 客户端完成，`is_error=false`；返回数据分别来自软件杯主工程的 `demo` 数据和结构化岗位画像。
+两次调用均通过标准 MCP 客户端完成，`is_error=false`；返回数据分别来自 ICT 主工程的 `demo` 数据和结构化岗位画像。
 
 ## 5. 部署为 AgentArts 可访问服务
 

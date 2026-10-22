@@ -8,7 +8,7 @@ from typing import Any
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-MAIN_PROJECT_ROOT = WORKSPACE_ROOT / "01_软件杯主工程"
+MAIN_PROJECT_ROOT = WORKSPACE_ROOT / "01_ICT主工程"
 BACKEND_ROOT = MAIN_PROJECT_ROOT / "backend"
 BACKEND_DATA_ROOT = BACKEND_ROOT / "data"
 JOB_MODULE_ROOT = WORKSPACE_ROOT / "02_服创岗位能力模块" / "岗位图谱子系统"
@@ -86,7 +86,7 @@ def get_student_profile_data(student_id: str) -> dict[str, Any]:
                     "recent_activity": recent_activity,
                 },
             },
-            source="01_软件杯主工程/backend/data + app.services",
+            source="01_ICT主工程/backend/data + app.services",
             data_mode="bundled_demo_data" if normalized_id == "demo" else "project_local_data",
         )
     except Exception as exc:
@@ -213,7 +213,7 @@ def get_project_status_data(student_id: str) -> dict[str, Any]:
         path = path_overview(normalized_id)
         return _success(
             {"student_id": normalized_id, "path": path},
-            source="01_软件杯主工程/backend/data + app.services.learning_state.path_overview",
+            source="01_ICT主工程/backend/data + app.services.learning_state.path_overview",
             data_mode="bundled_demo_data" if normalized_id == "demo" else "project_local_data",
         )
     except Exception as exc:
