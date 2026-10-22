@@ -1270,6 +1270,15 @@ onUnmounted(() => {
           </div>
         </section>
 
+        <section v-if="relatedResources.length" class="detail-block detail-resources-priority">
+          <h3>配套资源</h3>
+          <div class="resource-links">
+            <button v-for="item in relatedResources" :key="item.id" type="button" @click="openResource(item)">
+              <FileText :size="14" /><span>{{ nodeName(item) }}</span><ChevronRight :size="14" />
+            </button>
+          </div>
+        </section>
+
         <section class="mastery-block">
           <div class="score-ring" :style="ringStyle(selectedNode.mastery)"><strong>{{ selectedNode.evidence_count ? `${masteryValue(selectedNode.mastery).toFixed(0)}%` : '未评估' }}</strong></div>
           <div><h3>当前掌握度</h3><p>{{ selectedAdvice }}</p></div>
@@ -1285,15 +1294,6 @@ onUnmounted(() => {
           </dl>
           <div v-if="selectedNode.keywords?.length" class="pill-wrap">
             <span v-for="item in selectedNode.keywords.slice(0, 6)" :key="item">{{ item }}</span>
-          </div>
-        </section>
-
-        <section v-if="relatedResources.length" class="detail-block">
-          <h3>配套资源</h3>
-          <div class="resource-links">
-            <button v-for="item in relatedResources" :key="item.id" type="button" @click="openResource(item)">
-              <FileText :size="14" /><span>{{ nodeName(item) }}</span><ChevronRight :size="14" />
-            </button>
           </div>
         </section>
 

@@ -113,6 +113,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 
 | 前端构建 | 通过 |
 | 原有路演 E2E | 16/16 通过 |
 | 生成数据路演 E2E | 2/2 通过 |
+| 知识图谱资源卡首屏布局 | 3/3 完整显示，均位于操作栏上方 |
 
 新增前端验收生成 30 张截图，位于 `frontend-vue\test-results\generated-flow\`，覆盖 1440x900、1280x720、1024x768、768x1024、390x844 五种尺寸，以及首页、练习诊断、知识图谱、资源工坊、学习路径、评估进化六个页面。截图已人工查看，确认知识图谱在平板可见四列，手机端可纵向滚动，页面统计与接口统计一致。
 
@@ -120,3 +121,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 
 
 - `npx playwright test e2e/interaction-qa.spec.ts --project=msedge --workers=1` 已单独在本地路演服务上执行并通过 3/3；若单独运行，需要先启动本地路演服务。
 - AgentArts 云端尚未安装验证，因为没有公网 HTTPS 地址、团队空间和鉴权凭据；本地 MCP 已实际调用，不代表云端已接入。
+
+## 7. 本轮视觉修复复测
+
+人工查看截图时发现 1440x900 知识图谱右侧详情面板的第三张配套资源卡原先会被底部操作栏部分遮挡。已将配套资源区前置到节点详情首屏，并在 `full-flow-generated.spec.ts` 增加三张资源卡均位于操作栏上方的几何断言。
+
+修复后重新执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 -SkipInstall -GeneratedFlow
+```
+
+结果仍为：后端验收 12/12、集成 3/3、生成数据流程 6/6、后端单元测试 44/44、原有路演 E2E 16/16、新增生成数据路演 E2E 2/2。修复后的 1440x900、390x844 知识图谱截图已重新人工查看。
