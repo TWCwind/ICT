@@ -79,7 +79,7 @@ smoke client 对本地 HTTP 客户端关闭系统代理继承，避免代理将 
 {"name": "get_role_competency", "arguments": {"role_id": "job_001"}}
 ```
 
-两次调用均通过标准 MCP 客户端完成，`is_error=false`；返回数据分别来自软件杯主工程的 `demo` 数据和结构化岗位画像。
+两次调用均通过标准 MCP 客户端完成，`is_error=false`；返回数据分别来自 ICT 主工程的 `demo` 数据和结构化岗位画像。
 
 ## 5. 部署为 AgentArts 可访问服务
 
@@ -108,4 +108,27 @@ AgentArts 为兼容负载均衡会携带会话头；服务已按其官方建议�
 
 - 未获得 AgentArts 账号、空间和公网 HTTPS 地址，因此没有执行云端安装测试。
 - 公网部署前必须补充网关鉴权、TLS、日志脱敏、速率限制和真实学生数据授权策略。
+
+## 2026-10-24 终验记录
+
+本地 MCP 服务在 `http://127.0.0.1:8010/mcp` 启动后，`test_mcp.ps1` 的业务单元测试为 7/7；标准 Streamable HTTP 客户端发现 3 个工具，并实际调用：
+
+- `get_student_profile({"student_id":"demo"})`：`is_error=false`；
+- `get_role_competency({"role_name":"Java开发工程师"})`：`is_error=false`；
+- `get_project_status({"student_id":"demo"})`：`is_error=false`。
+
+本次 MCP 验证使用项目内 bundled demo 数据；主路演页面和完整平台验收使用隔离的 `test/generated/full-flow-v1` runtime。两者都属于本地验证，不能表述为已完成 AgentArts 云端接入。云端仍需公网 HTTPS、团队空间和鉴权配置。
+
+## 8. 本地完整流程验证
+
+可在 ICT 主工程目录执行以下命令生成隔离数据并运行全套平台验证：
+
+```powershell
+cd C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区\01_ICT主工程
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 -SkipInstall -GeneratedFlow
+```
+
+生成器写入 `test-results\generated-dataset`，路演服务使用临时 `runtime-data-*`；数据集包含 3 个学生、5 个岗位、6 个章节、30 个知识点和 2 个明确标记为 `test/generated` 的资源。该流程会真实启动后端和前端，调用健康检查、画像、岗位、项目状态、练习、学习计划、能力更新和知识图谱接口，并运行五种尺寸的 Playwright 页面验收。最近一次结果为全部通过：后端验收 12/12、集成 3/3、生成数据流程 6/6、单测 44/44、原有 E2E 16/16、新增 E2E 2/2。
+
+截图位于 `01_ICT主工程\frontend-vue\test-results\generated-flow\`，覆盖 `1440x900`、`1280x720`、`1024x768`、`768x1024`、`390x844` 下的首页、练习诊断、知识图谱、资源工坊、学习路径和评估进化。截图仅用于本地验收，不应提交到仓库。
 
