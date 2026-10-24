@@ -15,6 +15,8 @@ type ButtonRecord = {
   clickError?: string
   navigated: boolean
   domChanged: boolean
+  focusChanged: boolean
+  scrollChanged: boolean
   apiCalls: string[]
   fileChooser: boolean
   download: boolean
@@ -36,7 +38,9 @@ const routeNames: Record<string, string> = {
   '/evaluate': '评估进化',
 }
 const maxButtonsPerRoute = 60
-const outputDir = join(process.cwd(), 'test-results', 'claude-round1')
+// 产物写到工程根 test-results/claude-round1：frontend-vue/test-results 会被
+// 每次 `playwright test` 启动时整体清空，与并发测试运行互相覆盖。
+const outputDir = join(process.cwd(), '..', 'test-results', 'claude-round1')
 
 async function settle(page: Page) {
   await page.waitForLoadState('domcontentloaded', { timeout: 20_000 }).catch(() => undefined)
@@ -172,6 +176,9 @@ test('真实登录并逐一点击全部可见按钮，记录可观察结果', as
       const label = ((await button.innerText().catch(() => '')) || await button.getAttribute('aria-label') || `button-${index}`)
         .trim().replace(/\s+/g, ' ').slice(0, 40)
       const disabled = await button.isDisabled().catch(() => false)
+      // :visible 只表示元素有布局尺寸，不保证它位于当前视口；先滚入视口，
+      // 再做 elementFromPoint 命中检测，避免把长页面底部按钮误报为遮挡。
+      await button.scrollIntoViewIfNeeded().catch(() => undefined)
       const hitTest = await hitTestButton(page, index)
 
       const record: ButtonRecord = {
@@ -183,6 +190,8 @@ test('真实登录并逐一点击全部可见按钮，记录可观察结果', as
         clicked: false,
         navigated: false,
         domChanged: false,
+        focusChanged: false,
+        scrollChanged: false,
         apiCalls: [],
         fileChooser: false,
         download: false,
@@ -208,6 +217,10 @@ test('真实登录并逐一点击全部可见按钮，记录可观察结果', as
 
       const beforeUrl = page.url()
       const beforeDom = await domSignature(page)
+      const beforeState = await page.evaluate(() => ({
+        scrollY: Math.round(window.scrollY),
+        active: document.activeElement ? `${document.activeElement.tagName.toLowerCase()}#${(document.activeElement as HTMLElement).id || ''}.${(document.activeElement as HTMLElement).className || ''}`.slice(0, 60) : 'none',
+      }))
       try {
         await button.click({ timeout: 15_000, noWaitAfter: true })
         record.clicked = true
@@ -221,6 +234,12 @@ test('真实登录并逐一点击全部可见按钮，记录可观察结果', as
       if (!record.navigated) {
         const afterDom = await domSignature(page).catch(() => '')
         record.domChanged = beforeDom !== afterDom
+        const afterState = await page.evaluate(() => ({
+          scrollY: Math.round(window.scrollY),
+          active: document.activeElement ? `${document.activeElement.tagName.toLowerCase()}#${(document.activeElement as HTMLElement).id || ''}.${(document.activeElement as HTMLElement).className || ''}`.slice(0, 60) : 'none',
+        })).catch(() => ({ scrollY: 0, active: 'none' }))
+        record.scrollChanged = Math.abs(afterState.scrollY - beforeState.scrollY) > 2
+        record.focusChanged = afterState.active !== beforeState.active
       }
       record.consoleErrors = consoleErrors.slice(errorMarker)
       page.off('request', onRequest)
@@ -246,7 +265,7 @@ test('真实登录并逐一点击全部可见按钮，记录可观察结果', as
   // --- 6. 汇总 ---
   const clicked = records.filter((item) => item.clicked && !item.disabled)
   const noOutcome = clicked.filter((item) =>
-    !item.navigated && !item.domChanged && item.apiCalls.length === 0
+    !item.navigated && !item.domChanged && !item.focusChanged && !item.scrollChanged && item.apiCalls.length === 0
     && !item.fileChooser && !item.download && !item.popup && !item.dialog)
   const blocked = records.filter((item) => !item.hitTest.startsWith('ok'))
 

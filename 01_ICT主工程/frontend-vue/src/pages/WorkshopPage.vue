@@ -361,7 +361,7 @@ onMounted(loadOverview)
 <template>
   <div class="competition-page workshop-command-page">
     <section class="shot-workshop" aria-label="资源工坊">
-      <div v-if="error" class="shot-notice is-error"><CircleAlert :size="18" />{{ error }}<button type="button" @click="loadOverview">重新同步</button></div>
+      <div v-if="error" class="shot-notice is-error" role="alert"><CircleAlert :size="18" />{{ error }}<button type="button" @click="loadOverview">重新同步</button></div>
       <div v-if="notice" class="shot-notice"><Check :size="18" />{{ notice }}</div>
 
       <div v-if="overviewLoading && !overview" class="shot-loading"><span class="os-spinner"></span><p>正在读取资源清单与协作角色……</p></div>
