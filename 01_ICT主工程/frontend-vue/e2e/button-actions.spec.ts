@@ -57,7 +57,10 @@ test('every initially visible enabled page button produces an observable action'
         let download = false
         let popup = false
 
-        const onRequest = (request: { url(): string }) => { if (request.url().includes('/api/')) apiRequest = true }
+        const onRequest = (request: { url(): string }) => {
+          const path = new URL(request.url()).pathname
+          if (path.startsWith('/api/') && path !== '/api/health') apiRequest = true
+        }
         page.on('request', onRequest)
         page.once('filechooser', () => { fileChooser = true })
         page.once('download', () => { download = true })

@@ -133,3 +133,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 
 ```
 
 结果仍为：后端验收 12/12、集成 3/3、生成数据流程 6/6、后端单元测试 44/44、原有路演 E2E 16/16、新增生成数据路演 E2E 2/2。修复后的 1440x900、390x844 知识图谱截图已重新人工查看。
+
+## 2026-10-24 连接恢复专项
+
+使用本地路演服务，前端测试地址设置为 `PLAYWRIGHT_BASE_URL=http://127.0.0.1:5174`。
+
+- `npm run check`：通过。
+- `npm run audit:ui`：通过。
+- `npm run build`：通过；练习页 chunk 大于 500 kB 的既有告警仍存在。
+- `npx playwright test e2e/connection-recovery.spec.ts e2e/button-actions.spec.ts --project=msedge --workers=1`：3/3 通过（约 2.5 分钟）。
+- 排除健康检查流量后，单独复跑 `e2e/button-actions.spec.ts --project=msedge --workers=1`：1/1 通过（约 2.3 分钟）。新增连接测试已纳入 `test:roadshow` 默认清单。
+- 真实健康检查：5174 的 `/api/health` 返回 200、success=true。
+- 实际查看 1440x900 桌面知识图谱、390x844 手机断线提示截图；后者无横向溢出且重试按钮可见，前者显示 6 章、30 知识点、3 资源。
+- 本轮未重跑全量后端、MCP 和全部视口验收；上文历史结果不能当成本轮结果。按钮遍历测试验证可观察反馈/业务请求，不等于验证每项业务输出的正确性。
