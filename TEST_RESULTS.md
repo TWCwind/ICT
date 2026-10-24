@@ -146,3 +146,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 
 - 真实健康检查：5174 的 `/api/health` 返回 200、success=true。
 - 实际查看 1440x900 桌面知识图谱、390x844 手机断线提示截图；后者无横向溢出且重试按钮可见，前者显示 6 章、30 知识点、3 资源。
 - 本轮未重跑全量后端、MCP 和全部视口验收；上文历史结果不能当成本轮结果。按钮遍历测试验证可观察反馈/业务请求，不等于验证每项业务输出的正确性。
+
+## 2026-10-24 总控终验结果
+
+本轮在真实本地路演服务和隔离 `test/generated/full-flow-v1` 数据上重新执行：
+
+```powershell
+cd C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区\01_ICT主工程
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 -SkipInstall -GeneratedFlow
+```
+
+结果：后端验收 12/12、集成流程 3/3、生成流程 6/6、后端单元测试 44/44、前端构建通过、路演 E2E 18/18、生成流程 E2E 2/2，脚本最终输出 `All tests passed`。
+
+最终修改后的前端专项检查：
+
+| 命令 | 结果 |
+|---|---:|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过 |
+| `npx playwright test e2e/claude-round2-qa.spec.ts --project=msedge --workers=1` | 6/6 |
+| `npx playwright test e2e/competition-responsive.spec.ts --project=msedge --workers=1` | 4/4 |
+| `npx playwright test e2e/interaction-qa.spec.ts --project=msedge --workers=1` | 3/3 |
+
+交互截图最终共 30 张，目录为 `frontend-vue\test-results\roadshow-screenshots\`，覆盖 1440x900、1280x720、1024x768、768x1024、390x844 五种尺寸以及首页、练习诊断、知识图谱、资源工坊、学习路径、评估进化。Codex 实际查看了桌面、1280 中宽屏、1024 平板和 390 手机截图。
+
+MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；标准 Streamable HTTP 客户端发现 3 个工具，并实际调用 `get_student_profile`、`get_role_competency`、`get_project_status`，三次均 `is_error=false`。MCP 地址为 `http://127.0.0.1:8010/mcp`。这只证明本地 MCP 可调用，不代表已接入 AgentArts 云端。
+
+补充说明：构建仍有少数 chunk 大于 500 kB 的既有警告；实时语音/数字人因没有真实外部凭据保持禁用并显示中文原因；无公网 HTTPS、团队空间和鉴权凭据，AgentArts 云端安装未执行。
+
+针对用户原先打开的地址 `http://127.0.0.1:5174/`，额外执行 `e2e/claude-smoke.spec.ts`，真实登录后点击画像、工坊、练习、知识、路径、评估和用户设置：1/1 通过，控制台错误 0，所有页面主内容可见。

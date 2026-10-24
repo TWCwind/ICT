@@ -12,9 +12,9 @@ class RoadshowKnowledgeDataTest(unittest.TestCase):
     def setUp(self) -> None:
         self.original_data_dir = settings.data_dir
         project_root = Path(__file__).resolve().parents[2]
-        runtime_dir = settings.data_path
-        if not (runtime_dir / "uploads" / "textbooks" / "chapter_knowledge" / "index.json").exists():
-            settings.data_dir = str(project_root / "roadshow-seed")
+        # 该用例断言的是 roadshow-seed 的语义课程契约；无条件指向 seed，
+        # 避免本机 backend/data 里陈旧的哈希文件名数据导致裸跑单测时 resources=0。
+        settings.data_dir = str(project_root / "roadshow-seed")
 
     def tearDown(self) -> None:
         settings.data_dir = self.original_data_dir

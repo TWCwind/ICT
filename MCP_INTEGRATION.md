@@ -109,6 +109,16 @@ AgentArts 为兼容负载均衡会携带会话头；服务已按其官方建议�
 - 未获得 AgentArts 账号、空间和公网 HTTPS 地址，因此没有执行云端安装测试。
 - 公网部署前必须补充网关鉴权、TLS、日志脱敏、速率限制和真实学生数据授权策略。
 
+## 2026-10-24 终验记录
+
+本地 MCP 服务在 `http://127.0.0.1:8010/mcp` 启动后，`test_mcp.ps1` 的业务单元测试为 7/7；标准 Streamable HTTP 客户端发现 3 个工具，并实际调用：
+
+- `get_student_profile({"student_id":"demo"})`：`is_error=false`；
+- `get_role_competency({"role_name":"Java开发工程师"})`：`is_error=false`；
+- `get_project_status({"student_id":"demo"})`：`is_error=false`。
+
+本次 MCP 验证使用项目内 bundled demo 数据；主路演页面和完整平台验收使用隔离的 `test/generated/full-flow-v1` runtime。两者都属于本地验证，不能表述为已完成 AgentArts 云端接入。云端仍需公网 HTTPS、团队空间和鉴权配置。
+
 ## 8. 本地完整流程验证
 
 可在 ICT 主工程目录执行以下命令生成隔离数据并运行全套平台验证：

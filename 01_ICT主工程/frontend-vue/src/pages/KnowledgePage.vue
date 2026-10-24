@@ -555,6 +555,8 @@ function zoomOut() {
 
 function resetGraphZoom() {
   setGraphZoom(1)
+  // 即使缩放已经是 100%，也要给出可见反馈，避免“点了没反应”。
+  showNotice(`图谱缩放已恢复 ${Math.round(graphZoom.value * 100)}%。`)
 }
 
 function fitGraphToWindow() {
@@ -1037,7 +1039,7 @@ onUnmounted(() => {
           <option v-for="course in graph.courses" :key="course.id" :value="course.id">{{ course.title }}</option>
         </select>
         <p>{{ graph.course_summary || '选择课程后，系统会提取章节、知识点与配套资源。' }}</p>
-        <input ref="textbookInput" class="textbook-file-input" type="file" accept=".txt,.md,.pdf,.docx" @change="uploadTextbook" />
+        <input ref="textbookInput" class="textbook-file-input" type="file" hidden accept=".txt,.md,.pdf,.docx" @change="uploadTextbook" />
         <button class="textbook-upload-button" type="button" :disabled="uploadingTextbook" @click="chooseTextbook">
           <LoaderCircle v-if="uploadingTextbook" class="spin" :size="16" />
           <Upload v-else :size="16" />{{ uploadingTextbook ? '正在生成知识结构' : '上传电子教材' }}

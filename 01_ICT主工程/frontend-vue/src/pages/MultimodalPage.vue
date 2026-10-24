@@ -67,6 +67,16 @@ const loading = ref('')
 const message = ref('')
 const promptInput = ref('')
 const activeMode = ref<ModeKey>('auto')
+const promptTextareaEl = ref<HTMLTextAreaElement | null>(null)
+
+function selectMode(mode: ModeKey) {
+  if (activeMode.value === mode) {
+    // 重复点击当前模式按钮时聚焦输入框，避免“点了没反应”。
+    promptTextareaEl.value?.focus()
+    return
+  }
+  activeMode.value = mode
+}
 const activeSessionId = ref('')
 const sessions = ref<ChatSession[]>([])
 const videoResult = ref<any | null>(null)
@@ -1242,7 +1252,8 @@ onMounted(() => {
           :key="item.key"
           type="button"
           :class="{ active: activeMode === item.key }"
-          @click="activeMode = item.key"
+          :aria-pressed="activeMode === item.key"
+          @click="selectMode(item.key)"
         >
           <component :is="item.icon" :size="18" />
           <span>{{ item.label }}</span>
@@ -1366,6 +1377,7 @@ onMounted(() => {
       <section class="multi-composer-wrap">
         <div class="multi-composer">
           <textarea
+            ref="promptTextareaEl"
             v-model="promptInput"
             rows="2"
             placeholder="发消息或按住空格说话..."
@@ -1374,13 +1386,13 @@ onMounted(() => {
           <div class="multi-composer-tools">
             <button type="button" title="添加素材" @click="attachMaterial"><Paperclip :size="19" /></button>
             <input ref="materialInput" type="file" accept=".txt,.md,.csv,.json" hidden @change="handleMaterial" />
-            <button type="button" data-action-kind="compose" title="快速生成" :class="{ active: activeMode === 'auto' }" @click="activeMode = 'auto'"><Zap :size="17" /><span>快速</span></button>
-            <button type="button" data-action-kind="compose" title="帮我写作" :class="{ active: activeMode === 'writing' }" @click="activeMode = 'writing'"><FileText :size="17" /><span>帮我写作</span></button>
-            <button type="button" data-action-kind="compose" title="编程" :class="{ active: activeMode === 'code' }" @click="activeMode = 'code'"><Code2 :size="17" /><span>编程</span></button>
-            <button type="button" data-action-kind="compose" title="图像生成" :class="{ active: activeMode === 'visual' }" @click="activeMode = 'visual'"><Image :size="17" /><span>图像生成</span></button>
-            <button type="button" data-action-kind="compose" title="视频推荐" :class="{ active: activeMode === 'video' }" @click="activeMode = 'video'"><PlayCircle :size="17" /><span>视频推荐</span></button>
-            <button type="button" data-action-kind="compose" title="智能出题" :class="{ active: activeMode === 'quiz' }" @click="activeMode = 'quiz'"><ClipboardList :size="17" /><span>智能出题</span></button>
-            <button type="button" data-action-kind="compose" title="思维导图" :class="{ active: activeMode === 'mindmap' }" @click="activeMode = 'mindmap'"><GitBranch :size="17" /><span>思维导图</span></button>
+            <button type="button" data-action-kind="compose" title="快速生成" :class="{ active: activeMode === 'auto' }" :aria-pressed="activeMode === 'auto'" @click="selectMode('auto')"><Zap :size="17" /><span>快速</span></button>
+            <button type="button" data-action-kind="compose" title="帮我写作" :class="{ active: activeMode === 'writing' }" :aria-pressed="activeMode === 'writing'" @click="selectMode('writing')"><FileText :size="17" /><span>帮我写作</span></button>
+            <button type="button" data-action-kind="compose" title="编程" :class="{ active: activeMode === 'code' }" :aria-pressed="activeMode === 'code'" @click="selectMode('code')"><Code2 :size="17" /><span>编程</span></button>
+            <button type="button" data-action-kind="compose" title="图像生成" :class="{ active: activeMode === 'visual' }" :aria-pressed="activeMode === 'visual'" @click="selectMode('visual')"><Image :size="17" /><span>图像生成</span></button>
+            <button type="button" data-action-kind="compose" title="视频推荐" :class="{ active: activeMode === 'video' }" :aria-pressed="activeMode === 'video'" @click="selectMode('video')"><PlayCircle :size="17" /><span>视频推荐</span></button>
+            <button type="button" data-action-kind="compose" title="智能出题" :class="{ active: activeMode === 'quiz' }" :aria-pressed="activeMode === 'quiz'" @click="selectMode('quiz')"><ClipboardList :size="17" /><span>智能出题</span></button>
+            <button type="button" data-action-kind="compose" title="思维导图" :class="{ active: activeMode === 'mindmap' }" :aria-pressed="activeMode === 'mindmap'" @click="selectMode('mindmap')"><GitBranch :size="17" /><span>思维导图</span></button>
             <button type="button" title="更多" :class="{ active: showMoreModes }" :aria-expanded="showMoreModes" @click="openMoreModes"><MoreHorizontal :size="17" /><span>更多</span></button>
             <button class="multi-send" type="button" :disabled="Boolean(loading) || !promptInput.trim()" title="发送" @click="submitPrompt">
               <Wand2 v-if="loading" :size="18" />

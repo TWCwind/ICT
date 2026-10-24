@@ -597,6 +597,9 @@
   justify-content: center;
   flex-wrap: wrap;
   gap: 14px 18px;
+  /* 图例+缩放控件作为 flex 项时允许收缩换行，避免在 1280 等中宽屏被图谱面板右缘裁切 */
+  min-width: 0;
+  max-width: 100%;
   border-top: 1px solid #e5effb;
   color: #65748b;
   font-size: 11px;
@@ -1229,7 +1232,8 @@
 }
 
 .graph-legend {
-  min-width: max-content;
+  /* 允许收缩并换行：max-content 会把图例+缩放控件撑到 776px，在 1280 等中宽屏被面板右缘裁切 */
+  min-width: 0;
   overflow: hidden;
   padding: 0 12px;
 }

@@ -1,6 +1,6 @@
 # AgentArts 可调用接口契约
 
-更新时间：2026-10-22
+更新时间：2026-10-24
 
 本清单来自源码路由、服务层和本地运行结果，不以旧说明文档代替实际实现。主后端统一响应为：
 
@@ -128,4 +128,6 @@
 运行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 -SkipInstall -GeneratedFlow` 会把数据复制到隔离 runtime，启动真实本地后端和前端，并验证上述接口及页面。最近一次结果为后端验收 12/12、集成 3/3、生成流程 6/6、后端单测 44/44、原有前端 E2E 16/16、新增五尺寸 E2E 2/2 全部通过。
 
 该测试结果只证明本地实现和本地 MCP 服务可复现，不证明已经接入 AgentArts 云端；云端接入仍需公网 HTTPS、团队空间和鉴权配置。
+
+2026-10-24 终验再次通过本地 MCP Streamable HTTP 调用：`get_student_profile`、`get_role_competency`、`get_project_status` 均返回 `is_error=false`。MCP 终验使用 bundled demo 数据；路演页面统计和完整接口闭环使用隔离 `test/generated/full-flow-v1` 数据，数据来源边界保持不变。
 

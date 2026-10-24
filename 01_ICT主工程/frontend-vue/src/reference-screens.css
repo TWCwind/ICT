@@ -1598,3 +1598,20 @@
 }
 .shot-change-legend > svg:nth-of-type(1) { color: #287cf5; }
 .shot-change-legend > svg:nth-of-type(2) { color: #f09a28; }
+
+/* 中屏适配（第一轮/第二轮视觉验收发现的裁切问题）：
+   1) 1181-1366px：评估页 score-row 固定最小列宽合计 960px 超过可用宽度，
+      内容被 overflow:hidden 裁切；压缩三栏最小值并允许时间轴横向滚动。
+   2) 901-1180px：路径页画像栏 240px 装不下 238px 的能力雷达图（标签重叠）；
+      路线轨道 6 个 105px 节点合计超出容器（末节点被裁切），改为按比例压缩。 */
+@media (min-width: 1181px) and (max-width: 1366px) {
+  .shot-score-row { grid-template-columns: 230px minmax(400px, 1fr) 200px; }
+  .shot-capability__body { grid-template-columns: minmax(230px, .95fr) minmax(190px, 1.05fr); }
+  .shot-eval-timeline > div { overflow-x: auto; }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  .shot-path { grid-template-columns: 285px minmax(520px, 1fr); }
+  .shot-route-track > button { flex: 1 1 0; min-width: 0; }
+  .shot-route-legend { flex-wrap: wrap; gap: 8px 18px; }
+}

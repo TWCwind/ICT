@@ -54,6 +54,15 @@ const notice = ref('')
 const radarEl = ref<HTMLElement | null>(null)
 const diagnosisEl = ref<HTMLElement | null>(null)
 const activeDiagnosisTab = ref<'conclusion' | 'heat' | 'evidence'>('conclusion')
+
+function selectDiagnosisTab(tab: 'conclusion' | 'heat' | 'evidence') {
+  if (activeDiagnosisTab.value === tab) {
+    // 重复点击当前诊断页签时，把诊断面板带回视野，避免“点了没反应”。
+    diagnosisEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    return
+  }
+  activeDiagnosisTab.value = tab
+}
 let radar: echarts.ECharts | null = null
 
 const score = computed(() => clamp(overview.value?.score))
@@ -288,7 +297,7 @@ onUnmounted(() => {
             <article class="shot-evidence-version"><header><strong><ShieldCheck class="shot-panel-icon is-green" :size="17" />评估证据版本</strong><small>所有结论均可追溯</small></header><div v-for="item in evidenceCards.slice(0,3)" :key="item.key"><component :is="item.icon" :size="23" /><span><strong>{{ item.value }}</strong><small>{{ item.label }}</small></span></div><footer><strong>评估可信度：{{ overview.confidence?.label || '暂无证据' }}</strong><small>当前累计 {{ evidenceTotal }} 条可追溯证据。</small></footer></article>
           </section>
 
-          <section class="shot-diagnosis-row"><article ref="diagnosisEl" class="shot-diagnosis"><nav><button type="button" :class="{ active: activeDiagnosisTab === 'conclusion' }" @click="activeDiagnosisTab = 'conclusion'">诊断结论</button><button type="button" :class="{ active: activeDiagnosisTab === 'heat' }" @click="activeDiagnosisTab = 'heat'">薄弱点热区</button><button type="button" :class="{ active: activeDiagnosisTab === 'evidence' }" @click="activeDiagnosisTab = 'evidence'">证据明细</button></nav><h3>{{ activeDiagnosisTab === 'evidence' ? '证据来源' : '关键问题' }}</h3><ol><li v-for="(item,index) in diagnosisItems" :key="`${item.title}-${index}`"><i>{{ index+1 }}</i><span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span><em>{{ item.severity }}</em></li><li v-if="!diagnosisItems.length"><span><strong>暂无可分析内容</strong><small>请先完成练习、知识学习或资源反馈。</small></span></li></ol></article>
+          <section class="shot-diagnosis-row"><article ref="diagnosisEl" class="shot-diagnosis"><nav><button type="button" :class="{ active: activeDiagnosisTab === 'conclusion' }" :aria-pressed="activeDiagnosisTab === 'conclusion'" @click="selectDiagnosisTab('conclusion')">诊断结论</button><button type="button" :class="{ active: activeDiagnosisTab === 'heat' }" :aria-pressed="activeDiagnosisTab === 'heat'" @click="selectDiagnosisTab('heat')">薄弱点热区</button><button type="button" :class="{ active: activeDiagnosisTab === 'evidence' }" :aria-pressed="activeDiagnosisTab === 'evidence'" @click="selectDiagnosisTab('evidence')">证据明细</button></nav><h3>{{ activeDiagnosisTab === 'evidence' ? '证据来源' : '关键问题' }}</h3><ol><li v-for="(item,index) in diagnosisItems" :key="`${item.title}-${index}`"><i>{{ index+1 }}</i><span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span><em>{{ item.severity }}</em></li><li v-if="!diagnosisItems.length"><span><strong>暂无可分析内容</strong><small>请先完成练习、知识学习或资源反馈。</small></span></li></ol></article>
             <article class="shot-action-plan"><header><strong><ClipboardCheck class="shot-panel-icon" :size="17" />闭环行动计划</strong></header><ul><li v-for="(item,index) in overview.suggestions.slice(0,4)" :key="`${item.title}-${index}`"><i>{{ index+1 }}</i><span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span><em>待执行</em></li><li v-if="!overview.suggestions.length"><span>当前证据不足，暂不生成行动计划。</span></li></ul></article></section>
 
           <section class="shot-eval-timeline"><header><strong><History class="shot-panel-icon" :size="17" />闭环进化时间线</strong></header><div><article v-for="(item,index) in overview.timeline.slice(0,5)" :key="item.id || index" :class="{ active: index === 2 }"><i><component :is="[Database,BrainCircuit,Target,Gauge,TrendingUp][index]" :size="22" /></i><strong>{{ ['采集证据','生成评估','定位问题','调整策略','追踪反馈'][index] }}</strong><small>{{ item.detail || item.title }}</small><time>{{ formatTime(item.created_at) }}</time></article></div></section>

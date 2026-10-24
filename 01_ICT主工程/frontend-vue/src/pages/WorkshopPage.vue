@@ -103,6 +103,13 @@ const selectedTypeLabels = computed(() => resourceTypes.filter((item) => selecte
 const selectedCount = computed(() => selectedResourceIds.value.length)
 const readablePreviewContent = computed(() => normaliseGeneratedMarkdown(previewContent.value))
 const displayedResources = computed(() => showAllRecords.value ? visibleResources.value : visibleResources.value.slice(0, 4))
+const generateDisabled = computed(() => generating.value || !selectedTypes.value.length || (!course.value.trim() && !chapter.value.trim() && !weakPoints.value.trim()))
+const generateTitle = computed(() => {
+  if (generating.value) return '多智能体协同生成中'
+  if (!selectedTypes.value.length) return '请先选择至少一种资源类型'
+  if (!course.value.trim() && !chapter.value.trim() && !weakPoints.value.trim()) return '请先填写课程、章节或薄弱点，再生成资源'
+  return '开始多智能体协同生成'
+})
 const smartRecommendations = computed(() => {
   const tags = visibleResources.value.flatMap((item) => item.tags || [])
   return tags.filter((tag, index) => tags.indexOf(tag) === index).slice(0, 4)
@@ -387,7 +394,7 @@ onMounted(loadOverview)
             <div class="shot-brief-fields"><label><span>课程 / 主题</span><input v-model="course" placeholder="输入要分析的真实课程或主题" /></label><label><span>章节 / 场景</span><input v-model="chapter" placeholder="输入章节、任务或应用场景" /></label></div>
             <textarea v-model="weakPoints" maxlength="500" rows="3" placeholder="请输入你的需求，例如：&#10;“生成《Python 函数》章节的讲解文档，重点讲解函数定义、参数、返回值，并配有示例代码”&#10;或上传参考资料，我们将基于你的需求生成高质量资源。"></textarea>
             <small class="shot-char-count">{{ weakPoints.length }}/500</small>
-            <footer><div><button type="button" @click="chooseUpload('reference')"><Upload :size="14" />上传参考资料</button><button type="button" @click="chooseUpload('outline')"><FileInput :size="14" />导入课程大纲</button><input ref="uploadInput" class="shot-file-input" type="file" accept=".txt,.md,.csv,.json" @change="handleUpload" /></div><button class="shot-generate" type="submit" :disabled="generating || !selectedTypes.length || (!course.trim() && !chapter.trim() && !weakPoints.trim())"><LoaderCircle v-if="generating" class="spin" :size="17" /><WandSparkles v-else :size="17" />{{ generating ? '多智能体生成中' : '生成资源' }} <ArrowRight :size="16" /></button></footer>
+            <footer><div><button type="button" @click="chooseUpload('reference')"><Upload :size="14" />上传参考资料</button><button type="button" @click="chooseUpload('outline')"><FileInput :size="14" />导入课程大纲</button><input ref="uploadInput" class="shot-file-input" type="file" accept=".txt,.md,.csv,.json" @change="handleUpload" /></div><button class="shot-generate" type="submit" :disabled="generateDisabled" :title="generateTitle"><LoaderCircle v-if="generating" class="spin" :size="17" /><WandSparkles v-else :size="17" />{{ generating ? '多智能体生成中' : '生成资源' }} <ArrowRight :size="16" /></button></footer>
           </form>
 
           <section class="shot-records"><header><strong><i class="shot-section-mark"></i>生成记录</strong><button type="button" :disabled="visibleResources.length <= 4" :aria-expanded="showAllRecords" @click="showAllRecords = !showAllRecords">{{ showAllRecords ? '收起' : '查看全部' }} <ArrowRight :size="14" /></button></header><div class="shot-record-grid"><button v-for="resource in displayedResources" :key="resource.id" type="button" :class="{ active: selectedResource?.id === resource.id }" @click="openResource(resource)"><span><strong>{{ resource.title }}</strong><em>{{ resource.type_label || labelForType(resource.type) }}</em></span><small>{{ formatDate(resource.created_at) }}</small><i><Check :size="12" />已完成</i></button><div v-if="!visibleResources.length" class="shot-empty">暂无真实生成记录，提交上方需求后由后端分析并生成。</div></div></section>
@@ -439,7 +446,7 @@ onMounted(loadOverview)
 
             <fieldset class="resource-type-fieldset"><legend>选择交付类型 <small>至少 1 项</small></legend><div class="resource-type-grid"><button v-for="item in resourceTypes" :key="item.value" class="resource-type-option" :class="{ 'is-selected': selectedTypes.includes(item.value) }" type="button" :aria-pressed="selectedTypes.includes(item.value)" @click="toggleResourceType(item.value)"><span class="type-code">{{ item.short }}</span><span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span><Check v-if="selectedTypes.includes(item.value)" :size="13" aria-hidden="true" /></button></div></fieldset>
 
-            <div class="generation-summary"><span><Sparkles :size="15" /><i><strong>{{ selectedTypes.length }} 类资源待生成</strong><small>{{ selectedTypeLabels.join(' · ') || '尚未选择资源类型' }}</small></i></span><button class="os-button os-button-primary generate-button" type="submit" :disabled="generating || !selectedTypes.length || (!course.trim() && !chapter.trim() && !weakPoints.trim())"><LoaderCircle v-if="generating" class="spin" :size="15" /><WandSparkles v-else :size="15" />{{ generating ? '后端协同生成中' : '生成资源包' }}</button></div>
+            <div class="generation-summary"><span><Sparkles :size="15" /><i><strong>{{ selectedTypes.length }} 类资源待生成</strong><small>{{ selectedTypeLabels.join(' · ') || '尚未选择资源类型' }}</small></i></span><button class="os-button os-button-primary generate-button" type="submit" :disabled="generateDisabled" :title="generateTitle"><LoaderCircle v-if="generating" class="spin" :size="15" /><WandSparkles v-else :size="15" />{{ generating ? '后端协同生成中' : '生成资源包' }}</button></div>
             <div v-if="generating" class="generation-live" role="status" aria-live="polite"><span class="indeterminate-track"><i></i></span><span><strong>等待后端返回真实结果</strong><small>当前接口未提供逐阶段百分比。</small></span></div>
           </form>
 
