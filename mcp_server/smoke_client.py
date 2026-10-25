@@ -39,6 +39,7 @@ async def run(url: str) -> None:
             calls = [
                 ("get_student_profile", {"student_id": "demo"}),
                 ("get_role_competency", {"role_id": "job_001"}),
+                ("get_project_status", {"student_id": "demo"}),
             ]
             for name, arguments in calls:
                 result = await session.call_tool(name, arguments)

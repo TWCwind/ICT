@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
+import { ref, watch, type Component } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   ArrowRight,
@@ -18,6 +18,8 @@ import {
   Sparkles,
   Video,
 } from 'lucide-vue-next'
+import { getDashboardOverview, type DashboardOverview } from '@/api/learningApi'
+import { useStudent } from '@/composables/useStudent'
 
 type Capability = {
   eyebrow: string
@@ -40,6 +42,31 @@ type ResourceType = {
   icon: Component
   desc: string
 }
+
+const { studentId } = useStudent()
+const liveOverview = ref<DashboardOverview | null>(null)
+const liveState = ref<'loading' | 'ready' | 'empty' | 'error'>('loading')
+const liveError = ref('')
+let liveRequestVersion = 0
+
+async function loadLiveOverview() {
+  const requestVersion = ++liveRequestVersion
+  liveState.value = 'loading'
+  liveError.value = ''
+  try {
+    const overview = await getDashboardOverview(studentId.value)
+    if (requestVersion !== liveRequestVersion) return
+    liveOverview.value = overview
+    liveState.value = overview?.metrics?.length ? 'ready' : 'empty'
+  } catch (error) {
+    if (requestVersion !== liveRequestVersion) return
+    liveOverview.value = null
+    liveState.value = 'error'
+    liveError.value = error instanceof Error ? error.message : '实时学习证据暂时不可用'
+  }
+}
+
+watch(studentId, () => void loadLiveOverview(), { immediate: true })
 
 const capabilities: Capability[] = [
   {
@@ -168,6 +195,48 @@ const resourceTypes: ResourceType[] = [
       </div>
     </section>
 
+    <section class="live-evidence" aria-live="polite" aria-label="本地实时学习证据">
+      <div class="live-evidence-heading">
+        <div>
+          <span class="section-label">LOCAL EVIDENCE</span>
+          <h2>把每一次学习行为，沉淀为可解释证据。</h2>
+          <p>以下数据来自当前学习者的本地接口，不是页面预置数字。</p>
+        </div>
+        <span class="live-evidence-status" :class="`is-${liveState}`">
+          <span class="live-status-dot"></span>
+          {{ liveState === 'ready' ? '接口已同步' : liveState === 'loading' ? '正在同步' : liveState === 'empty' ? '等待建立画像' : '暂时不可用' }}
+        </span>
+      </div>
+
+      <div v-if="liveState === 'ready' && liveOverview" class="live-evidence-body">
+        <div class="live-metric-grid">
+          <article v-for="metric in liveOverview.metrics.slice(0, 4)" :key="metric.key" class="live-metric-card">
+            <span>{{ metric.label }}</span>
+            <strong>{{ metric.value }}<small>{{ metric.unit }}</small></strong>
+          </article>
+        </div>
+        <div class="live-focus-card">
+          <div>
+            <span>当前优先突破</span>
+            <strong>{{ liveOverview.focus.headline || liveOverview.focus.primary }}</strong>
+            <p>{{ liveOverview.focus.recommended_action }}</p>
+          </div>
+          <RouterLink :to="liveOverview.next_actions[0]?.route || '/profile'">
+            {{ liveOverview.next_actions[0]?.cta || '进入学习闭环' }}
+            <ArrowRight :size="16" />
+          </RouterLink>
+        </div>
+      </div>
+      <div v-else-if="liveState === 'error'" class="live-evidence-empty">
+        <span>{{ liveError }}</span>
+        <button type="button" @click="loadLiveOverview">重新读取</button>
+      </div>
+      <div v-else-if="liveState === 'empty'" class="live-evidence-empty">
+        当前学习者尚未产生学习证据，先从用户画像开始建立个性化闭环。
+      </div>
+      <div v-else class="live-evidence-empty">正在从本地学习服务读取真实证据…</div>
+    </section>
+
     <section class="apple-section apple-intro">
       <span class="section-label">核心能力</span>
       <h2>从“我哪里不会”，到“下一步该学什么”。</h2>
@@ -269,3 +338,37 @@ const resourceTypes: ResourceType[] = [
     </footer>
   </div>
 </template>
+
+<style scoped>
+.live-evidence {
+  margin: 18px 0 0;
+  padding: 28px 30px;
+  border: 1px solid rgba(49, 110, 232, .14);
+  border-radius: 26px;
+  background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(239,247,255,.88));
+  box-shadow: 0 18px 44px rgba(39, 92, 166, .08);
+}
+.live-evidence-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.live-evidence-heading h2 { margin: 8px 0 7px; color: #102c58; font-size: clamp(22px, 2.4vw, 32px); letter-spacing: -.03em; }
+.live-evidence-heading p { margin: 0; color: #68809f; font-size: 14px; }
+.live-evidence-status { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 7px 12px; border-radius: 999px; background: #edf5ff; color: #2563c7; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.live-evidence-status.is-error { color: #b54708; background: #fff4e8; }
+.live-evidence-status.is-empty { color: #64748b; background: #f1f5f9; }
+.live-status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 16%, transparent); }
+.live-evidence-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(260px, .7fr); gap: 16px; margin-top: 24px; }
+.live-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.live-metric-card { min-height: 108px; padding: 16px; border: 1px solid rgba(49,110,232,.12); border-radius: 17px; background: rgba(255,255,255,.84); }
+.live-metric-card span, .live-focus-card span { display: block; color: #7185a1; font-size: 12px; font-weight: 760; }
+.live-metric-card strong { display: block; margin-top: 12px; color: #123c7a; font-size: 30px; line-height: 1; }
+.live-metric-card small { margin-left: 3px; color: #7890ae; font-size: 12px; font-weight: 700; }
+.live-focus-card { display: flex; flex-direction: column; justify-content: space-between; gap: 15px; padding: 18px; border-radius: 17px; background: linear-gradient(145deg, #143c79, #216cd5); color: #fff; }
+.live-focus-card span { color: rgba(255,255,255,.7); }
+.live-focus-card strong { display: block; margin-top: 7px; font-size: 18px; line-height: 1.45; }
+.live-focus-card p { margin: 7px 0 0; color: rgba(255,255,255,.78); font-size: 13px; line-height: 1.55; }
+.live-focus-card a { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; padding: 9px 12px; border-radius: 10px; background: rgba(255,255,255,.16); color: #fff; font-size: 13px; font-weight: 800; }
+.live-evidence-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding: 16px; border-radius: 14px; background: rgba(255,255,255,.72); color: #637997; font-size: 14px; line-height: 1.6; }
+.live-evidence-empty button { min-height: 40px; padding: 7px 13px; border: 1px solid #b6cff5; border-radius: 9px; background: #fff; color: #1f63c4; font-weight: 800; cursor: pointer; }
+.live-evidence a:focus-visible, .live-evidence button:focus-visible { outline: 3px solid #184ea8; outline-offset: 3px; }
+@media (max-width: 800px) { .live-evidence { padding: 22px 18px; } .live-evidence-heading { flex-direction: column; gap: 12px; } .live-evidence-body { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .live-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .live-evidence-empty { align-items: flex-start; flex-direction: column; } }
+</style>

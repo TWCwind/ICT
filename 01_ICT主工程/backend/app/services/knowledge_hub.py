@@ -389,11 +389,13 @@ def ingest_textbook(student_id: str, filename: str, content: bytes) -> dict[str,
     (textbook_dir / stored_name).write_bytes(content)
 
     chapters = _build_uploaded_textbook_chapters(text, Path(safe_name).stem)
+    display_title = _semantic_course_title(Path(safe_name).stem, text)
     payload = {
         "textbook_id": textbook_id,
         "filename": safe_name,
+        "display_title": display_title,
         "content_hash": textbook_id,
-        "core_topic": Path(safe_name).stem,
+        "core_topic": display_title,
         "chapter_count": len(chapters),
         "total_kp_count": sum(len(item.get("keywords", [])) for item in chapters),
         "chapters": chapters,
@@ -466,8 +468,12 @@ def _build_uploaded_textbook_chapters(text: str, title: str) -> list[dict[str, A
                 sections.append((match.group(1).strip(), body))
     if not sections:
         chunk_size = 5000
+        fallback_titles = _fallback_chapter_titles(text)
         sections = [
-            (f"{title}·第{index + 1}部分", text[start:start + chunk_size])
+            (
+                fallback_titles[index] if index < len(fallback_titles) else f"实践应用与复盘·模块 {index + 1}",
+                text[start:start + chunk_size],
+            )
             for index, start in enumerate(range(0, min(len(text), chunk_size * 20), chunk_size))
             if text[start:start + chunk_size].strip()
         ]
@@ -489,6 +495,42 @@ def _build_uploaded_textbook_chapters(text: str, title: str) -> list[dict[str, A
             ],
         })
     return chapters
+
+
+def _fallback_chapter_titles(text: str) -> list[str]:
+    """Provide semantic labels when an uploaded document has no headings."""
+    semantic_titles = [
+        "学习目标与业务背景",
+        "核心概念与术语",
+        "方法流程与结构建模",
+        "质量约束与风险控制",
+        "实践应用与案例验证",
+        "综合评估与能力迁移",
+    ]
+    text_lower = (text or "").lower()
+    if "需求" in text_lower and "用例" in text_lower:
+        return [
+            "业务场景与需求范围",
+            "需求获取与表达",
+            "用例与行为建模",
+            "领域结构建模",
+            "质量与约束",
+            "验证与变更",
+        ]
+    return semantic_titles
+
+
+def _semantic_course_title(raw_title: str, evidence: str = "") -> str:
+    """Return a human-facing course title instead of an internal file key."""
+    title = re.sub(r"[_\-]+", " ", str(raw_title or "")).strip()
+    title = re.sub(r"\s+", " ", title)
+    if title and not _is_stale_chapter_title(title):
+        return title[:80]
+    evidence_lower = str(evidence or "").lower()
+    matches = [term for term in GRAPH_DOMAIN_CONCEPTS if term.lower() in evidence_lower]
+    if matches:
+        return f"{matches[0]}综合课程"
+    return "课程知识结构"
 
 
 def graph_data(
@@ -590,7 +632,10 @@ def _graph_sources(student_id: str) -> list[dict[str, Any]]:
             payload = _read_json_file(chapter_knowledge_dir / f"book_{textbook_id}.json")
             if not isinstance(payload, dict):
                 continue
-            title = Path(str(payload.get("filename") or metadata.get("filename") or textbook_id)).stem
+            title = _semantic_course_title(
+                str(payload.get("display_title") or payload.get("core_topic") or Path(str(payload.get("filename") or metadata.get("filename") or textbook_id)).stem),
+                " ".join(str(chapter.get("chapter_title", "")) for chapter in payload.get("chapters") or []),
+            )
             chapters = _deduplicate_chapters(payload.get("chapters") or [])
             # Do not expose stale conversion artefacts as a course.  In
             # particular, video recommendation notes and one-chunk caches
@@ -615,7 +660,7 @@ def _graph_sources(student_id: str) -> list[dict[str, Any]]:
         sources.append(
             {
                 "id": f"course_material:{path.name}",
-                "title": path.stem.replace("_", " "),
+                "title": _semantic_course_title(path.stem.replace("_", " "), _read_text(path)),
                 "source_type": "course_material",
                 "path": str(path),
                 "summary": "课程资料库中的原始教学文档，选择后按正文内容提取知识模块。",
