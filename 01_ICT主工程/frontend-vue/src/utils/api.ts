@@ -18,6 +18,12 @@ function httpErrorMessage(status: number): string {
   return `请求失败（HTTP ${status}），请稍后重试`
 }
 
+function streamErrorMessage(status?: number): string {
+  if (!status) return '本地服务未连接，请确认后端已启动后重试'
+  if (status >= 500) return `本地服务暂时不可用（HTTP ${status}），请确认后端已启动后重试`
+  return `流式请求失败（HTTP ${status}），请稍后重试`
+}
+
 async function parseEnvelope<T>(resp: Response, fallback: string): Promise<ApiResponse<T>> {
   const text = await resp.text()
   try {
@@ -83,44 +89,68 @@ export async function apiStream<T>(
     onDone?: () => void
   },
 ): Promise<void> {
-  const resp = await fetch(path, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-    },
-    body: JSON.stringify(body),
-  })
+  let resp: Response
+  try {
+    resp = await fetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    const message = streamErrorMessage()
+    handlers.onError?.(message)
+    throw new Error(message)
+  }
 
   if (!resp.ok || !resp.body) {
-    throw new Error(`流式请求失败：HTTP ${resp.status}`)
+    const message = streamErrorMessage(resp.status)
+    handlers.onError?.(message)
+    throw new Error(message)
   }
 
   const reader = resp.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
 
-  while (true) {
-    const { value, done } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const events = buffer.split('\n\n')
-    buffer = events.pop() || ''
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const events = buffer.split('\n\n')
+      buffer = events.pop() || ''
 
-    for (const rawEvent of events) {
-      const line = rawEvent
-        .split('\n')
-        .map((line) => line.trim())
-        .find((line) => line.startsWith('data: '))
-      if (!line) continue
-      const payload = JSON.parse(line.slice(6)) as StreamEvent
-      if (payload.event === 'start') handlers.onStart?.(payload.data)
-      else if (payload.event === 'status') handlers.onStatus?.(payload.data)
-      else if (payload.event === 'chunk') handlers.onChunk?.(payload.data)
-      else if (payload.event === 'final') handlers.onFinal?.(payload.data as T)
-      else if (payload.event === 'error') handlers.onError?.(payload.data?.message || '流式请求失败', payload.data)
-      else if (payload.event === 'done') handlers.onDone?.()
+      for (const rawEvent of events) {
+        const line = rawEvent
+          .split('\n')
+          .map((line) => line.trim())
+          .find((line) => line.startsWith('data: '))
+        if (!line) continue
+        let payload: StreamEvent
+        try {
+          payload = JSON.parse(line.slice(6)) as StreamEvent
+        } catch {
+          const message = '流式响应格式异常，请重试'
+          handlers.onError?.(message)
+          throw new Error(message)
+        }
+        if (payload.event === 'start') handlers.onStart?.(payload.data)
+        else if (payload.event === 'status') handlers.onStatus?.(payload.data)
+        else if (payload.event === 'chunk') handlers.onChunk?.(payload.data)
+        else if (payload.event === 'final') handlers.onFinal?.(payload.data as T)
+        else if (payload.event === 'error') handlers.onError?.(payload.data?.message || '流式请求失败', payload.data)
+        else if (payload.event === 'done') handlers.onDone?.()
+      }
     }
+  } catch (error) {
+    const message = error instanceof Error && error.message ? error.message : '流式连接中断，请重试'
+    if (!message.includes('请重试') && !message.includes('未连接')) handlers.onError?.(message)
+    throw error instanceof Error ? error : new Error(message)
+  } finally {
+    reader.releaseLock()
   }
 }
 

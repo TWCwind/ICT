@@ -1,6 +1,6 @@
 # AgentArts 可调用接口契约
 
-更新时间：2026-10-24
+更新时间：2026-10-25
 
 本清单来自源码路由、服务层和本地运行结果，不以旧说明文档代替实际实现。主后端统一响应为：
 
@@ -27,7 +27,7 @@
 | 练习诊断提交 | `POST /api/exercise/answer` | `student_id`、`question_id`、`answer` | `submit_exercise_answer`；写入练习记录和阶段进度 | 单测通过 |
 | 练习统计 | `GET /api/exercise/stats?student_id=demo` | `student_id` | `exercise_records.json` | `demo` 有 2 条测试记录，验收通过 |
 | 错题诊断 | `GET /api/exercise/wrong-book?student_id=demo` | `student_id` | 错题记录、标签统计、能力雷达 | 验收通过 |
-| 知识图谱 | `GET /api/knowledge/map?student_id=demo&max_nodes=56` | `student_id`、`max_nodes` | `knowledge_hub` 解析演示讲义、章节知识 JSON 和本地资源 | demo 实测 6 章、30 知识点、3 资源 |
+| 知识图谱 | `GET /api/knowledge/graph?student_id=demo&max_nodes=56` | `student_id`、`max_nodes` | `knowledge_hub` 解析演示讲义、章节知识 JSON 和本地资源 | demo 实测 6 章、30 知识点、3 资源 |
 | 知识检索 | `GET /api/knowledge/search` | `student_id`、`query` 等 | `knowledge_hub.search_index` | 路由与验收通过 |
 | 评估状态 | `GET /api/evaluate/overview?student_id=demo` | `student_id` | 画像、知识掌握度、练习和事件证据 | 集成测试通过 |
 
@@ -81,7 +81,7 @@
 
 错误码：`INVALID_STUDENT_ID`、`STUDENT_NOT_FOUND`、`STUDENT_PROFILE_SERVICE_ERROR`。
 
-数据来源：主工程 `backend/data/users/{student_id}`，由现有 `profile_overview`、`exercise_summary`、`activity_feed` 组合，不复制画像算法。
+数据来源：当前运行时 `DATA_DIR/users/{student_id}`，路演优先为 `01_ICT主工程/roadshow-data`，无运行目录时回退 `roadshow-seed`；由现有 `profile_overview`、`exercise_summary`、`activity_feed` 组合，不复制画像算法。
 
 ### `get_role_competency`
 
@@ -130,4 +130,6 @@
 该测试结果只证明本地实现和本地 MCP 服务可复现，不证明已经接入 AgentArts 云端；云端接入仍需公网 HTTPS、团队空间和鉴权配置。
 
 2026-10-24 终验再次通过本地 MCP Streamable HTTP 调用：`get_student_profile`、`get_role_competency`、`get_project_status` 均返回 `is_error=false`。MCP 终验使用 bundled demo 数据；路演页面统计和完整接口闭环使用隔离 `test/generated/full-flow-v1` 数据，数据来源边界保持不变。
+
+MCP 数据一致性规则：MCP 启动时优先使用环境变量 `DATA_DIR`；未指定时按 `roadshow-data`、`roadshow-seed`、`backend/data` 的顺序选择包含 `users/demo/student.json` 的数据目录。因此 MCP 与路演前端在同一启动流程下读取同一份学生画像、学习记录和路径状态。
 
