@@ -23,6 +23,7 @@ type ExercisePageExpose = {
   resetForNewPaper: () => Promise<boolean>
   finishExam: () => Promise<boolean>
   hasActiveExam: () => boolean
+  focusPracticeHeading: () => void
 }
 
 const { studentId } = useStudent()
@@ -953,10 +954,12 @@ function switchDirect(page: WorkshopPageKey) {
   activePage.value = page
 }
 
-function startPractice() {
+async function startPractice() {
   if (practiceStarted.value) return
   closedLoopStatus.value = '正在载入本轮练习题目...'
   practiceStarted.value = true
+  await nextTick()
+  exercisePageRef.value?.focusPracticeHeading()
 }
 
 function trySwitchPage(page: WorkshopPageKey) {
@@ -3271,8 +3274,8 @@ onBeforeUnmount(() => {
               <strong>{{ questionBankResources.length ? `${questionBankResources.length} 份个性化题库` : '尚未生成题库' }}</strong>
             </article>
             <article>
-              <span>本轮题量</span>
-              <strong>{{ activeExerciseQuestionLimit }} 题</strong>
+              <span>{{ activeQuestionBankIds.length ? '计划题量' : '题库状态' }}</span>
+              <strong>{{ activeQuestionBankIds.length ? `${activeExerciseQuestionLimit} 题` : '题库就绪后确定' }}</strong>
             </article>
             <article>
               <span>诊断去向</span>
@@ -3297,7 +3300,10 @@ onBeforeUnmount(() => {
         </div>
         <div class="practice-start-details" aria-label="本轮练习信息">
           <article><span>学习阶段</span><strong>{{ pathStageTitle }}</strong></article>
-          <article><span>练习题量</span><strong>{{ activeExerciseQuestionLimit }} 题</strong></article>
+          <article>
+            <span>{{ activeQuestionBankIds.length ? '计划题量' : '题库状态' }}</span>
+            <strong>{{ activeQuestionBankIds.length ? `${activeExerciseQuestionLimit} 题` : '尚未生成题库' }}</strong>
+          </article>
           <article><span>题目来源</span><strong>{{ activeQuestionBankIds.length ? `${activeQuestionBankIds.length} 份已选题库` : '开始后检查当前可用题目' }}</strong></article>
         </div>
         <div class="practice-start-actions">

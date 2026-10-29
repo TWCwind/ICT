@@ -228,3 +228,18 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 截图：`01_ICT主工程\frontend-vue\test-results\roadshow-screenshots\` 下五种分辨率、六个页面共 30 张；另有 1024x768 和 390x844 的智能做题开始前/点击后 4 张。截图已通过图像查看工具人工检查，目录被 Git 忽略，不提交。
 
 说明：此前隔离生成流记录仍按历史结果保留（后端验收 12/12、集成 3/3、生成流程 6/6、生成流程 E2E 2/2）；本轮没有在最终 UI 变更后重跑整个生成流脚本。AgentArts 云端仍未接入。
+
+## 2026-10-29 智能做题体验增量复验
+
+针对真实使用中的等待与失败反馈，再次执行：
+
+| 命令 / 检查 | 结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过，2321 modules；ExerciseCenter 约 583 kB，仍有非阻塞 chunk 警告 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1 --reporter=line` | 9/9 通过 |
+| 实际本地练习接口恢复 | 人为触发一次 503 后点击“重试加载”，真实本地接口返回成功；无未捕获页面异常 |
+| 键盘焦点与截图检查 | 加载、错误、空题状态均将焦点移至对应标题；桌面/手机截图已人工查看 |
+
+本次没有重跑前端路演全套、后端单测或 MCP 测试：改动只涉及练习页的状态呈现、焦点管理和样式；此前记录的路演 19/19、后端 45/45、MCP 7/7 属于前序提交结果。最终 7 张桌面/手机截图仅存于被忽略的 `01_ICT主工程/frontend-vue/test-results/ux-followup-human-flow-reviewed-e99f48784d9d4d7bb8877646f2466bb5/`，没有进入 Git。之前路演全套测试生成的临时截图已被 Playwright 清理。

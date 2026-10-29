@@ -101,10 +101,13 @@ test('exercise sections switch state and knowledge graph controls update real se
     await expect(page.locator('.workshop-content')).not.toBeEmpty()
     if (name === '智能做题') {
       await expect(page.getByTestId('practice-start-panel')).toBeVisible()
+      await expect(page.getByTestId('practice-start-panel')).toContainText('题库状态')
+      await expect(page.getByTestId('practice-start-panel')).toContainText('尚未生成题库')
       await expect(page.locator('.exercise-practice-center')).toHaveCount(0)
       expect(exerciseSessionRequests, 'entering the tab must not load or start a practice session').toEqual([])
       const sessionResponse = page.waitForResponse(response => response.url().includes('/api/exercise/session'))
       await page.getByRole('button', { name: '开始做题', exact: true }).click()
+      await expect.poll(() => page.locator('.exercise-practice-center').evaluate(root => root.contains(document.activeElement))).toBe(true)
       const response = await sessionResponse
       const payload = await response.json()
       expect(response.ok()).toBe(true)
@@ -114,6 +117,8 @@ test('exercise sections switch state and knowledge graph controls update real se
         await expect(page.locator('.exercise-question-focus')).toBeVisible()
       } else {
         await expect(page.locator('.exercise-empty')).toBeVisible()
+        await expect(page.locator('.exercise-side')).toBeHidden()
+        await expect(page.getByRole('button', { name: '考试模式' })).toHaveCount(0)
         const emptyLayout = await page.locator('.exercise-practice-center').evaluate(root => {
           const rootRect = root.getBoundingClientRect()
           const mainRect = root.querySelector('.practice-main-panel')!.getBoundingClientRect()
@@ -149,6 +154,53 @@ test('exercise sections switch state and knowledge graph controls update real se
   await expect(page.locator('.selected-node-card')).toBeVisible()
   await page.keyboard.press('0')
   await expect(zoom).toHaveText('100%')
+})
+
+test('exercise loading and API failure show the right state and retry reaches the local API', async ({ page }) => {
+  await login(page)
+  await page.goto('/exercise')
+  await page.getByRole('navigation', { name: '练习诊断导航' }).getByRole('button', { name: /智能做题/ }).click()
+
+  let sessionCalls = 0
+  await page.route(/\/api\/exercise\/session(?:\?|$)/, async route => {
+    sessionCalls += 1
+    if (sessionCalls === 1) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Temporary service failure' })
+      return
+    }
+
+    const response = await route.fetch()
+    await route.fulfill({ response })
+  })
+
+  await page.getByRole('button', { name: '开始做题', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('正在载入本轮练习')
+  await expect(page.locator('.exercise-session-state strong')).toBeFocused()
+  await expect(page.locator('.practice-question-count strong')).toHaveText('正在载入题库')
+  await expect(page.locator('.exercise-empty')).toHaveCount(0)
+  await expect(page.getByRole('alert')).toContainText('暂时无法载入练习')
+  await expect(page.locator('.exercise-load-error > strong')).toBeFocused()
+  await expect(page.locator('.practice-question-count strong')).toHaveText('题库载入失败')
+  await expect(page.locator('.exercise-side')).toBeHidden()
+  await expect(page.locator('.exercise-empty-steps')).toHaveCount(0)
+
+  const retryResponsePromise = page.waitForResponse(response => response.url().includes('/api/exercise/session') && response.status() === 200)
+  await page.getByRole('button', { name: '重试加载' }).click()
+  const retryResponse = await retryResponsePromise
+  const payload = await retryResponse.json()
+  expect(payload.success).toBe(true)
+  expect(sessionCalls).toBe(2)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  if ((payload.data?.questions || []).length) {
+    await expect(page.locator('.exercise-question-focus')).toBeVisible()
+  } else {
+    await expect(page.locator('.exercise-empty')).toContainText('还没有可用的定制练习')
+    await expect(page.locator('.exercise-empty > strong')).toBeFocused()
+    await expect(page.locator('.practice-question-count strong')).toHaveText('暂无题库')
+    await expect(page.locator('.exercise-side')).toBeHidden()
+    await expect(page.getByRole('button', { name: '前往定制题库' })).toBeVisible()
+  }
 })
 
 test('mobile navigation remains clickable without page-wide horizontal overflow', async ({ page }) => {

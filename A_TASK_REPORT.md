@@ -132,3 +132,9 @@ Claude Code 恢复后实际启动了独立回归任务并留下网络错误处�
 验证结果：前端类型检查、UI 审计、生产构建通过；路演 E2E 19/19、专项回归 8/8、后端单测 45/45、MCP 单测 7/7 通过。三个 MCP 工具均真实调用且 `is_error=false`。五种分辨率、六个页面的 30 张截图和 4 张智能做题状态截图已人工查看，均保存在被忽略的 `frontend-vue/test-results/roadshow-screenshots/`。
 
 当前 demo 学生没有已生成练习题库。开始按钮点击后真实接口返回 200、成功但题目列表为空；页面会显示无题状态并引导前往题库定制。路演答题前需先生成题库。构建仍有 ExerciseCenter 大 chunk 警告；AgentArts 云端未接入。
+
+## 2026-10-29 智能做题体验优化
+
+继续按学习者实际操作顺序调整练习流程：开始前不虚报题量；进入后区分载入中、接口失败和确实无题；失败提供重试和题库配置入口；无题时隐藏暂停、模式切换和 0/0 统计；状态切换把键盘焦点放到对应标题。点击重试已验证可恢复到真实本地接口结果。
+
+本次 `npm run check`、`npm run audit:ui`、`npm run build` 和队友问题回归测试 9/9 通过。Microsoft Edge 桌面和手机截图已人工查看，见被忽略的 `01_ICT主工程/frontend-vue/test-results/ux-followup-human-flow-reviewed-e99f48784d9d4d7bb8877646f2466bb5/`。路演全套、后端和 MCP 测试未因纯前端体验增量重跑；前序结果见 `TEST_RESULTS.md`。

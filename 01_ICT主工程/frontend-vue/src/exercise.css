@@ -284,6 +284,99 @@
   text-align: center;
 }
 
+.exercise-session-state {
+  min-height: 280px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 28px;
+  border: 1px solid #e2eaf4;
+  border-radius: 16px;
+  color: #61738a;
+  background: #fff;
+  text-align: center;
+}
+
+.exercise-session-state strong {
+  color: #183452;
+  font-size: 18px;
+}
+
+.exercise-session-state strong:focus-visible,
+.exercise-empty strong:focus-visible {
+  border-radius: 4px;
+  outline: 3px solid #3478f6;
+  outline-offset: 4px;
+}
+
+.exercise-session-state > span:last-child {
+  font-size: 14px;
+}
+
+.exercise-session-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #dce8f7;
+  border-top-color: #3478f6;
+  border-radius: 50%;
+  animation: exercise-session-spin 800ms linear infinite;
+}
+
+@keyframes exercise-session-spin {
+  to { transform: rotate(360deg); }
+}
+
+.exercise-load-error {
+  padding: 28px;
+  border-style: solid;
+  border-color: #f0d4d4;
+  background: #fffafa;
+}
+
+.exercise-load-error > span {
+  max-width: 680px;
+  overflow-wrap: anywhere;
+}
+
+.exercise-load-error > p {
+  margin: 0;
+  color: #718097;
+  font-size: 13px;
+}
+
+.exercise-load-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.exercise-empty-secondary {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
+  color: #314d6c;
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.exercise-empty-secondary:hover {
+  border-color: #9bb8df;
+  background: #f7faff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exercise-session-spinner {
+    animation: none;
+    border-top-color: #3478f6;
+  }
+}
+
 .exercise-empty strong {
   color: #102033;
   font-size: 17px;
@@ -1090,6 +1183,12 @@
   line-height: 1.2;
 }
 
+.practice-main-title strong:focus-visible {
+  border-radius: 4px;
+  outline: 3px solid #3478f6;
+  outline-offset: 5px;
+}
+
 .exercise-practice-center .exercise-card-head p {
   max-width: 520px;
   margin-top: 8px;
@@ -1837,6 +1936,10 @@
 
 .workshop-shell-practice .exercise-practice-center.is-empty-session {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.workshop-shell-practice .exercise-practice-center.is-empty-session > .exercise-side {
+  display: none;
 }
 
 .workshop-shell-practice .exercise-practice-center > .practice-sidebar {

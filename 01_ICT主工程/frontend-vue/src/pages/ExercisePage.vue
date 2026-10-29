@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { apiGet, apiPost } from '@/utils/api'
 import { useStudent } from '@/composables/useStudent'
 
@@ -45,6 +45,10 @@ const emit = defineEmits<{
   navigate: [target: 'builder' | 'wrongBook' | 'tagGalaxy' | 'diagnosis']
 }>()
 const loading = ref(false)
+const practiceHeading = ref<HTMLElement | null>(null)
+const sessionLoadingHeading = ref<HTMLElement | null>(null)
+const sessionErrorHeading = ref<HTMLElement | null>(null)
+const sessionEmptyHeading = ref<HTMLElement | null>(null)
 const answering = ref(false)
 const mode = ref<'training' | 'exam'>('training')
 const source = ref('')
@@ -160,8 +164,16 @@ const difficultyLabel = computed(() => {
   }
   return labels[activeDifficulty.value] || props.difficulty || '中等难度'
 })
-const emptyQuestionTitle = computed(() => configuredBankCount.value ? '题库暂未载入' : '暂无题库')
-const emptyQuestionHint = computed(() => configuredBankCount.value ? '点击刷新题目载入已生成题库' : '生成题库后显示题量与难度')
+const emptyQuestionTitle = computed(() => {
+  if (loading.value) return '正在载入题库'
+  if (error.value) return '题库载入失败'
+  return configuredBankCount.value ? '题库暂未载入' : '暂无题库'
+})
+const emptyQuestionHint = computed(() => {
+  if (loading.value) return '正在读取当前练习题目，请稍候'
+  if (error.value) return '查看下方提示并重试载入'
+  return configuredBankCount.value ? '点击刷新题目载入已生成题库' : '生成题库后显示题量与难度'
+})
 const practiceStatusText = computed(() => {
   if (!hasQuestions.value) return '等待题库'
   if (mode.value === 'exam' && examFinished.value) return '已交卷'
@@ -839,6 +851,7 @@ defineExpose({
   resetForNewPaper,
   finishExam,
   hasActiveExam,
+  focusPracticeHeading: () => practiceHeading.value?.focus({ preventScroll: true }),
 })
 
 onMounted(() => {
@@ -870,6 +883,17 @@ watch(() => props.active, (active) => {
   if (active === false) stopPracticeTimer()
   else if (!practicePaused.value && !sessionCompleted.value) startPracticeTimer()
 })
+
+watch([loading, error, hasQuestions], async () => {
+  await nextTick()
+  if (hasQuestions.value) return
+  const target = loading.value
+    ? sessionLoadingHeading.value
+    : error.value
+      ? sessionErrorHeading.value
+      : sessionEmptyHeading.value
+  target?.focus({ preventScroll: true })
+}, { flush: 'post' })
 </script>
 
 <template>
@@ -922,7 +946,7 @@ watch(() => props.active, (active) => {
     <section class="exercise-card exercise-main-card practice-main-panel">
       <header class="exercise-card-head exercise-hero">
         <div class="practice-main-title">
-          <strong>智能做题</strong>
+          <strong ref="practiceHeading" tabindex="-1">智能做题</strong>
         </div>
         <div class="exercise-head-actions">
           <div class="practice-question-count" :class="{ 'is-empty': !hasQuestions }">
@@ -935,12 +959,12 @@ watch(() => props.active, (active) => {
               <span>{{ emptyQuestionHint }}</span>
             </template>
           </div>
-          <div class="practice-time-chip">
+          <div v-if="hasQuestions" class="practice-time-chip">
             <span>◷</span>
-            <strong>{{ hasQuestions ? (mode === 'exam' ? timerText : practiceTimerText) : '--:--:--' }}</strong>
+            <strong>{{ mode === 'exam' ? timerText : practiceTimerText }}</strong>
           </div>
           <button
-            v-if="mode === 'training'"
+            v-if="hasQuestions && mode === 'training'"
             type="button"
             class="practice-icon-btn"
             :disabled="!questions.length || loading || answering || sessionCompleted"
@@ -948,11 +972,11 @@ watch(() => props.active, (active) => {
           >
             {{ sessionPaused ? '继续' : '暂停' }}
           </button>
-          <div class="exercise-mode-switch">
+          <div v-if="hasQuestions" class="exercise-mode-switch">
             <button :class="{ active: hasQuestions && mode === 'training' }" :disabled="!hasQuestions || loading || answering || examInProgress" @click="selectMode('training')">训练模式</button>
             <button :class="{ active: hasQuestions && mode === 'exam' }" :disabled="!hasQuestions || loading || answering || examInProgress" @click="selectMode('exam')">考试模式</button>
           </div>
-          <button class="exercise-primary-btn" :disabled="loading || answering || examInProgress" @click="refreshQuestions">
+          <button v-if="hasQuestions" class="exercise-primary-btn" :disabled="loading || answering || examInProgress" @click="refreshQuestions">
             {{ loading ? '刷新中' : '刷新题目' }}
           </button>
         </div>
@@ -979,9 +1003,28 @@ watch(() => props.active, (active) => {
         </article>
       </div>
 
-      <div v-if="!current" class="exercise-empty">
+      <div v-if="loading && !hasQuestions" class="exercise-session-state" role="status" aria-live="polite">
+        <span class="exercise-session-spinner" aria-hidden="true"></span>
+              <strong ref="sessionLoadingHeading" tabindex="-1">正在载入本轮练习</strong>
+        <span>正在读取当前路径节点的题目，请稍候。</span>
+      </div>
+
+      <div v-else-if="error && !hasQuestions" class="exercise-empty exercise-load-error" role="alert">
+        <i class="exercise-empty-mark" aria-hidden="true">!</i>
+        <strong ref="sessionErrorHeading" tabindex="-1">暂时无法载入练习</strong>
+        <span>{{ error }}</span>
+        <p>可以重试载入，或返回题库定制检查当前配置。</p>
+        <div class="exercise-load-error-actions">
+          <button class="exercise-empty-primary" type="button" :disabled="loading" @click="refreshQuestions">
+            {{ loading ? '正在重试…' : '重试加载' }}
+          </button>
+          <button class="exercise-empty-secondary" type="button" @click="emit('navigate', 'builder')">返回题库定制</button>
+        </div>
+      </div>
+
+      <div v-else-if="!current" class="exercise-empty">
         <i class="exercise-empty-mark">+</i>
-        <strong>还没有可用的定制练习</strong>
+        <strong ref="sessionEmptyHeading" tabindex="-1">还没有可用的定制练习</strong>
         <span>练习诊断只读取路径推送当前节点生成的题库，不会混入其它课程或章节。</span>
         <div class="exercise-empty-config" aria-label="当前题库状态">
           <article><span>题库状态</span><strong>{{ configuredBankCount ? '等待载入' : '尚未生成' }}</strong></article>
