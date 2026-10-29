@@ -873,7 +873,7 @@ watch(() => props.active, (active) => {
 </script>
 
 <template>
-  <div class="exercise-practice-center">
+  <div class="exercise-practice-center" :class="{ 'is-empty-session': !hasQuestions }">
     <aside class="practice-sidebar exercise-card">
       <div class="practice-sidebar-head">
         <span>Practice Center</span>

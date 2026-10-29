@@ -591,4 +591,33 @@ onUnmounted(() => {
   .evaluation-workbench .evaluation-next { grid-template-columns: 1fr; padding: 12px; }
   .evaluation-workbench .evaluation-next > svg { display: none; }
 }
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .shot-score-row {
+    grid-template-columns: minmax(210px, .78fr) minmax(0, 1.22fr);
+  }
+  .shot-score-row > .shot-evidence-version {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 14px;
+    border-top: 1px solid #e1e8f2;
+    border-left: 0;
+  }
+  .shot-evidence-version > header,
+  .shot-evidence-version > footer {
+    grid-column: 1 / -1;
+  }
+  .shot-evidence-version > div {
+    min-width: 0;
+    padding: 0 4px;
+  }
+  .shot-capability__body {
+    grid-template-columns: minmax(0, .9fr) minmax(180px, 1.1fr);
+  }
+  .shot-capability li {
+    grid-template-columns: minmax(58px, auto) minmax(25px, 1fr) 24px 35px;
+    gap: 4px;
+  }
+}
 </style>

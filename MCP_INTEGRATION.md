@@ -136,3 +136,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-all-tests.ps1 
 
 MCP 服务启动后实际列出并调用三个工具，三次均 `is_error=false`。MCP 优先使用当前 `DATA_DIR`，未指定时按 `roadshow-data`、`roadshow-seed`、`backend/data` 顺序选择包含 `users/demo/student.json` 的数据目录，因此与路演前端使用同一份运行数据。
 
+## 2026-10-29 本机 MCP 回归
+
+在当前路演工作区执行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\test_mcp.ps1`：MCP 单元测试 7/7 通过，服务实际列出并调用 `get_student_profile`、`get_role_competency`、`get_project_status`，三次均 `is_error=false`。调用数据来自打包项目数据/本地路演数据；这不代表已经配置 AgentArts 云端。
+

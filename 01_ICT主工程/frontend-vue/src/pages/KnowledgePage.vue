@@ -839,13 +839,33 @@ async function toggleFullscreen() {
     await document.exitFullscreen().catch(() => undefined)
     return
   }
-  if (!isFullscreen.value) focusBeforeFullscreen = document.activeElement as HTMLElement | null
+  if (isFullscreen.value) {
+    isFullscreen.value = false
+    document.body.style.overflow = ''
+    nextTick(() => {
+      focusBeforeFullscreen?.focus?.()
+      updateViewportWidth()
+    })
+    return
+  }
+
+  focusBeforeFullscreen = document.activeElement as HTMLElement | null
   const host = fullscreenHost.value
   if (host?.requestFullscreen) {
-    await host.requestFullscreen().catch(() => undefined)
+    try {
+      await host.requestFullscreen()
+      if (document.fullscreenElement) {
+        isFullscreen.value = true
+        document.body.style.overflow = 'hidden'
+        nextTick(updateViewportWidth)
+        return
+      }
+    } catch {
+      // Use the in-page fullscreen layout when the browser API is unavailable.
+    }
   }
-  isFullscreen.value = !isFullscreen.value
-  document.body.style.overflow = isFullscreen.value ? 'hidden' : ''
+  isFullscreen.value = true
+  document.body.style.overflow = 'hidden'
   nextTick(updateViewportWidth)
 }
 
@@ -958,10 +978,14 @@ function moveNodeFocus(direction: 'left' | 'right' | 'up' | 'down') {
 function handleKeydown(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null
   const isGraphNode = Boolean(target?.closest('.kg-node'))
+  if (event.key === 'Escape' && isFullscreen.value) {
+    event.preventDefault()
+    void toggleFullscreen()
+    return
+  }
   if (!isGraphNode && target && (target.matches('input, textarea, select, button, [contenteditable="true"]') || target.isContentEditable)) return
   if (event.key === 'Escape') {
-    if (isFullscreen.value) void toggleFullscreen()
-    else (document.activeElement as HTMLElement | null)?.blur?.()
+    (document.activeElement as HTMLElement | null)?.blur?.()
     return
   }
   if (event.key === '+' || event.key === '=') { event.preventDefault(); zoomIn(); return }

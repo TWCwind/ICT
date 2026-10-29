@@ -208,3 +208,23 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 截图目录为 `01_ICT主工程\frontend-vue\test-results\roadshow-screenshots\`，共 30 张，尺寸为 `1440x900`、`1280x720`、`1024x768`、`768x1024`、`390x844`，覆盖首页、练习诊断、知识图谱、资源工坊、学习路径和评估进化。已实际查看代表性桌面、平板和手机截图。
 
 本轮发现并修复：无标题教材的“第1部分”回退命名、哈希课程标题风险、健康检查旧图谱地址、流式请求断线错误，以及 MCP 读取陈旧 `backend/data` 导致的数据不一致。构建仍有少数大 chunk 警告，但未影响路演功能或测试。
+
+## 2026-10-29 队友现场问题回归
+
+本轮最终代码验证：
+
+| 命令 | 结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过，2321 modules；ExerciseCenter 约 582 kB，有非阻塞 chunk 警告 |
+| `npm run test:roadshow -- --project=msedge --workers=1 --reporter=line` | 19/19 通过 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1 --reporter=line` | 8/8 通过 |
+| `python -m unittest discover -s tests -p "test*.py" -v` | 45/45 通过 |
+| `powershell -NoProfile -ExecutionPolicy Bypass -File .\test_mcp.ps1` | MCP 7/7；`get_student_profile`、`get_role_competency`、`get_project_status` 均 `is_error=false` |
+
+智能做题真实接口验证：进入“智能做题”页签时请求数为 0；点击“开始做题”后请求 `/api/exercise/session`，返回 HTTP 200、`success=true`、题目数 0。当前 demo 学生无已生成题库，页面转为空题提示，没有伪造题目。
+
+截图：`01_ICT主工程\frontend-vue\test-results\roadshow-screenshots\` 下五种分辨率、六个页面共 30 张；另有 1024x768 和 390x844 的智能做题开始前/点击后 4 张。截图已通过图像查看工具人工检查，目录被 Git 忽略，不提交。
+
+说明：此前隔离生成流记录仍按历史结果保留（后端验收 12/12、集成 3/3、生成流程 6/6、生成流程 E2E 2/2）；本轮没有在最终 UI 变更后重跑整个生成流脚本。AgentArts 云端仍未接入。
