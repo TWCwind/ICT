@@ -354,6 +354,30 @@
   font-size: 24px !important;
 }
 
+@media (min-width: 721px) and (max-width: 1180px) {
+  .portal-header {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: auto auto !important;
+    row-gap: 6px;
+    padding: 6px 14px !important;
+  }
+
+  .portal-brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .portal-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0 0 4px;
+    scrollbar-width: thin;
+  }
+}
+
 @media (max-width: 1320px) {
   .integrated-layout,
   .integrated-hero,

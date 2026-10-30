@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import * as echarts from 'echarts/core'
-import { RadarChart } from 'echarts/charts'
-import { RadarComponent, TooltipComponent } from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
 import {
   Activity,
   ArrowRight,
@@ -38,8 +34,6 @@ import {
 } from '@/api/learningApi'
 import { useStudent } from '@/composables/useStudent'
 
-echarts.use([RadarChart, RadarComponent, TooltipComponent, CanvasRenderer])
-
 const { studentId } = useStudent()
 const router = useRouter()
 const overview = ref<EvaluationOverview | null>(null)
@@ -51,6 +45,8 @@ const evaluating = ref(false)
 const evolving = ref(false)
 const error = ref('')
 const notice = ref('')
+// Retained for the non-rendered legacy template below; the active view uses
+// semantic bars so values remain readable without hover or canvas support.
 const radarEl = ref<HTMLElement | null>(null)
 const diagnosisEl = ref<HTMLElement | null>(null)
 const activeDiagnosisTab = ref<'conclusion' | 'heat' | 'evidence'>('conclusion')
@@ -63,12 +59,21 @@ function selectDiagnosisTab(tab: 'conclusion' | 'heat' | 'evidence') {
   }
   activeDiagnosisTab.value = tab
 }
-let radar: echarts.ECharts | null = null
-
 const score = computed(() => clamp(overview.value?.score))
 const mastery = computed(() => clamp(overview.value?.mastery))
 const accuracy = computed(() => clamp(overview.value?.accuracy))
 const engagement = computed(() => clamp(overview.value?.engagement))
+const hasMasteryEvidence = computed(() => safeNumber(overview.value?.evidence?.knowledge_nodes) > 0)
+const hasExerciseEvidence = computed(() => safeNumber(overview.value?.evidence?.exercise_attempts) > 0)
+const hasEngagementEvidence = computed(() => [
+  'resource_items', 'feedback_items', 'learning_events',
+].some((key) => safeNumber(overview.value?.evidence?.[key]) > 0))
+const missingEvidenceLabels = computed(() => {
+  const missing: string[] = []
+  if (!hasMasteryEvidence.value) missing.push('知识掌握')
+  if (safeNumber(overview.value?.evidence?.feedback_items) === 0) missing.push('资源反馈')
+  return missing
+})
 const isBusy = computed(() => loading.value || refreshing.value || evaluating.value || evolving.value)
 const evidenceTotal = computed(() => {
   const evidence = overview.value?.evidence || {}
@@ -86,10 +91,26 @@ const scoreTone = computed(() => {
   return '优先干预'
 })
 
-const dimensions = computed(() => (overview.value?.dimensions || []).map((item) => ({
-  label: String(item.label || '未命名维度'),
-  value: clamp(item.value),
-})))
+function evidenceCountForDimension(label: string) {
+  const evidence = overview.value?.evidence || {}
+  if (label.includes('知识掌握')) return safeNumber(evidence.knowledge_nodes)
+  if (label.includes('迁移应用')) return safeNumber(evidence.exercise_attempts)
+  if (label.includes('学习投入')) return safeNumber(evidence.resource_items) + safeNumber(evidence.feedback_items) + safeNumber(evidence.learning_events)
+  if (label.includes('资源匹配')) return safeNumber(evidence.feedback_items)
+  if (label.includes('策略稳定')) return safeNumber(evidence.learning_events)
+  return evidenceTotal.value
+}
+
+const dimensions = computed(() => (overview.value?.dimensions || []).map((item) => {
+  const label = String(item.label || '未命名维度')
+  const evidenceCount = evidenceCountForDimension(label)
+  return {
+    label,
+    value: clamp(item.value),
+    evidenceCount,
+    observed: evidenceCount > 0,
+  }
+}))
 
 const evidenceCards = computed(() => {
   const evidence = overview.value?.evidence || {}
@@ -120,7 +141,11 @@ const diagnosisItems = computed(() => {
     return [...dimensions.value]
       .sort((a, b) => a.value - b.value)
       .slice(0, 5)
-      .map((item) => ({ title: item.label, detail: `当前证据计算值 ${item.value}%`, severity: item.value < 60 ? '高' : '中' }))
+      .map((item) => ({
+        title: item.label,
+        detail: item.observed ? `当前证据计算值 ${item.value}%` : '尚无对应学习记录，暂不判断',
+        severity: item.observed ? (item.value < 60 ? '高' : '中') : '待采集',
+      }))
   }
   if (activeDiagnosisTab.value === 'evidence') {
     return evidenceCards.value
@@ -134,7 +159,7 @@ const diagnosisItems = computed(() => {
   }))
 })
 const radarDescription = computed(() => dimensions.value.length
-  ? `能力雷达：${dimensions.value.map((item) => `${item.label} ${item.value} 分`).join('，')}`
+  ? `能力维度：${dimensions.value.map((item) => `${item.label} ${item.observed ? `${item.value} 分` : '暂无证据'}`).join('，')}`
   : '暂无可绘制的评估维度')
 
 async function loadEvaluation(options: { background?: boolean } = {}) {
@@ -147,7 +172,6 @@ async function loadEvaluation(options: { background?: boolean } = {}) {
     overview.value = data
     if (!evaluating.value) latestReport.value = data.latest_report || null
     await nextTick()
-    renderRadar()
   } catch (reason: any) {
     error.value = reason?.message || '评估证据加载失败'
   } finally {
@@ -207,38 +231,6 @@ function showEvidence() {
   void nextTick(() => diagnosisEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
 }
 
-function renderRadar() {
-  radar?.dispose()
-  radar = null
-  if (!radarEl.value || !dimensions.value.length) return
-  radar = echarts.init(radarEl.value)
-  radar.setOption({
-    animationDuration: 520,
-    tooltip: { trigger: 'item', formatter: '{b}<br/>{c}' },
-    radar: {
-      radius: '66%',
-      center: ['50%', '52%'],
-      splitNumber: 4,
-      indicator: dimensions.value.map((item) => ({ name: item.label, max: 100 })),
-      axisName: { color: '#61728a', fontSize: 10, fontWeight: 600 },
-      splitArea: { areaStyle: { color: ['#fbfdff', '#f1f6ff'] } },
-      splitLine: { lineStyle: { color: '#dbe6f4' } },
-      axisLine: { lineStyle: { color: '#cbdbea' } },
-    },
-    series: [{
-      type: 'radar',
-      data: [{
-        value: dimensions.value.map((item) => item.value),
-        name: '当前能力',
-        areaStyle: { color: 'rgba(23,105,255,.2)' },
-        lineStyle: { color: '#1769ff', width: 2.5 },
-        itemStyle: { color: '#00aeea', borderColor: '#fff', borderWidth: 2 },
-        symbolSize: 6,
-      }],
-    }],
-  })
-}
-
 function safeNumber(value: unknown) {
   const number = Number(value)
   return Number.isFinite(number) ? Math.max(0, number) : 0
@@ -271,16 +263,7 @@ function timelineTone(value: string) {
   return allowed.includes(value) ? `tone-${value}` : 'tone-neutral'
 }
 
-function handleResize() { radar?.resize() }
-
-onMounted(() => {
-  void loadEvaluation()
-  window.addEventListener('resize', handleResize)
-})
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  radar?.dispose()
-})
+onMounted(() => { void loadEvaluation() })
 </script>
 
 <template>
@@ -292,9 +275,9 @@ onUnmounted(() => {
       <template v-else-if="overview">
         <main class="shot-evaluate-main">
           <section class="shot-score-row">
-            <article class="shot-score"><header><CircleDot :size="14" />综合学习指数 <Info :size="14" /></header><div class="shot-score-ring" :style="{ '--score-angle': `${score * 3.6}deg` }"><span><strong>{{ Math.round(score) }}</strong><small>/ 100</small></span></div><h2>{{ scoreTone }}</h2><p>读取 {{ evidenceTotal }} 条本地证据<br>{{ latestReport ? evaluationModeLabel : '尚未生成分析报告' }}</p><div><span v-for="item in overview.weak_points.slice(0, 2)" :key="item"><TriangleAlert :size="13" />{{ item }}</span></div><footer><button type="button" @click="showEvidence"><ClipboardCheck :size="14" />查看证据</button><button type="button" @click="startReinforcement"><TrendingUp :size="14" />启动补强</button></footer></article>
-            <article class="shot-capability"><header><strong><BrainCircuit class="shot-panel-icon" :size="17" />多维能力画像</strong><small>所有数值均由现有证据计算</small></header><div class="shot-capability__body"><div ref="radarEl" class="shot-evaluate-radar" role="img" :aria-label="radarDescription"></div><ul><li v-for="item in dimensions.slice(0,4)" :key="item.label"><span>{{ item.label }}</span><i><b :style="{ width: `${item.value}%` }"></b></i><strong>{{ item.value }}</strong></li></ul></div></article>
-            <article class="shot-evidence-version"><header><strong><ShieldCheck class="shot-panel-icon is-green" :size="17" />评估证据版本</strong><small>所有结论均可追溯</small></header><div v-for="item in evidenceCards.slice(0,3)" :key="item.key"><component :is="item.icon" :size="23" /><span><strong>{{ item.value }}</strong><small>{{ item.label }}</small></span></div><footer><strong>评估可信度：{{ overview.confidence?.label || '暂无证据' }}</strong><small>当前累计 {{ evidenceTotal }} 条可追溯证据。</small></footer></article>
+            <article class="shot-score"><header><CircleDot :size="14" />综合学习指数 <Info :size="14" /></header><div class="shot-score-ring" :style="{ '--score-angle': `${score * 3.6}deg` }"><span><strong>{{ Math.round(score) }}</strong><small>/ 100</small></span></div><h2>{{ scoreTone }}</h2><p>汇总 {{ evidenceTotal }} 条本地证据<br>{{ latestReport ? evaluationModeLabel : '尚未生成分析报告' }}</p><small v-if="missingEvidenceLabels.length" class="shot-score-caveat">当前缺少{{ missingEvidenceLabels.join('、') }}证据，分值作为阶段参考</small><div><span v-for="item in overview.weak_points.slice(0, 2)" :key="item"><TriangleAlert :size="13" />{{ item }}</span></div><footer><button type="button" @click="showEvidence"><ClipboardCheck :size="14" />查看证据</button><button type="button" @click="startReinforcement"><TrendingUp :size="14" />启动补强</button></footer></article>
+            <article class="shot-capability"><header><strong><BrainCircuit class="shot-panel-icon" :size="17" />多维能力画像</strong><small>分值来自接口；无记录的维度标为待采集</small></header><ul class="shot-capability-bars" aria-label="多维能力数值对比"><li v-for="item in dimensions" :key="item.label" :class="{ 'is-unobserved': !item.observed }"><span>{{ item.label }}</span><div class="shot-capability-track" role="progressbar" :aria-label="`${item.label} ${item.observed ? `${item.value}%` : '暂无证据'}`" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="item.observed ? item.value : undefined" :aria-valuetext="item.observed ? `${item.value}%` : '暂无对应证据'"><b v-if="item.observed" :style="{ width: `${item.value}%` }"></b></div><strong>{{ item.observed ? `${item.value}%` : '待采集' }}</strong></li></ul><p class="shot-capability-note">条形表示当前证据计算值，长度不代表人与人之间的排名。</p></article>
+          <article class="shot-evidence-version"><header><strong><ShieldCheck class="shot-panel-icon is-green" :size="17" />评估证据版本</strong><small>所有结论均可追溯</small></header><div v-for="item in evidenceCards.slice(0,3)" :key="item.key"><component :is="item.icon" :size="23" /><span><strong>{{ item.value }}</strong><small>{{ item.label }}</small></span></div><footer><strong>评估可信度：{{ overview.confidence?.label || '暂无证据' }}</strong><small>当前累计 {{ evidenceTotal }} 条可追溯证据。</small></footer></article>
           </section>
 
           <section class="shot-diagnosis-row"><article ref="diagnosisEl" class="shot-diagnosis"><nav><button type="button" :class="{ active: activeDiagnosisTab === 'conclusion' }" :aria-pressed="activeDiagnosisTab === 'conclusion'" @click="selectDiagnosisTab('conclusion')">诊断结论</button><button type="button" :class="{ active: activeDiagnosisTab === 'heat' }" :aria-pressed="activeDiagnosisTab === 'heat'" @click="selectDiagnosisTab('heat')">薄弱点热区</button><button type="button" :class="{ active: activeDiagnosisTab === 'evidence' }" :aria-pressed="activeDiagnosisTab === 'evidence'" @click="selectDiagnosisTab('evidence')">证据明细</button></nav><h3>{{ activeDiagnosisTab === 'evidence' ? '证据来源' : '关键问题' }}</h3><ol><li v-for="(item,index) in diagnosisItems" :key="`${item.title}-${index}`"><i>{{ index+1 }}</i><span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span><em>{{ item.severity }}</em></li><li v-if="!diagnosisItems.length"><span><strong>暂无可分析内容</strong><small>请先完成练习、知识学习或资源反馈。</small></span></li></ol></article>
@@ -345,9 +328,9 @@ onUnmounted(() => {
           <div><span class="os-eyebrow">OVERALL SCORE</span><h2 id="evaluation-score-title">{{ scoreTone }}</h2><p>{{ hasEvidence ? `本轮共汇总 ${evidenceTotal} 条可计数证据` : '证据不足，当前分数仅作为基线参考' }}</p></div>
         </div>
         <div class="summary-metrics">
-          <article><BrainCircuit :size="16" /><span><small>知识掌握</small><strong>{{ mastery.toFixed(1) }}%</strong></span></article>
-          <article><Target :size="16" /><span><small>练习正确率</small><strong>{{ accuracy.toFixed(1) }}%</strong></span></article>
-          <article><Activity :size="16" /><span><small>学习投入</small><strong>{{ engagement.toFixed(1) }}%</strong></span></article>
+          <article><BrainCircuit :size="16" /><span><small>知识掌握</small><strong>{{ hasMasteryEvidence ? `${mastery.toFixed(1)}%` : '待采集' }}</strong></span></article>
+          <article><Target :size="16" /><span><small>练习正确率</small><strong>{{ hasExerciseEvidence ? `${accuracy.toFixed(1)}%` : '待采集' }}</strong></span></article>
+          <article><Activity :size="16" /><span><small>学习投入</small><strong>{{ hasEngagementEvidence ? `${engagement.toFixed(1)}%` : '待采集' }}</strong></span></article>
           <article><Database :size="16" /><span><small>有效证据</small><strong>{{ evidenceTotal }} <em>条</em></strong></span></article>
         </div>
         <div class="hero-actions">
@@ -359,7 +342,7 @@ onUnmounted(() => {
       <div class="evaluation-workspace-grid">
         <article class="radar-card" aria-labelledby="radar-title">
           <header class="panel-heading"><div><span class="os-eyebrow"><Gauge :size="14" /> CAPABILITY RADAR</span><h2 id="radar-title">能力维度</h2></div><span class="cp-status">{{ dimensions.length }} 维</span></header>
-          <div v-if="dimensions.length" ref="radarEl" class="radar-chart" role="img" :aria-label="radarDescription"></div>
+          <div v-if="dimensions.length" class="radar-chart" role="group" :aria-label="radarDescription"></div>
           <div v-else class="cp-empty-state compact"><span><Gauge :size="24" /></span><h3>暂无能力维度</h3><p>完成练习或生成评估后再刷新查看。</p></div>
           <ul class="dimension-list" aria-label="能力维度数值列表"><li v-for="item in dimensions" :key="item.label"><span>{{ item.label }}</span><span class="os-progress"><i :style="{ width: `${item.value}%` }"></i></span><strong>{{ item.value.toFixed(1) }}</strong></li></ul>
         </article>
@@ -590,5 +573,34 @@ onUnmounted(() => {
   .evaluation-workbench .weakness-list a { grid-column: 2; }
   .evaluation-workbench .evaluation-next { grid-template-columns: 1fr; padding: 12px; }
   .evaluation-workbench .evaluation-next > svg { display: none; }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .shot-score-row {
+    grid-template-columns: minmax(210px, .78fr) minmax(0, 1.22fr);
+  }
+  .shot-score-row > .shot-evidence-version {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 14px;
+    border-top: 1px solid #e1e8f2;
+    border-left: 0;
+  }
+  .shot-evidence-version > header,
+  .shot-evidence-version > footer {
+    grid-column: 1 / -1;
+  }
+  .shot-evidence-version > div {
+    min-width: 0;
+    padding: 0 4px;
+  }
+  .shot-capability__body {
+    grid-template-columns: minmax(0, .9fr) minmax(180px, 1.1fr);
+  }
+  .shot-capability li {
+    grid-template-columns: minmax(58px, auto) minmax(25px, 1fr) 24px 35px;
+    gap: 4px;
+  }
 }
 </style>

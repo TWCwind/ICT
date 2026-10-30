@@ -55,7 +55,11 @@ async def api_health() -> ApiResponse:
             "configured": ai_configured,
             "demo_mode": not ai_configured,
         },
-        "knowledge_base": {"status": "ready", "graph_endpoint": "/api/knowledge/map"},
+        "knowledge_base": {
+            "status": "ready",
+            "graph_endpoint": "/api/knowledge/graph",
+            "source": "本地路演课程数据与学习者行为证据",
+        },
         "service": "zhixue-resource-agent",
         "mode": settings.app_env,
         "time": datetime.now(timezone.utc).isoformat(),

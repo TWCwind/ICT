@@ -61,13 +61,15 @@ const selectedDimension = computed<ProfileDimension | null>(() =>
 
 const identifiedCount = computed(() => profile.value?.dimensions.filter((item) => item.status === 'ready').length || 0)
 
-const radarGridLevels = [0.25, 0.5, 0.75, 1]
-const radarCurrentValues = computed(() => (profile.value?.dimensions || []).map((dimension) => percentValue(dimension.confidence)))
-const radarPreviousValues = computed(() => {
-  const previous = profile.value?.comparison?.previous_dimensions || {}
-  if (!Object.keys(previous).length) return []
-  return (profile.value?.dimensions || []).map((dimension) => percentValue(previous[dimension.key]))
-})
+const profileConfidence = computed(() => (profile.value?.dimensions || []).map((dimension) => {
+  const confidence = Number(dimension.confidence)
+  return {
+    key: dimension.key,
+    label: dimension.label,
+    ready: dimension.status === 'ready' && Number.isFinite(confidence),
+    score: Number.isFinite(confidence) ? percentValue(confidence) : 0,
+  }
+}))
 const profileTags = computed(() => {
   const learner = profile.value?.learner || {}
   return [learner.major, ...(profile.value?.focus.keywords || []), ...(profile.value?.focus.weak_points || [])]
@@ -93,27 +95,6 @@ const quickPrompts = computed(() => {
   ]
 })
 const profileChanges = computed(() => profile.value?.comparison?.changes || [])
-
-function radarCoordinates(values: number[]) {
-  const centerX = 140
-  const centerY = 105
-  const radius = 78
-  return values.map((value, index) => {
-    const angle = -Math.PI / 2 + index * Math.PI / 3
-    const scale = Math.max(0, Math.min(100, value)) / 100
-    return {
-      x: Number((centerX + Math.cos(angle) * radius * scale).toFixed(2)),
-      y: Number((centerY + Math.sin(angle) * radius * scale).toFixed(2)),
-    }
-  })
-}
-
-function radarPolygon(values: number[]) {
-  return radarCoordinates(values).map((point) => `${point.x},${point.y}`).join(' ')
-}
-
-const radarAxisPoints = radarCoordinates([100, 100, 100, 100, 100, 100])
-const radarCurrentPoints = computed(() => radarCoordinates(radarCurrentValues.value))
 
 async function loadProfile(): Promise<ProfileOverview | null> {
   const isInitialLoad = !profile.value
@@ -283,27 +264,19 @@ onMounted(loadProfile)
         </div>
 
         <div class="shot-profile__bottom">
-          <article class="shot-radar">
-            <header><strong><Radar class="shot-panel-icon" :size="17" />学习特征雷达图</strong><span title="展示六个画像维度的当前值、上次值与同龄平均值">?</span></header>
-            <div class="shot-radar__plot">
-              <label>知识基础</label><label>认知风格</label><label>易错模式</label><label>模态偏好</label><label>学习节奏</label><label>动机类型</label>
-              <svg viewBox="0 0 280 210" role="img" aria-label="六维学习特征雷达图">
-                <g class="shot-radar__grid">
-                  <polygon v-for="level in radarGridLevels" :key="level" :points="radarPolygon(Array(6).fill(level * 100))" />
-                </g>
-                <g class="shot-radar__axes">
-                  <line v-for="(point, index) in radarAxisPoints" :key="index" x1="140" y1="105" :x2="point.x" :y2="point.y" />
-                </g>
-                <g class="shot-radar__series">
-                  <polygon v-if="radarPreviousValues.length" class="is-previous" :points="radarPolygon(radarPreviousValues)" />
-                  <polygon class="is-current" :points="radarPolygon(radarCurrentValues)" />
-                </g>
-                <g class="shot-radar__points">
-                  <circle v-for="(point, index) in radarCurrentPoints" :key="index" :cx="point.x" :cy="point.y" r="2.6" />
-                </g>
-              </svg>
-            </div>
-            <footer><i></i>当前画像　<template v-if="radarPreviousValues.length"><em></em>上次画像</template></footer>
+          <article class="shot-radar profile-confidence-card" aria-labelledby="profile-confidence-title">
+            <header><strong id="profile-confidence-title"><Radar class="shot-panel-icon" :size="17" />画像判断置信度</strong><span>不是学习成绩</span></header>
+            <p class="profile-confidence-intro">条形长度表示系统对画像判断的置信度，分值来自当前画像接口。</p>
+            <ul v-if="profileConfidence.length" class="profile-confidence-list" aria-label="六维画像判断置信度">
+              <li v-for="dimension in profileConfidence" :key="dimension.key">
+                <span class="profile-confidence-label"><strong>{{ dimension.label }}</strong><small>{{ dimension.ready ? '已有画像依据' : '等待采集' }}</small></span>
+                <progress v-if="dimension.ready" :value="dimension.score" max="100" :aria-label="`${dimension.label}画像判断置信度`">{{ dimension.score }}%</progress>
+                <span v-else class="profile-confidence-pending">暂无数据</span>
+                <strong v-if="dimension.ready" class="profile-confidence-value">{{ dimension.score }}%</strong>
+                <strong v-else class="profile-confidence-value is-pending">—</strong>
+              </li>
+            </ul>
+            <div v-else class="profile-confidence-empty">暂无画像维度数据</div>
           </article>
           <article class="shot-explain"><header><strong><Lightbulb class="shot-panel-icon is-green" :size="17" />画像更新解释</strong></header><p>基于本轮对话内容，系统对画像进行了以下识别与更新：</p><ul><li v-for="dimension in profile.dimensions.slice(0, 5)" :key="dimension.key"><span><Check :size="12" /></span><strong>{{ dimension.label }}：</strong>{{ dimension.description }}</li></ul></article>
           <article class="shot-change"><header><strong><TrendingUp class="shot-panel-icon is-violet" :size="17" />本轮变化</strong><span class="shot-change-legend"><i></i>来自最近两个快照</span></header><ul><li v-for="change in profileChanges.slice(0, 5)" :key="change.key"><strong>{{ change.label }}</strong><em>{{ change.before ? '调整' : '新增' }}</em><span>{{ change.before || '未识别' }} → {{ change.after || '未识别' }}</span></li><li v-if="!profileChanges.length"><span>暂无可比较的画像变化</span></li></ul></article>

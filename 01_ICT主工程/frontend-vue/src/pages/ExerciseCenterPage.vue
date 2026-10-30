@@ -23,6 +23,7 @@ type ExercisePageExpose = {
   resetForNewPaper: () => Promise<boolean>
   finishExam: () => Promise<boolean>
   hasActiveExam: () => boolean
+  focusPracticeHeading: () => void
 }
 
 const { studentId } = useStudent()
@@ -160,6 +161,7 @@ const selectedCourse = ref('软件需求分析与建模')
 const customCourseCategory = ref('')
 const customCourse = ref('')
 const activePage = ref<WorkshopPageKey>('builder')
+const practiceStarted = ref(false)
 const pendingPage = ref<WorkshopPageKey | null>(null)
 const showExamLeaveDialog = ref(false)
 const courseLocked = ref(false)
@@ -794,6 +796,7 @@ function resetCourseWorkflow() {
   redoAnswer.value = ''
   redoResult.value = null
   selectedWrongRecordIds.value = []
+  practiceStarted.value = false
   exerciseResetSeed.value += 1
   syncMajorCategory()
 }
@@ -825,9 +828,8 @@ async function generateFromCustomize() {
     activeExerciseDifficulty.value = questionDifficulty.value
     closedLoopStatus.value = `已载入“${pathStageTitle.value}”专属题库；每次提交都会更新阶段掌握度，达到 80% 后自动进入下一阶段。`
     activePage.value = 'diagnosis'
+    practiceStarted.value = true
     exerciseResetSeed.value += 1
-    await nextTick()
-    await exercisePageRef.value?.loadSession?.(true)
   } catch (reason: any) {
     error.value = reason?.message || '阶段题库生成失败'
     closedLoopStatus.value = '阶段题库尚未生成，请检查模型配置后重试。'
@@ -950,6 +952,14 @@ async function loadWrongBook() {
 
 function switchDirect(page: WorkshopPageKey) {
   activePage.value = page
+}
+
+async function startPractice() {
+  if (practiceStarted.value) return
+  closedLoopStatus.value = '正在载入本轮练习题目...'
+  practiceStarted.value = true
+  await nextTick()
+  exercisePageRef.value?.focusPracticeHeading()
 }
 
 function trySwitchPage(page: WorkshopPageKey) {
@@ -3264,8 +3274,8 @@ onBeforeUnmount(() => {
               <strong>{{ questionBankResources.length ? `${questionBankResources.length} 份个性化题库` : '尚未生成题库' }}</strong>
             </article>
             <article>
-              <span>本轮题量</span>
-              <strong>{{ activeExerciseQuestionLimit }} 题</strong>
+              <span>{{ activeQuestionBankIds.length ? '计划题量' : '题库状态' }}</span>
+              <strong>{{ activeQuestionBankIds.length ? `${activeExerciseQuestionLimit} 题` : '题库就绪后确定' }}</strong>
             </article>
             <article>
               <span>诊断去向</span>
@@ -3282,7 +3292,30 @@ onBeforeUnmount(() => {
           <p class="studio-muted mt-3">{{ closedLoopStatus }}</p>
         </div>
       </div>
+      <div v-if="!practiceStarted" class="practice-start-panel studio-panel" data-testid="practice-start-panel">
+        <div class="practice-start-copy">
+          <span class="practice-start-eyebrow">本轮练习 · 开始前确认</span>
+          <h2>准备好开始做题了吗？</h2>
+          <p>点击“开始做题”后才会载入题目。进入后可选择即时训练或考试模式，作答会记录到学习诊断中。</p>
+        </div>
+        <div class="practice-start-details" aria-label="本轮练习信息">
+          <article><span>学习阶段</span><strong>{{ pathStageTitle }}</strong></article>
+          <article>
+            <span>{{ activeQuestionBankIds.length ? '计划题量' : '题库状态' }}</span>
+            <strong>{{ activeQuestionBankIds.length ? `${activeExerciseQuestionLimit} 题` : '尚未生成题库' }}</strong>
+          </article>
+          <article><span>题目来源</span><strong>{{ activeQuestionBankIds.length ? `${activeQuestionBankIds.length} 份已选题库` : '开始后检查当前可用题目' }}</strong></article>
+        </div>
+        <div class="practice-start-actions">
+          <button class="studio-btn" type="button" @click="startPractice">开始做题</button>
+          <button class="studio-btn ghost" type="button" @click="trySwitchPage('builder')">调整题库</button>
+        </div>
+        <p v-if="!activeQuestionBankIds.length" class="practice-start-note" role="note">
+          当前没有已选的个性化题库。开始后会检查本地可用题目；如果没有题目，页面会提示先去题库定制。
+        </p>
+      </div>
       <ExercisePage
+        v-else
         ref="exercisePageRef"
         :active="activePage === 'diagnosis'"
         :question-bank-ids="activeQuestionBankIds"

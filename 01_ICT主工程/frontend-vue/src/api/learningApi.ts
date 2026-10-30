@@ -198,17 +198,25 @@ export async function generateResourcePackStream(
   payload: Record<string, any>,
   onEvent: (event: ResourceGenerationEvent) => void,
 ): Promise<ResourceSummary[]> {
-  const response = await fetch('/api/workshop/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-    body: JSON.stringify({
-      student_id: payload.student_id,
-      requirement: payload.requirement || {},
-      stream: true,
-    }),
-  })
+  let response: Response
+  try {
+    response = await fetch('/api/workshop/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({
+        student_id: payload.student_id,
+        requirement: payload.requirement || {},
+        stream: true,
+      }),
+    })
+  } catch {
+    throw new Error('本地服务未连接，请确认后端已启动后重试')
+  }
   if (!response.ok || !response.body) {
-    throw new Error(`资源生成请求失败：HTTP ${response.status}`)
+    const message = response.status >= 500
+      ? `本地服务暂时不可用（HTTP ${response.status}），请确认后端已启动后重试`
+      : `资源生成请求失败（HTTP ${response.status}），请稍后重试`
+    throw new Error(message)
   }
 
   const resources: ResourceSummary[] = []
@@ -225,7 +233,12 @@ export async function generateResourcePackStream(
     for (const packet of packets) {
       const dataLine = packet.split('\n').find((line) => line.startsWith('data: '))
       if (!dataLine) continue
-      const envelope = JSON.parse(dataLine.slice(6))
+      let envelope: { error?: string; event?: ResourceGenerationEvent }
+      try {
+        envelope = JSON.parse(dataLine.slice(6)) as { error?: string; event?: ResourceGenerationEvent }
+      } catch {
+        throw new Error('资源生成响应格式异常，请重试')
+      }
       if (envelope.error) throw new Error(String(envelope.error))
       const event = envelope.event as ResourceGenerationEvent | undefined
       if (!event) continue

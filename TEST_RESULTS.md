@@ -187,3 +187,75 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 | `e2e/claude-round1-repro.spec.ts` | 1/1 通过；146 个按钮、135 个点击、0 个无结果、0 个命中遮挡、0 个控制台错误 |
 
 本轮全按钮探针先将按钮滚入当前视口再执行 `elementFromPoint` 命中判断，避免把页面底部按钮误判为遮挡。Claude Code 非交互回归会话未返回最终报告，未将其未输出的测试结果计入本表；MCP 结果沿用前文已记录的本地 7/7 和 3 次真实调用。
+
+## 2026-10-25 国奖级优化回归
+
+本轮基于最新 `origin/main` 创建 `codex/national-award-upgrade`，重新启动本地路演版并调用真实接口：
+
+| 检查项 | 实际结果 |
+|---|---:|
+| `/api/health` | 200，`success=true`，`mode=roadshow`，本地 demo 模式 |
+| demo 知识图谱 | 6 章、30 个知识点、3 个资源、44 条关系 |
+| 普通新学习者图谱 | 0 个节点、0 个章节 |
+| 前端类型检查 | 通过 |
+| UI 契约审计 | 通过 |
+| 前端生产构建 | 通过，2321 modules transformed |
+| 后端单元测试 | 45/45 通过 |
+| MCP 单元测试 | 7/7 通过 |
+| 路演 E2E | 19/19 通过 |
+| 响应式验收 | 4/4 通过 |
+
+截图目录为 `01_ICT主工程\frontend-vue\test-results\roadshow-screenshots\`，共 30 张，尺寸为 `1440x900`、`1280x720`、`1024x768`、`768x1024`、`390x844`，覆盖首页、练习诊断、知识图谱、资源工坊、学习路径和评估进化。已实际查看代表性桌面、平板和手机截图。
+
+本轮发现并修复：无标题教材的“第1部分”回退命名、哈希课程标题风险、健康检查旧图谱地址、流式请求断线错误，以及 MCP 读取陈旧 `backend/data` 导致的数据不一致。构建仍有少数大 chunk 警告，但未影响路演功能或测试。
+
+## 2026-10-29 队友现场问题回归
+
+本轮最终代码验证：
+
+| 命令 | 结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过，2321 modules；ExerciseCenter 约 582 kB，有非阻塞 chunk 警告 |
+| `npm run test:roadshow -- --project=msedge --workers=1 --reporter=line` | 19/19 通过 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1 --reporter=line` | 8/8 通过 |
+| `python -m unittest discover -s tests -p "test*.py" -v` | 45/45 通过 |
+| `powershell -NoProfile -ExecutionPolicy Bypass -File .\test_mcp.ps1` | MCP 7/7；`get_student_profile`、`get_role_competency`、`get_project_status` 均 `is_error=false` |
+
+智能做题真实接口验证：进入“智能做题”页签时请求数为 0；点击“开始做题”后请求 `/api/exercise/session`，返回 HTTP 200、`success=true`、题目数 0。当前 demo 学生无已生成题库，页面转为空题提示，没有伪造题目。
+
+截图：`01_ICT主工程\frontend-vue\test-results\roadshow-screenshots\` 下五种分辨率、六个页面共 30 张；另有 1024x768 和 390x844 的智能做题开始前/点击后 4 张。截图已通过图像查看工具人工检查，目录被 Git 忽略，不提交。
+
+说明：此前隔离生成流记录仍按历史结果保留（后端验收 12/12、集成 3/3、生成流程 6/6、生成流程 E2E 2/2）；本轮没有在最终 UI 变更后重跑整个生成流脚本。AgentArts 云端仍未接入。
+
+## 2026-10-29 智能做题体验增量复验
+
+针对真实使用中的等待与失败反馈，再次执行：
+
+| 命令 / 检查 | 结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过，2321 modules；ExerciseCenter 约 583 kB，仍有非阻塞 chunk 警告 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1 --reporter=line` | 9/9 通过 |
+| 实际本地练习接口恢复 | 人为触发一次 503 后点击“重试加载”，真实本地接口返回成功；无未捕获页面异常 |
+| 键盘焦点与截图检查 | 加载、错误、空题状态均将焦点移至对应标题；桌面/手机截图已人工查看 |
+
+本次没有重跑前端路演全套、后端单测或 MCP 测试：改动只涉及练习页的状态呈现、焦点管理和样式；此前记录的路演 19/19、后端 45/45、MCP 7/7 属于前序提交结果。最终 7 张桌面/手机截图仅存于被忽略的 `01_ICT主工程/frontend-vue/test-results/ux-followup-human-flow-reviewed-e99f48784d9d4d7bb8877646f2466bb5/`，没有进入 Git。之前路演全套测试生成的临时截图已被 Playwright 清理。
+
+## 2026-10-30 前端图表与响应式复验
+
+| 检查 | 真实结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过；ExerciseCenter 约 583.26 kB，仍有非阻塞 chunk 体积提示 |
+| `npm run test:roadshow -- --project=msedge --workers=1` | 19/19 通过 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1` | 10/10 通过；新增真实 API 图表语义用例 |
+| 本地健康检查 | `GET /api/health` 成功，FastAPI ready、roadshow 模式；模型未配置，demo 模式开启 |
+| 画像图表数据 | 回归用例读取 `GET /api/profile/demo/overview`，逐项核对画像接口置信度与页面进度条；无数据维度显示待采集 |
+| 评估图表数据 | 回归用例读取 `GET /api/evaluate/overview?student_id=demo`，核对维度数量、实际分值和证据缺失状态 |
+| 截图与人工查看 | 39 张 PNG；九个页面 1440×900，五个重点页面再覆盖 1280×720、1024×768、768×1024、390×844。截图及总览在 `%TEMP%\ict-ui-review-20261030\`；已人工查看，无页面级横向溢出或明显裁切、遮挡、乱码 |
+
+本轮是前端可视化改进，没有重跑后端单元测试和 MCP 套件；本地健康接口及图表依赖的两个真实 API 已在本轮检查中验证。AgentArts 云端未接入。
