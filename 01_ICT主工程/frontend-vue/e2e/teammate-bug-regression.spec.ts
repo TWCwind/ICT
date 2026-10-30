@@ -332,3 +332,49 @@ test('backend outage exposes retry and the real local API recovers', async ({ pa
   await retry.click()
   await expect(notice).toContainText('服务已恢复连接')
 })
+
+test('profile and evaluation charts explain real values and missing evidence', async ({ page }) => {
+  await login(page)
+
+  const profileResponse = await page.request.get('/api/profile/demo/overview')
+  expect(profileResponse.ok()).toBe(true)
+  const profilePayload = await profileResponse.json()
+  expect(profilePayload.success).toBe(true)
+  await page.goto('/profile')
+  const confidenceCard = page.locator('.profile-confidence-card')
+  await expect(confidenceCard).toContainText('画像判断置信度')
+  await expect(confidenceCard).toContainText('不是学习成绩')
+  const confidenceRows = confidenceCard.locator('li')
+  await expect(confidenceRows).toHaveCount(profilePayload.data.dimensions.length)
+  for (const dimension of profilePayload.data.dimensions) {
+    const progress = confidenceCard.getByRole('progressbar', { name: `${dimension.label}画像判断置信度` })
+    if (dimension.status === 'ready') {
+      await expect(progress).toHaveAttribute('value', String(dimension.confidence))
+    } else {
+      await expect(confidenceCard.locator('.profile-confidence-pending')).toContainText('暂无数据')
+    }
+  }
+
+  const evaluationResponse = await page.request.get('/api/evaluate/overview?student_id=demo')
+  expect(evaluationResponse.ok()).toBe(true)
+  const evaluationPayload = await evaluationResponse.json()
+  expect(evaluationPayload.success).toBe(true)
+  await page.goto('/evaluate')
+  const rows = page.locator('.shot-capability-bars li')
+  await expect(rows).toHaveCount(evaluationPayload.data.dimensions.length)
+
+  const evidence = evaluationPayload.data.evidence
+  const masteryRow = rows.filter({ hasText: '知识掌握' })
+  if (evidence.knowledge_nodes === 0) {
+    await expect(masteryRow).toContainText('待采集')
+    await expect(masteryRow.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '暂无对应证据')
+  }
+
+  const resourceRow = rows.filter({ hasText: '资源匹配' })
+  if (evidence.feedback_items === 0) await expect(resourceRow).toContainText('待采集')
+  const transfer = evaluationPayload.data.dimensions.find((item: { label: string }) => item.label === '迁移应用')
+  if (evidence.exercise_attempts > 0 && transfer) {
+    await expect(rows.filter({ hasText: '迁移应用' })).toContainText(`${transfer.value}%`)
+  }
+  await expect(page.locator('.shot-score-caveat')).toContainText('阶段参考')
+})

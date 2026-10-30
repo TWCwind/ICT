@@ -1158,6 +1158,8 @@ onUnmounted(() => {
         </div>
       </header>
 
+      <p id="graph-touch-hint" class="graph-touch-hint">手机上可左右滑动浏览四列图谱，点选节点查看详情。</p>
+
       <div v-if="graphError" class="graph-alert" role="alert">
         <AlertCircle :size="17" /><span>{{ graphError }}</span><button type="button" @click="loadGraph({ initial: true })">重新加载</button>
       </div>
@@ -1181,7 +1183,7 @@ onUnmounted(() => {
       </div>
 
       <div v-else class="graph-stage">
-        <div ref="graphViewport" class="graph-scroll" @wheel="handleGraphWheel">
+        <div ref="graphViewport" class="graph-scroll" aria-describedby="graph-touch-hint" @wheel="handleGraphWheel">
           <div class="graph-inner" :style="{ width: `${graphLayout.width * graphZoom}px`, height: `${(graphLayout.height + 44) * graphZoom}px` }">
             <div class="graph-zoom-layer" :style="{ width: `${graphLayout.width}px`, transform: `scale(${graphZoom})` }">
               <div class="lane-heads">

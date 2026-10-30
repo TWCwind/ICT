@@ -243,3 +243,19 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 | 键盘焦点与截图检查 | 加载、错误、空题状态均将焦点移至对应标题；桌面/手机截图已人工查看 |
 
 本次没有重跑前端路演全套、后端单测或 MCP 测试：改动只涉及练习页的状态呈现、焦点管理和样式；此前记录的路演 19/19、后端 45/45、MCP 7/7 属于前序提交结果。最终 7 张桌面/手机截图仅存于被忽略的 `01_ICT主工程/frontend-vue/test-results/ux-followup-human-flow-reviewed-e99f48784d9d4d7bb8877646f2466bb5/`，没有进入 Git。之前路演全套测试生成的临时截图已被 Playwright 清理。
+
+## 2026-10-30 前端图表与响应式复验
+
+| 检查 | 真实结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过；ExerciseCenter 约 583.26 kB，仍有非阻塞 chunk 体积提示 |
+| `npm run test:roadshow -- --project=msedge --workers=1` | 19/19 通过 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1` | 10/10 通过；新增真实 API 图表语义用例 |
+| 本地健康检查 | `GET /api/health` 成功，FastAPI ready、roadshow 模式；模型未配置，demo 模式开启 |
+| 画像图表数据 | 回归用例读取 `GET /api/profile/demo/overview`，逐项核对画像接口置信度与页面进度条；无数据维度显示待采集 |
+| 评估图表数据 | 回归用例读取 `GET /api/evaluate/overview?student_id=demo`，核对维度数量、实际分值和证据缺失状态 |
+| 截图与人工查看 | 39 张 PNG；九个页面 1440×900，五个重点页面再覆盖 1280×720、1024×768、768×1024、390×844。截图及总览在 `%TEMP%\ict-ui-review-20261030\`；已人工查看，无页面级横向溢出或明显裁切、遮挡、乱码 |
+
+本轮是前端可视化改进，没有重跑后端单元测试和 MCP 套件；本地健康接口及图表依赖的两个真实 API 已在本轮检查中验证。AgentArts 云端未接入。
