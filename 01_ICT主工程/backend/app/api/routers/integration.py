@@ -99,7 +99,7 @@ async def teammate_catalog() -> ApiResponse:
                 {
                     "key": "learning_trace",
                     "name": "学习事件追踪与数据闭环",
-                    "from_teammate": "新成果/ICT/frontend-vue/src/pages/DataLogPage.vue",
+                    "from_teammate": "新成果/主工程/frontend-vue/src/pages/DataLogPage.vue",
                     "current_module": "backend/app/services/knowledge_hub.py + backend/app/repo.py",
                     "entry": "GET /api/knowledge/overview -> data.activity",
                     "status": "已转为后端闭环机制",

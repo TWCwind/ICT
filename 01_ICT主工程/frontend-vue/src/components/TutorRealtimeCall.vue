@@ -100,21 +100,6 @@ const hintText = computed(() => {
 })
 const xingyuanSdkConfigured = computed(() => avatarConfigLoaded.value && xingyuanSdkConfig.value?.enabled === true)
 const avatarVoiceMode = computed(() => Boolean(config.value.config_error) && xingyuanSdkConfigured.value)
-const voiceConfigErrorText = computed(() => {
-  const raw = config.value.config_error
-  if (!raw) return ''
-  if (/realtime voice is disabled/i.test(raw)) {
-    return '语音通话服务未启用：当前为本地演示模式，未配置 VOICE_REALTIME_* 外部语音服务，因此无法发起实时通话。'
-  }
-  return `语音辅导配置错误：${raw}`
-})
-const startCallBlocked = computed(() => Boolean(config.value.config_error) && !avatarVoiceMode.value)
-const startCallTitle = computed(() => {
-  if (connecting.value) return '正在建立连接，请稍候'
-  if (connected.value) return '通话进行中，可点击“挂断”结束'
-  if (startCallBlocked.value) return `暂时无法通话：${voiceConfigErrorText.value}`
-  return '发起实时语音通话'
-})
 
 function setStatus(text: string, kind: 'info' | 'error' = 'info') {
   statusText.value = text
@@ -897,7 +882,7 @@ async function loadConfig() {
       if (xingyuanSdkConfigured.value) {
         setStatus('已切换为数字人老师语音，可以开始通话。')
       } else {
-        setStatus(voiceConfigErrorText.value || '语音辅导配置错误，请检查服务配置。', 'error')
+        setStatus(`语音辅导配置错误：${data.config_error}`, 'error')
       }
     } else if (data.transport !== 'websocket') {
       setStatus('当前语音辅导连接不是 WebSocket 地址，请配置 wss:// 地址。', 'error')
@@ -1503,7 +1488,6 @@ onBeforeUnmount(() => {
               <span class="digital-human-glow"></span>
               <span class="digital-human-floor"></span>
               <div class="digital-human-portrait" :class="{ 'sdk-visible': xingyuanSdkVisible && connected }">
-                <div class="digital-human-rig" aria-hidden="true"></div>
                 <div
                   id="xingyuan-avatar-sdk"
                   ref="xingyuanSdkMountRef"
@@ -1577,7 +1561,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="realtime-control-row">
-        <button class="studio-btn" type="button" :disabled="connecting || connected || startCallBlocked" :title="startCallTitle" @click="startCall">
+        <button class="studio-btn" type="button" :disabled="connecting || connected || Boolean(config.config_error && !avatarVoiceMode)" @click="startCall">
           {{ connecting ? '连接中' : '开始通话' }}
         </button>
         <button class="studio-btn secondary" type="button" :disabled="!connected" @click="interruptAi">打断 AI</button>
@@ -1592,7 +1576,7 @@ onBeforeUnmount(() => {
 
       <div class="realtime-info-row">
         <div class="realtime-status-text" :class="{ error: statusKind === 'error' }">
-          {{ avatarVoiceMode ? statusText : config.config_error ? voiceConfigErrorText : statusText }}
+          {{ avatarVoiceMode ? statusText : config.config_error ? `语音辅导配置错误：${config.config_error}` : statusText }}
           <span v-if="saveStatus"> · {{ saveStatus }}</span>
         </div>
       </div>

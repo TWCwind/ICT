@@ -25,7 +25,10 @@ if ($LASTEXITCODE -ne 0) {
   throw "未找到可用的 Python/FastAPI/Uvicorn 环境。请先运行 .\安装依赖.ps1。"
 }
 
-$env:PYTHONPATH = $backendDir
+# PYTHONPATH 必须同时含 backend 与源码包根目录：九步编排要 import 兄弟目录的 mcp_server。
+# 只给 backend 会报 MULTI_AGENT_REGISTRY_UNAVAILABLE（ModuleNotFoundError: No module named 'mcp_server'）。
+$packageRoot = Split-Path -Parent $root
+$env:PYTHONPATH = "$backendDir;$packageRoot"
 $env:DATA_DIR = Join-Path $backendDir "data"
 $env:DEMO_MODE = "true"
 

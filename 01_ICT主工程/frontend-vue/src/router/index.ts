@@ -9,6 +9,7 @@ const ExercisePage = () => import('@/pages/ExerciseCenterPage.vue')
 const PathPage = () => import('@/pages/PathPage.vue')
 const TutorPage = () => import('@/pages/TutorPage.vue')
 const EvaluatePage = () => import('@/pages/EvaluatePage.vue')
+const OrchestrationPage = () => import('@/pages/OrchestrationPage.vue')
 
 // 定义路由配置
 const routes: RouteRecordRaw[] = [
@@ -56,6 +57,11 @@ const routes: RouteRecordRaw[] = [
     path: '/evaluate',
     name: 'evaluate',
     component: EvaluatePage,
+  },
+  {
+    path: '/orchestration',
+    name: 'orchestration',
+    component: OrchestrationPage,
   },
   {
     path: '/settings',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import {
   Bot,
   ClipboardList,
@@ -13,6 +13,7 @@ import {
   Paperclip,
   PenLine,
   PlayCircle,
+  Plus,
   Search,
   Send,
   Sparkles,
@@ -22,6 +23,7 @@ import {
   Zap,
 } from 'lucide-vue-next'
 import { apiPost, apiStream } from '@/utils/api'
+import { renderWithMath } from '@/utils/markdownRenderer'
 import { useStudent } from '@/composables/useStudent'
 import { useRouter } from 'vue-router'
 
@@ -66,17 +68,17 @@ const language = ref('Python')
 const loading = ref('')
 const message = ref('')
 const promptInput = ref('')
-const activeMode = ref<ModeKey>('auto')
-const promptTextareaEl = ref<HTMLTextAreaElement | null>(null)
+const chatScrollEl = ref<HTMLElement | null>(null)
+const composerEl = ref<HTMLTextAreaElement | null>(null)
 
-function selectMode(mode: ModeKey) {
-  if (activeMode.value === mode) {
-    // 重复点击当前模式按钮时聚焦输入框，避免“点了没反应”。
-    promptTextareaEl.value?.focus()
-    return
-  }
-  activeMode.value = mode
+/** 切到某条历史会话或刚发出新消息时，让滚动条停在该会话最后一条消息处。 */
+function scrollChatToBottom() {
+  nextTick(() => {
+    const el = chatScrollEl.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
 }
+const activeMode = ref<ModeKey>('auto')
 const activeSessionId = ref('')
 const sessions = ref<ChatSession[]>([])
 const videoResult = ref<any | null>(null)
@@ -87,6 +89,16 @@ const codeStreamText = ref('')
 const resourceStreamText = ref('')
 const materialInput = ref<HTMLInputElement | null>(null)
 const showMoreModes = ref(false)
+let messageTimer: ReturnType<typeof setTimeout> | undefined
+function flashMessage(text: string, duration = 1000) {
+  if (messageTimer) clearTimeout(messageTimer)
+  message.value = text
+  messageTimer = setTimeout(() => {
+    message.value = ''
+  }, duration)
+}
+
+// 侧栏只保留「新对话」，其余模式与输入框下方快捷按钮重复，去掉避免冗余。
 
 const modeItems = [
   { key: 'auto' as const, label: '新对话', icon: Sparkles },
@@ -97,6 +109,9 @@ const modeItems = [
   { key: 'quiz' as const, label: '智能出题', icon: ClipboardList },
   { key: 'mindmap' as const, label: '思维导图', icon: GitBranch },
 ]
+
+// 侧栏只保留「新对话」：其余模式与输入框下方快捷按钮重复。
+const sideNavItems = modeItems.slice(0, 1)
 
 const quickPrompts = [
   '给我生成一套高数极限入门资源',
@@ -197,6 +212,7 @@ function upsertMessage(sessionId: string, messageId: string, patch: Partial<Chat
   session.updatedAt = nowText()
   sessions.value = [...sessions.value]
   persistSessions()
+  scrollChatToBottom()
 }
 
 function appendMessage(sessionId: string, role: ChatRole, content: string, mode?: ModeKey) {
@@ -213,6 +229,7 @@ function appendMessage(sessionId: string, role: ChatRole, content: string, mode?
   session.updatedAt = nowText()
   sessions.value = [session, ...sessions.value.filter((item) => item.id !== sessionId)]
   persistSessions()
+  scrollChatToBottom()
   return msg.id
 }
 
@@ -228,6 +245,19 @@ function appendResources(sessionId: string, resources: any[]) {
 function selectSession(session: ChatSession) {
   activeSessionId.value = session.id
   activeMode.value = session.mode || 'auto'
+  scrollChatToBottom()
+}
+
+/** 点「新对话」直接进入空白新会话，不需要再点顶部的三点按钮。 */
+function startNewChat() {
+  activeSessionId.value = ''
+  activeMode.value = 'auto'
+  showMoreModes.value = false
+  message.value = ''
+  nextTick(() => {
+    scrollChatToBottom()
+    composerEl.value?.focus()
+  })
 }
 
 function deleteSession(sessionId: string) {
@@ -496,9 +526,9 @@ async function handleMaterial(event: Event) {
 
 function openMoreModes() {
   showMoreModes.value = !showMoreModes.value
-  message.value = showMoreModes.value
+  flashMessage(showMoreModes.value
     ? '已展开高级模式：可继续选择图像/PPT、智能出题或思维导图。'
-    : '已收起高级模式。'
+    : '已收起高级模式。', 1000)
 }
 
 async function submitPrompt() {
@@ -545,7 +575,7 @@ function renderInlineMarkdown(value: string) {
     .replace(/`([^`]+)`/g, '<code>$1</code>')
 }
 
-function renderMarkdownProse(value: string) {
+function renderMarkdownProseRaw(value: string) {
   const lines = String(value || '').replace(/\r\n/g, '\n').split('\n')
   const html: string[] = []
   let paragraph: string[] = []
@@ -581,6 +611,22 @@ function renderMarkdownProse(value: string) {
       continue
     }
 
+    const chineseHeading = trimmed.match(/^([一二三四五六七八九十]+)[、.．]\s*(.*)$/)
+    if (chineseHeading && !/[。；]/.test(chineseHeading[2])) {
+      flushParagraph()
+      flushList()
+      html.push(`<h3>${escapeCodeHtml(chineseHeading[1])}、${renderInlineMarkdown(chineseHeading[2])}</h3>`)
+      continue
+    }
+
+    const boldHeading = trimmed.match(/^\*\*([^*]{1,30})\*\*[：:]?$/)
+    if (boldHeading) {
+      flushParagraph()
+      flushList()
+      html.push(`<h3>${renderInlineMarkdown(boldHeading[1])}</h3>`)
+      continue
+    }
+
     const unordered = trimmed.match(/^[-*]\s+(.+)$/)
     const ordered = trimmed.match(/^\d+[.)]\s+(.+)$/)
     if (unordered || ordered) {
@@ -599,6 +645,11 @@ function renderMarkdownProse(value: string) {
   flushParagraph()
   flushList()
   return html.join('')
+}
+
+/** 对话正文里带公式（$...$ / $$...$$）时，用 KaTeX 渲染，其余仍走轻量 Markdown。 */
+function renderMarkdownProse(value: string) {
+  return renderWithMath(String(value || ''), renderMarkdownProseRaw)
 }
 
 function renderCodeCase(value: string) {
@@ -1137,6 +1188,72 @@ function nonVideoResources(item: ChatMessage) {
   return (item.resources || []).filter((resource: any) => resource?.kind !== 'video' && resource?.kind !== 'mindmap')
 }
 
+function canExportWord(item: ChatMessage) {
+  return item.role === 'assistant' && Boolean(displayContent(item).trim())
+}
+
+function lastAssistantMessage(): ChatMessage | null {
+  const list = activeSession.value?.messages || []
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    const candidate = list[index]
+    if (candidate.role === 'assistant' && displayContent(candidate).trim()) return candidate
+  }
+  return null
+}
+
+function exportLastAnswer() {
+  const item = lastAssistantMessage()
+  showMoreModes.value = false
+  if (!item) {
+    message.value = '还没有可导出的回答，先生成一条内容。'
+    return
+  }
+  void downloadWord(item)
+}
+
+async function copyLastAnswer() {
+  const item = lastAssistantMessage()
+  showMoreModes.value = false
+  if (!item) {
+    message.value = '还没有可复制的回答。'
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(displayContent(item))
+    message.value = '已复制当前回答全文。'
+  } catch {
+    message.value = '浏览器拒绝了剪贴板写入，请手动选中复制。'
+  }
+}
+
+function runAdvancedPrompt(text: string) {
+  if (loading.value) return
+  showMoreModes.value = false
+  promptInput.value = text
+  void submitPrompt()
+}
+
+function contextTopic() {
+  const list = activeSession.value?.messages || []
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    const message = list[index]
+    if (message.role === 'user' && String(message.content || '').trim()) {
+      return String(message.content || '').trim().replace(/\s+/g, ' ').slice(0, 40)
+    }
+  }
+  return activeSession.value?.title || topic.value || '本课主题'
+}
+
+function makePptFromTopic() {
+  const base = contextTopic()
+  runAdvancedPrompt(`围绕「${base}」生成一份 8 页 PPT，用于课前预习`)
+}
+
+function askMindmapFromTopic() {
+  const base = contextTopic()
+  runAdvancedPrompt(`围绕「${base}」生成思维导图`)
+}
+
 async function downloadWord(chatMessage: ChatMessage) {
   const title = activeSession.value?.title || '智能出题'
   const safeTitle = safeFileName(title)
@@ -1144,7 +1261,7 @@ async function downloadWord(chatMessage: ChatMessage) {
   const payload = {
     title,
     content,
-    file_name: `${safeTitle}_练习题.docx`,
+    file_name: chatMessage.mode === 'quiz' ? `${safeTitle}_练习题.docx` : `${safeTitle}.docx`,
     template: 'quiz_export_v1',
   }
 
@@ -1248,12 +1365,11 @@ onMounted(() => {
 
       <nav class="multi-side-nav" aria-label="多模态工具">
         <button
-          v-for="item in modeItems"
+          v-for="item in sideNavItems"
           :key="item.key"
           type="button"
           :class="{ active: activeMode === item.key }"
-          :aria-pressed="activeMode === item.key"
-          @click="selectMode(item.key)"
+          @click="item.key === 'auto' ? startNewChat() : (activeMode = item.key)"
         >
           <component :is="item.icon" :size="18" />
           <span>{{ item.label }}</span>
@@ -1289,7 +1405,7 @@ onMounted(() => {
 
     <main class="multi-chat-main">
       <header class="multi-chat-topbar">
-        <button type="button" title="新对话" aria-label="新对话" :disabled="!activeSessionId" @click="activeSessionId = ''"><MoreHorizontal :size="19" /></button>
+        <button type="button" title="新对话" aria-label="新对话" @click="startNewChat"><Plus :size="19" /></button>
         <div>
           <strong>{{ activeSession?.title || '新对话' }}</strong>
           <span>用户通过对话提出要求，系统会选择对应能力</span>
@@ -1300,7 +1416,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <section class="multi-chat-canvas">
+      <section class="multi-chat-canvas" ref="chatScrollEl">
         <div v-if="!activeSession" class="multi-welcome">
           <h2>有什么我能帮你的吗？</h2>
           <div class="multi-prompt-cloud">
@@ -1346,17 +1462,18 @@ onMounted(() => {
                 <figcaption>{{ image.prompt || image.title || '生成图片' }}</figcaption>
               </figure>
             </div>
-            <div v-if="item.mode === 'quiz'" class="multi-message-resources">
-              <button type="button" @click="downloadWord(item)">下载</button>
-            </div>
-            <div v-else-if="nonVideoResources(item).length || nonVideoDownloads(item).length" class="multi-message-resources">
+            <div
+              v-if="canExportWord(item) || nonVideoResources(item).length || nonVideoDownloads(item).length"
+              class="multi-message-resources"
+            >
+              <button v-if="canExportWord(item)" type="button" @click="downloadWord(item)">下载 Word</button>
               <button
                 v-for="download in nonVideoDownloads(item)"
                 :key="download.id || download.title"
                 type="button"
                 @click="download.kind === 'image' ? downloadImage(download) : openResource(download)"
               >
-                {{ download.title }}
+                {{ download.kind === 'ppt' ? '下载 PPTX' : download.kind === 'image' ? '下载图片' : download.title }}
               </button>
               <button
                 v-for="resource in nonVideoResources(item)"
@@ -1377,7 +1494,7 @@ onMounted(() => {
       <section class="multi-composer-wrap">
         <div class="multi-composer">
           <textarea
-            ref="promptTextareaEl"
+            ref="composerEl"
             v-model="promptInput"
             rows="2"
             placeholder="发消息或按住空格说话..."
@@ -1386,18 +1503,24 @@ onMounted(() => {
           <div class="multi-composer-tools">
             <button type="button" title="添加素材" @click="attachMaterial"><Paperclip :size="19" /></button>
             <input ref="materialInput" type="file" accept=".txt,.md,.csv,.json" hidden @change="handleMaterial" />
-            <button type="button" data-action-kind="compose" title="快速生成" :class="{ active: activeMode === 'auto' }" :aria-pressed="activeMode === 'auto'" @click="selectMode('auto')"><Zap :size="17" /><span>快速</span></button>
-            <button type="button" data-action-kind="compose" title="帮我写作" :class="{ active: activeMode === 'writing' }" :aria-pressed="activeMode === 'writing'" @click="selectMode('writing')"><FileText :size="17" /><span>帮我写作</span></button>
-            <button type="button" data-action-kind="compose" title="编程" :class="{ active: activeMode === 'code' }" :aria-pressed="activeMode === 'code'" @click="selectMode('code')"><Code2 :size="17" /><span>编程</span></button>
-            <button type="button" data-action-kind="compose" title="图像生成" :class="{ active: activeMode === 'visual' }" :aria-pressed="activeMode === 'visual'" @click="selectMode('visual')"><Image :size="17" /><span>图像生成</span></button>
-            <button type="button" data-action-kind="compose" title="视频推荐" :class="{ active: activeMode === 'video' }" :aria-pressed="activeMode === 'video'" @click="selectMode('video')"><PlayCircle :size="17" /><span>视频推荐</span></button>
-            <button type="button" data-action-kind="compose" title="智能出题" :class="{ active: activeMode === 'quiz' }" :aria-pressed="activeMode === 'quiz'" @click="selectMode('quiz')"><ClipboardList :size="17" /><span>智能出题</span></button>
-            <button type="button" data-action-kind="compose" title="思维导图" :class="{ active: activeMode === 'mindmap' }" :aria-pressed="activeMode === 'mindmap'" @click="selectMode('mindmap')"><GitBranch :size="17" /><span>思维导图</span></button>
+            <button type="button" data-action-kind="compose" title="快速生成" :class="{ active: activeMode === 'auto' }" @click="activeMode = 'auto'"><Zap :size="17" /><span>快速</span></button>
+            <button type="button" data-action-kind="compose" title="帮我写作" :class="{ active: activeMode === 'writing' }" @click="activeMode = 'writing'"><FileText :size="17" /><span>帮我写作</span></button>
+            <button type="button" data-action-kind="compose" title="编程" :class="{ active: activeMode === 'code' }" @click="activeMode = 'code'"><Code2 :size="17" /><span>编程</span></button>
+            <button type="button" data-action-kind="compose" title="图像生成" :class="{ active: activeMode === 'visual' }" @click="activeMode = 'visual'"><Image :size="17" /><span>图像生成</span></button>
+            <button type="button" data-action-kind="compose" title="视频推荐" :class="{ active: activeMode === 'video' }" @click="activeMode = 'video'"><PlayCircle :size="17" /><span>视频推荐</span></button>
+            <button type="button" data-action-kind="compose" title="智能出题" :class="{ active: activeMode === 'quiz' }" @click="activeMode = 'quiz'"><ClipboardList :size="17" /><span>智能出题</span></button>
+            <button type="button" data-action-kind="compose" title="思维导图" :class="{ active: activeMode === 'mindmap' }" @click="activeMode = 'mindmap'"><GitBranch :size="17" /><span>思维导图</span></button>
             <button type="button" title="更多" :class="{ active: showMoreModes }" :aria-expanded="showMoreModes" @click="openMoreModes"><MoreHorizontal :size="17" /><span>更多</span></button>
             <button class="multi-send" type="button" :disabled="Boolean(loading) || !promptInput.trim()" title="发送" @click="submitPrompt">
               <Wand2 v-if="loading" :size="18" />
               <Send v-else :size="18" />
             </button>
+          </div>
+          <div v-if="showMoreModes" class="multi-more-panel">
+            <button type="button" @click="exportLastAnswer">导出 Word</button>
+            <button type="button" @click="copyLastAnswer">复制全文</button>
+            <button type="button" @click="makePptFromTopic">生成 PPT</button>
+            <button type="button" @click="askMindmapFromTopic">生成思维导图</button>
           </div>
         </div>
       </section>

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Query
@@ -11,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.agents import Orchestrator
 from app.core.config import settings
 from app.core.ids import new_id
-from app.repo import insert_resource_item, list_resources, now_iso
+from app.repo import list_resources
 from app.schemas import ApiResponse
 from app.evolution import EvolutionEngine
 from app.services.exercise_bank import build_exercise_session, exercise_summary, submit_exercise_answer
@@ -333,33 +332,6 @@ def _normalize_requirement(req: FlexibleRequest) -> dict[str, Any]:
     return requirement
 
 
-def _profile_from_text(student_id: str, text: str) -> dict[str, Any]:
-    weak = []
-    for key in ("递归", "链表", "时间复杂度", "用例图", "需求访谈"):
-        if key in text:
-            weak.append(key)
-    weak = weak or ["链表指针关系", "递归边界条件", "时间复杂度分析"]
-    dimensions = {
-        "knowledge_base_level": "基础偏弱",
-        "cognitive_style": "图解 + 例题驱动",
-        "mistake_patterns": "概念边界混淆、递归出口遗漏",
-        "modality_preference": "思维导图、代码案例、练习题",
-        "pace_preference": "中速分步学习",
-        "motivation_style": "目标导向 + 能力提升",
-    }
-    return {
-        "id": f"profile_{student_id}",
-        "student_id": student_id,
-        "major": "软件工程",
-        "course": "数据结构",
-        "learning_goal": "掌握链表、栈、队列和递归，提高算法题正确率",
-        "weaknesses": weak,
-        "dimensions": dimensions,
-        **dimensions,
-        "updated_at": now_iso(),
-    }
-
-
 def _normalize_resources(resources: Any, student_id: str) -> list[dict[str, Any]]:
     if isinstance(resources, dict):
         raw_items = resources.get("resources") or resources.get("items") or []
@@ -384,72 +356,6 @@ def _normalize_resources(resources: Any, student_id: str) -> list[dict[str, Any]
             }
         )
     return normalized
-
-
-def _demo_resource_pack(student_id: str, topic: str) -> list[dict[str, Any]]:
-    templates = [
-        ("lecture_doc", "课程讲解文档", "用分层讲解梳理核心概念和操作步骤。"),
-        ("mindmap", "知识点思维导图", "用中心节点和分支关系呈现链表、栈、队列和递归。"),
-        ("question_bank", "练习题库", "包含选择题、简答题和代码题，验证薄弱点。"),
-        ("reading", "拓展阅读材料", "补充复杂度分析和工程实践视角。"),
-        ("practice_case", "代码实操案例", "用 Python 实现单链表插入、删除和遍历。"),
-        ("video_script", "动画讲解脚本", "用分镜解释指针移动和递归调用栈。"),
-    ]
-    return [
-        {
-            "id": f"demo_{resource_type}_{idx}",
-            "type": resource_type,
-            "title": f"{topic}{name}",
-            "summary": summary,
-            "content": f"# {topic}{name}\n\n{summary}\n\n## 个性化重点\n- 链表指针关系\n- 递归边界条件\n- 时间复杂度分析\n",
-            "tags": ["数据结构", "链表", "递归", resource_type],
-            "difficulty": "中等" if idx < 4 else "进阶",
-            "estimated_minutes": 15 + idx * 5,
-            "agent_trace": _agent_trace(),
-        }
-        for idx, (resource_type, name, summary) in enumerate(templates, 1)
-    ]
-
-
-def _agent_trace() -> list[dict[str, str]]:
-    return [
-        {"agent": "需求分析 Agent", "status": "completed", "task": "识别课程、目标和薄弱点"},
-        {"agent": "讲解策划 Agent", "status": "completed", "task": "规划讲解层次"},
-        {"agent": "训练设计 Agent", "status": "completed", "task": "生成练习和诊断点"},
-        {"agent": "拓展阅读 Agent", "status": "completed", "task": "补充迁移材料"},
-        {"agent": "多模态 Agent", "status": "completed", "task": "生成图解和脚本结构"},
-    ]
-
-
-def _path_plan(student_id: str, goals: str | None) -> dict[str, Any]:
-    nodes = [
-        ("先修诊断", "确认链表和递归基础", ["question_bank"], ["完成 5 道基础题"], "正确率不低于 60%", "completed"),
-        ("概念补齐", "补齐指针关系和递归出口", ["lecture_doc", "mindmap"], ["复习概念卡片"], "能解释插入流程", "current"),
-        ("文档精讲", "系统学习单链表操作", ["lecture_doc"], ["阅读讲解文档"], "完成随堂例题", "recommended"),
-        ("图谱理解", "把链表、栈、队列建立关联", ["mindmap"], ["整理知识图谱"], "能说出前置关系", "locked"),
-        ("练习巩固", "针对递归和链表做专项题", ["question_bank"], ["提交练习"], "正确率达到 75%", "locked"),
-        ("实操案例", "实现单链表操作", ["practice_case"], ["运行代码"], "通过验收样例", "locked"),
-        ("阶段评估", "评估掌握度并调整路径", ["evaluation"], ["生成评估报告"], "形成下一步建议", "locked"),
-    ]
-    return {
-        "student_id": student_id,
-        "title": goals or "数据结构专项提升路径",
-        "path": {
-            "nodes": [
-                {
-                    "step": idx,
-                    "title": title,
-                    "goal": goal,
-                    "resources": resources,
-                    "tasks": tasks,
-                    "checkpoint": checkpoint,
-                    "status": status,
-                }
-                for idx, (title, goal, resources, tasks, checkpoint, status) in enumerate(nodes, 1)
-            ]
-        },
-        "recommendations": _recommendations(student_id),
-    }
 
 
 def _normalize_exercise_submit(result: dict[str, Any]) -> dict[str, Any]:

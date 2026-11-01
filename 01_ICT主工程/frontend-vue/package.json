@@ -13,9 +13,7 @@
     "lint": "eslint . --ext .ts,.vue",
     "lint:fix": "eslint . --ext .ts,.vue --fix",
     "audit:ui": "node scripts/audit-ui-contract.mjs",
-    "test:e2e": "playwright test",
-    "test:roadshow": "playwright test e2e/core-flows.spec.ts e2e/competition-responsive.spec.ts e2e/avatar-render.spec.ts e2e/button-actions.spec.ts e2e/interaction-qa.spec.ts e2e/connection-recovery.spec.ts",
-    "test:generated-flow": "playwright test e2e/full-flow-generated.spec.ts"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "clsx": "^2.1.1",

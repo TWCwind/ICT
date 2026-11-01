@@ -42,13 +42,8 @@ def _material_path(*parts: str) -> Path:
 COURSE_DIR = _material_path("课程资料")
 SAMPLE_DIR = _material_path("生成示例")
 PATH_OUTPUT_DIR = _material_path("第三点_学习路径规划与资源推送", "输出结果")
-def _textbook_dir() -> Path:
-    """Resolve教材 data from the active DATA_DIR, including roadshow runtime data."""
-    return settings.data_path / "uploads" / "textbooks"
-
-
-def _chapter_knowledge_dir() -> Path:
-    return _textbook_dir() / "chapter_knowledge"
+TEXTBOOK_DIR = PROJECT_ROOT / "uploads" / "textbooks"
+CHAPTER_KNOWLEDGE_DIR = TEXTBOOK_DIR / "chapter_knowledge"
 
 # Knowledge-graph concepts are selected from course semantics first.  The
 # source documents in the demo library are converted books, so their opening
@@ -83,11 +78,7 @@ GRAPH_DOMAIN_CONCEPTS = (
     "云计算", "设备接入", "数据采集",
     "安全需求", "威胁建模", "身份认证", "访问控制", "输入验证", "安全编码", "漏洞分析",
     "代码审计", "渗透测试", "加密", "SQL注入", "跨站脚本",
-    "软件工程", "软件过程", "需求工程", "需求分析", "需求访谈", "用户故事", "用例建模",
-    "业务场景", "系统边界", "干系人", "问题域", "业务目标", "需求访谈", "用户故事", "需求分类",
-    "需求优先级", "用例图", "参与者", "用例规约", "主成功场景", "扩展场景", "领域模型", "实体",
-    "属性", "关联", "类图", "非功能需求", "性能指标", "可用性", "可靠性", "可维护性",
-    "验收条件", "验收标准", "需求追踪", "变更控制", "需求评审", "测试证据", "软件设计", "体系结构",
+    "软件工程", "软件过程", "需求工程", "需求分析", "用例建模", "软件设计", "体系结构",
     "详细设计", "软件测试", "软件维护", "配置管理", "项目管理", "质量保证", "UML", "敏捷开发",
     "机器学习", "监督学习", "无监督学习", "回归", "分类", "聚类", "特征工程", "模型训练",
     "模型评估", "过拟合", "交叉验证", "决策树", "支持向量机", "神经网络", "scikit-learn",
@@ -173,13 +164,6 @@ GRAPH_COURSE_CONCEPT_HINTS = (
     (("软件工程",), (
         "软件工程", "软件过程", "需求工程", "需求分析", "用例建模", "软件设计", "体系结构",
         "详细设计", "软件测试", "软件维护", "配置管理", "项目管理", "质量保证", "UML", "敏捷开发",
-    )),
-    (("软件需求分析", "需求分析与建模", "需求建模", "演示讲义"), (
-        "业务场景", "系统边界", "干系人", "问题域", "业务目标", "需求访谈", "用户故事", "需求分类",
-        "需求优先级", "用例图", "参与者", "用例规约", "主成功场景", "扩展场景", "领域模型", "实体",
-        "属性", "关联", "类图", "非功能需求", "性能指标", "可用性", "可靠性", "可维护性",
-        "验收条件", "验收标准", "需求追踪", "变更控制", "需求评审", "测试证据", "需求工程", "需求分析",
-        "用例建模", "软件测试", "质量保证", "UML",
     )),
     (("python机器学习", "机器学习快速入门"), (
         "Python", "机器学习", "监督学习", "无监督学习", "回归", "分类", "聚类", "特征工程",
@@ -333,7 +317,7 @@ def search_index(student_id: str, query: str, limit: int = 5) -> list[dict[str, 
                 continue
         score = _cosine(q_counter, token_counter)
         title_boost = 0.18 if any(t in _tokenize(doc["title"]) for t in q_tokens) else 0
-        source_boost = 0.06 if doc["source_type"] in {"generated_resource", "course_material"} else 0
+        source_boost = 0.06 if doc["source_type"] in {"generated_resource", "course_material", "uploaded_textbook"} else 0
         final_score = min(1.0, score + title_boost + source_boost)
         if final_score <= 0.01:
             continue
@@ -381,12 +365,10 @@ def ingest_textbook(student_id: str, filename: str, content: bytes) -> dict[str,
         raise ValueError("教材中可识别的正文过少，无法生成知识结构")
 
     textbook_id = hashlib.sha256(content).hexdigest()[:16]
-    textbook_dir = _textbook_dir()
-    chapter_knowledge_dir = _chapter_knowledge_dir()
-    textbook_dir.mkdir(parents=True, exist_ok=True)
-    chapter_knowledge_dir.mkdir(parents=True, exist_ok=True)
+    TEXTBOOK_DIR.mkdir(parents=True, exist_ok=True)
+    CHAPTER_KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
     stored_name = f"{textbook_id}{suffix}"
-    (textbook_dir / stored_name).write_bytes(content)
+    (TEXTBOOK_DIR / stored_name).write_bytes(content)
 
     chapters = _build_uploaded_textbook_chapters(text, Path(safe_name).stem)
     payload = {
@@ -398,8 +380,8 @@ def ingest_textbook(student_id: str, filename: str, content: bytes) -> dict[str,
         "total_kp_count": sum(len(item.get("keywords", [])) for item in chapters),
         "chapters": chapters,
     }
-    write_json(chapter_knowledge_dir / f"book_{textbook_id}.json", payload)
-    index_path = chapter_knowledge_dir / "index.json"
+    write_json(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json", payload)
+    index_path = CHAPTER_KNOWLEDGE_DIR / "index.json"
     index = read_json(index_path, {})
     if not isinstance(index, dict):
         index = {}
@@ -452,6 +434,11 @@ def _extract_textbook_text(content: bytes, suffix: str) -> str:
 
 
 def _build_uploaded_textbook_chapters(text: str, title: str) -> list[dict[str, Any]]:
+    # Markdown textbooks write chapters as "## 一、需求获取"; the numbering the
+    # chapter pattern looks for sits behind the heading markers, so strip
+    # level-1/2 markers first.  Deeper headings stay in the body on purpose:
+    # treating every "###" as a chapter turns one course into 20 fragments.
+    text = re.sub(r"(?m)^\s*#{1,2}\s+", "", text)
     heading_pattern = re.compile(
         r"(?m)^\s*(第\s*[一二三四五六七八九十百零〇\d]+\s*(?:章|节|篇|部分)\s*[^\n]{0,48}|\d+(?:\.\d+){0,3}\s+[^\n]{2,48}|[一二三四五六七八九十]+[、.]\s*[^\n]{2,48})\s*$"
     )
@@ -474,7 +461,12 @@ def _build_uploaded_textbook_chapters(text: str, title: str) -> list[dict[str, A
 
     chapters = []
     for index, (chapter_title, body) in enumerate(sections):
-        keywords = _extract_graph_keywords(body, chapter_title, 14)
+        # A quiz section is exercise material, not a knowledge point: its option
+        # lists ("借书 / 登录 / 选课") would otherwise become graph concepts.
+        if re.search(r"自测|练习|习题|测验|作业", chapter_title):
+            keywords: list[str] = []
+        else:
+            keywords = _chapter_concept_candidates(body, chapter_title, 14)
         summary_source = re.sub(r"\s+", " ", body)
         summary = summary_source[:180] + ("…" if len(summary_source) > 180 else "")
         chapters.append({
@@ -571,7 +563,6 @@ def graph_data(
             "documents": 1,
             "chapters": chapter_count,
             "concepts": concept_count,
-            "resources": len([node for node in nodes if node["kind"] == "resource"]),
             "relations": len(edges),
         },
     }
@@ -580,29 +571,23 @@ def graph_data(
 def _graph_sources(student_id: str) -> list[dict[str, Any]]:
     sources: list[dict[str, Any]] = []
     seen_titles: set[str] = set()
-    chapter_knowledge_dir = _chapter_knowledge_dir()
-    index = _read_json_file(chapter_knowledge_dir / "index.json")
+    index = _read_json_file(CHAPTER_KNOWLEDGE_DIR / "index.json")
     if isinstance(index, dict):
         for textbook_id, metadata in index.items():
             owner = str(metadata.get("student_id") or "") if isinstance(metadata, dict) else ""
             if owner and owner != student_id:
                 continue
-            payload = _read_json_file(chapter_knowledge_dir / f"book_{textbook_id}.json")
+            payload = _read_json_file(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json")
             if not isinstance(payload, dict):
                 continue
             title = Path(str(payload.get("filename") or metadata.get("filename") or textbook_id)).stem
             chapters = _deduplicate_chapters(payload.get("chapters") or [])
-            # Do not expose stale conversion artefacts as a course.  In
-            # particular, video recommendation notes and one-chunk caches
-            # used to appear as "validation·第1部分" in the graph.
-            if not chapters or all(not chapter.get("keywords") for chapter in chapters):
-                continue
             sources.append(
                 {
                     "id": f"textbook:{textbook_id}",
                     "title": title,
                     "source_type": "uploaded_textbook",
-                    "path": str(chapter_knowledge_dir / f"book_{textbook_id}.json"),
+                    "path": str(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json"),
                     "summary": f"由上传教材自动解析，共识别 {len(chapters)} 个章节。",
                     "chapters": chapters,
                 }
@@ -693,15 +678,32 @@ def _build_course_graph(
         for chapter_index, chapter in enumerate(selected_chapters):
             chapter_name = str(chapter.get("chapter_title") or f"知识模块 {chapter_index + 1}")
             chapter_id = _stable_id("chapter", f"{root_id}:{chapter_name}")
-            semantic_keywords = _extract_graph_keywords(
-                f"{chapter_name}\n{chapter.get('summary', '')}",
-                source["title"],
-                per_chapter * 2,
-            )
-            keywords = _clean_course_keywords(
-                [*(chapter.get("keywords") or []), *semantic_keywords],
-                source["title"],
-            )[:per_chapter]
+            # A concept that merely repeats the chapter heading adds a node with
+            # nothing new (「七、从用例到可验收的需求」is the chapter itself).
+            chapter_heading = re.sub(r"^[一二三四五六七八九十百\d]+[、.．]\s*", "", chapter_name).strip()
+            semantic_keywords = [
+                term
+                for term in _extract_graph_keywords(
+                    f"{chapter_name}\n{chapter.get('summary', '')}",
+                    source["title"],
+                    per_chapter * 2,
+                )
+                if term != chapter_heading
+                and not _looks_like_clause_fragment(term)
+                and not _only_in_negative_context(term, f"{chapter_name}\n{chapter.get('summary', '')}")
+            ]
+            keywords = _clean_course_keywords(semantic_keywords, source["title"])
+            # The course-domain vocabulary is a whitelist, so it silently drops
+            # concepts the uploaded chapter actually teaches (include / extend /
+            # 参与者 for a requirements-modelling course).  Keep the whitelist for
+            # statistically mined phrases, but always admit the chapter's own
+            # authored keywords.
+            for candidate in chapter.get("keywords") or []:
+                if candidate in keywords:
+                    continue
+                if _is_authored_concept(candidate) or _is_graph_keyword_candidate(candidate, source["title"]):
+                    keywords.append(candidate)
+            keywords = keywords[:per_chapter]
             chapter_node = {
                 "id": chapter_id,
                 "name": chapter_name,
@@ -752,18 +754,8 @@ def _build_course_graph(
             resource_text = " ".join(
                 [str(resource.get("title", "")), " ".join(map(str, resource.get("tags", []))), str(resource.get("type", ""))]
             )
-            resource_text_lower = resource_text.lower()
-            resource_type = str(resource.get("type", "")).lower()
-            resource_meta = resource.get("meta") if isinstance(resource.get("meta"), dict) else {}
-            is_local_course_resource = bool(resource_meta.get("local_only")) or resource_type in {
-                "lecture_doc", "reading", "practice_case"
-            }
-            is_video_recommendation = any(marker in resource_text_lower for marker in ("视频推荐", "b站", "腾讯视频", "youtube"))
-            related = (
-                source_filter == "generated"
-                or source["title"].lower() in resource_text_lower
-                or any(concept in resource_text_lower for concept in list(concept_nodes)[:20])
-                or (is_local_course_resource and not is_video_recommendation)
+            related = source_filter == "generated" or source["title"] in resource_text or any(
+                concept in resource_text for concept in list(concept_nodes)[:20]
             )
             if not related:
                 continue
@@ -841,6 +833,122 @@ def _document_modules(doc: dict[str, Any]) -> list[dict[str, Any]]:
     return modules
 
 
+def _is_authored_concept(term: str, allow_generic: bool = False) -> bool:
+    """Filter for author-emphasised concept names (headings, bold, code spans).
+
+    `_is_graph_keyword_candidate` is tuned for statistically mined phrases and
+    rejects both pure Latin words and Chinese terms without a known concept
+    suffix, which discarded exactly the terms a lecturer marks as knowledge
+    points (include / extend / 参与者 / 泛化).  Keep its noise rules, drop the
+    shape rules.
+    """
+    normalized = re.sub(r"\s+", " ", str(term or "")).strip(" -_、，。:：•")
+    if not normalized or len(normalized) > 24:
+        return False
+    lowered = normalized.lower()
+    if lowered in GRAPH_GENERIC_TERMS and not allow_generic:
+        return False
+    if any(marker in lowered for marker in GRAPH_KEYWORD_NOISE_MARKERS):
+        return False
+    if re.search(r"(的|了|着|过)$", normalized):
+        return False
+    if re.search(r"(对比|要点|示例|模板|错误|自测题|参考答案)$", normalized):
+        return False
+    return bool(re.search(r"[\u4e00-\u9fff]{2,}", normalized) or re.fullmatch(r"[A-Za-z][A-Za-z0-9+#.]{2,}", normalized))
+
+
+def _looks_like_clause_fragment(term: str) -> bool:
+    """Reject verb-phrase fragments that a frequency splitter produces.
+
+    「判冲突、排优先级、划边界、建模型」splits into 建模型, and 「不能留到测试」
+    is a whole clause: neither is a knowledge point, while real terms such as
+    「遗漏隐性需求」also start with a verb and must survive.
+    """
+
+    if not term:
+        return False
+    if term[0] in "不没别勿":
+        return True
+    if re.search(r"(?:测试|一下|了|着)$", term):
+        return True
+    if len(term) <= 6 and re.match(r"^[建排划判做用把让使留去掉]", term) and term not in {"建模", "用例"}:
+        return True
+    return False
+
+
+def _only_in_negative_context(term: str, body: str) -> bool:
+    """True when every occurrence of the term sits inside a negation.
+
+    「用例不是界面、不是函数、不是步骤」must not turn 界面/函数/步骤 into
+    knowledge points: they are counter-examples, and the graph would teach the
+    exact opposite of the chapter.
+    """
+
+    hits = [match.start() for match in re.finditer(re.escape(term), body)]
+    if not hits:
+        return False
+    negatives = ("不是", "不能", "不要", "不得", "避免", "禁止", "无需", "不必", "而非", "不算")
+    for position in hits:
+        window = body[max(0, position - 6):position]
+        if not any(negative in window for negative in negatives):
+            return False
+    return True
+
+
+def _chapter_concept_candidates(body: str, chapter_title: str, limit: int) -> list[str]:
+    """Concept names for one chapter, author signals first.
+
+    Frequency alone produced fragments such as「不能留到测试」while missing the
+    concepts a lecturer actually emphasised.  Markdown carries the author's own
+    emphasis, so prefer, in order: level-3 headings (a sub-section is usually
+    one knowledge point), inline code / bold terms, then the statistical
+    extractor as fallback.
+    """
+    candidates: list[str] = []
+
+    # A heading is the strongest author signal available, so it bypasses the
+    # generic-term blacklist:「参与者」「用例」are generic words in a random
+    # sentence but the actual knowledge points of a UML chapter.
+    for heading in re.findall(r"(?m)^\s*#{3,4}\s+([^\n]{2,40})\s*$", body):
+        cleaned = re.sub(r"^\s*\d+(?:\.\d+)*\s*", "", heading)
+        cleaned = re.sub(r"[（(][^）)]{0,20}[）)]\s*$", "", cleaned).strip()
+        if cleaned and _is_authored_concept(cleaned, allow_generic=True):
+            candidates.append(cleaned)
+
+    for bold, code in re.findall(r"\*\*([^*\n]{2,24})\*\*|`([^`\n]{2,24})`", body):
+        term = (bold or code).strip().strip("：:，,。.")
+        # Bold sentences are emphasis, not concept names: a concept name is
+        # reused across the chapter, a highlighted claim usually appears once.
+        if term and len(term) <= 14 and not re.search(r"[，。；]", term) and (code or body.count(term) >= 2):
+            if _is_authored_concept(term):
+                candidates.append(term)
+
+    authored: list[str] = []
+    for term in candidates:
+        normalized = re.sub(r"\s+", " ", term).strip(" -_、，。:：")
+        # Candidates already passed their own gate (headings may be generic
+        # words), so do not re-apply the strict shape filter here.
+        if normalized and normalized not in authored:
+            authored.append(normalized)
+
+    # The author's own headings must survive verbatim: the statistical cleaner
+    # drops generic-looking words such as「用例」, which are exactly the
+    # knowledge points of this kind of chapter.
+    merged = list(authored)
+    if len(merged) < limit:
+        for term in _clean_keywords(_extract_graph_keywords(body, chapter_title, limit), chapter_title):
+            if term not in merged:
+                merged.append(term)
+            if len(merged) >= limit:
+                break
+    # Authored words still have to be taught positively somewhere in the body.
+    return [
+        term
+        for term in merged
+        if not _only_in_negative_context(term, body) and not _looks_like_clause_fragment(term)
+    ][:limit]
+
+
 def _extract_graph_keywords(text: str, title: str, limit: int) -> list[str]:
     content = str(text or "")
     content_lower = content.lower()
@@ -899,8 +1007,6 @@ def _deduplicate_chapters(chapters: list[dict[str, Any]]) -> list[dict[str, Any]
     display_titles: dict[str, tuple[int, str]] = {}
     for chapter in chapters:
         display_title = _chapter_display_title(chapter)
-        if _is_stale_chapter_title(display_title):
-            continue
         title = re.sub(r"\s+", "", display_title).lower()
         if not title:
             continue
@@ -927,15 +1033,6 @@ def _chapter_display_title(chapter: dict[str, Any]) -> str:
     if re.match(r"第\s*\d+\s*章", first_line) and len(first_line) <= 80:
         return first_line
     return original
-
-
-def _is_stale_chapter_title(title: str) -> bool:
-    normalized = re.sub(r"\s+", "", str(title or "")).lower()
-    return bool(
-        not normalized
-        or re.search(r"(?:book_|textbook_|第1部分|第01部分|视频推荐|b站|腾讯视频)", normalized, re.I)
-        or re.fullmatch(r"[0-9a-f]{16,32}", normalized)
-    )
 
 
 def _clean_keywords(values: list[Any], title: str = "") -> list[str]:
@@ -1077,6 +1174,36 @@ def track_node(student_id: str, node_id: str, score: float, note: str = "") -> d
     return {"node_id": node_id, "mastery": new_mastery, "attempts": attempts}
 
 
+def track_by_topic(student_id: str, topics: list[str], score: float, note: str = "") -> dict[str, Any] | None:
+    """按题目标签/知识点匹配图谱节点再回写掌握度。
+
+    匹配规则：题目标签与概念/章节节点的 `name` 或 `keywords` 有包含关系才算命中。
+    命中不了就返回 None —— 宁可不记，也不能把掌握度算到不相干的节点上
+    （那才是真正的假数据）。
+    """
+    probes = [str(item).strip() for item in topics if str(item).strip()]
+    if not probes:
+        return None
+    graph = graph_data(student_id)
+    target: dict[str, Any] | None = None
+    for node in graph.get("nodes") or []:
+        if node.get("kind") not in {"concept", "chapter"}:
+            continue
+        haystack = [str(node.get("name") or "")] + [str(item) for item in (node.get("keywords") or [])]
+        if any(probe and item and (probe in item or item in probe) for probe in probes for item in haystack):
+            target = node
+            break
+    if not target:
+        return None
+    result = track_node(student_id, node_id=str(target.get("id")), score=score, note=note)
+    return {
+        "node_id": target.get("id"),
+        "node_name": target.get("name"),
+        "mastery": result.get("mastery"),
+        "attempts": result.get("attempts"),
+    }
+
+
 def _collect_documents(student_id: str) -> list[dict[str, Any]]:
     docs: list[dict[str, Any]] = []
 
@@ -1087,6 +1214,52 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
         if not text:
             continue
         docs.append(_doc_item(path=path, text=text, source_type="course_material"))
+
+    # Uploaded textbooks used to feed the knowledge graph only, so a search for
+    # a concept that lives in the textbook body still fell back to generated
+    # question banks.  Index the textbook body itself (the original upload when
+    # readable, otherwise the parsed chapter keywords) so textbook content is
+    # retrievable and outranks derived resources.
+    textbook_index = _read_json_file(CHAPTER_KNOWLEDGE_DIR / "index.json")
+    if isinstance(textbook_index, dict):
+        for textbook_id, metadata in textbook_index.items():
+            owner = str(metadata.get("student_id") or "") if isinstance(metadata, dict) else ""
+            if owner and owner != student_id:
+                continue
+            filename = str(metadata.get("filename") or textbook_id) if isinstance(metadata, dict) else str(textbook_id)
+            stored = TEXTBOOK_DIR / f"{textbook_id}{Path(filename).suffix.lower()}"
+            text = _read_text(stored)
+            doc_path = stored
+            if not text:
+                payload = _read_json_file(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json")
+                if not isinstance(payload, dict):
+                    continue
+                parts: list[str] = []
+                for chapter in payload.get("chapters") or []:
+                    if not isinstance(chapter, dict):
+                        continue
+                    for key in ("title", "name", "summary", "description"):
+                        value = str(chapter.get(key) or "").strip()
+                        if value:
+                            parts.append(value)
+                    parts.extend(str(k).strip() for k in chapter.get("keywords") or [] if str(k).strip())
+                text = "\n".join(parts)
+                doc_path = CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json"
+            if not text:
+                continue
+            title = Path(filename).stem
+            docs.append(
+                {
+                    "id": f"textbook:{textbook_id}",
+                    "title": title,
+                    "source_type": "uploaded_textbook",
+                    "resource_type": "",
+                    "path": str(doc_path),
+                    "text": text,
+                    "tags": _guess_tags(title + "\n" + text),
+                    "tokens": _tokenize(title + "\n" + text),
+                }
+            )
 
     for path in sorted(SAMPLE_DIR.glob("*.md")) if SAMPLE_DIR.exists() else []:
         text = _read_text(path)

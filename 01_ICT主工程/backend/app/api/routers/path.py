@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.ids import new_id
 from app.schemas import ApiResponse, PathBranchRequest, PathPlanRequest, PathStageQuestionRequest
 from app.services.learning_state import path_overview
+from app.services.local_question_bank import build_local_question_bank, llm_ready
 from app.services.path_progress import add_path_branch, register_stage_question_bank
 from app.services.resource_structure import extract_questions_json
 
@@ -120,10 +121,16 @@ async def generate_stage_questions(req: PathStageQuestionRequest) -> ApiResponse
         async def collect_model_chunk(_: str) -> None:
             return None
 
-        resources = await orchestrator.generate(
-            student_id=req.student_id,
-            requirement=requirement,
-            on_chunk=collect_model_chunk,
+        resources = (
+            [
+                build_local_question_bank(student_id=req.student_id, requirement=requirement)
+            ]
+            if not llm_ready()
+            else await orchestrator.generate(
+                student_id=req.student_id,
+                requirement=requirement,
+                on_chunk=collect_model_chunk,
+            )
         )
         question_bank = next((item for item in resources if item.get("type") == "question_bank"), None)
         if not question_bank:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, Query
 
 from app.api.streaming import stream_live_operation, stream_response
@@ -94,9 +96,7 @@ def _with_legacy_tutor_fields(result: dict) -> dict:
     answer = payload.get("answer", result)
     references = _answer_references(answer, payload)
     credible_references = _credible_references(references)
-    markdown = _answer_markdown(answer)
-    if not credible_references:
-        markdown = _append_evidence_notice(markdown)
+    markdown = _strip_meta_preamble(_answer_markdown(answer))
 
     return {
         **payload,
@@ -140,6 +140,31 @@ def _answer_markdown(answer) -> str:
             if isinstance(value, str) and value.strip():
                 return value.strip()
     return ""
+
+
+_META_PREFIX = re.compile(r"^(?:>\s*)?(?:说明|备注|注|补充说明|提示|另外)\s*[:：]")
+_META_HINT = re.compile(r"检索匹配度|知识库命中率|命中率|历史反馈|dislike|本次回答主要基于|通用计算机科学知识|以上内容仅作答疑框架")
+
+
+def _strip_meta_preamble(markdown: str) -> str:
+    """Drop model-written meta preambles ("说明：本次回答主要基于…") so the answer starts with content."""
+    if not markdown:
+        return markdown
+    lines = markdown.splitlines()
+    start = 0
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            start = index + 1
+            continue
+        quoted = stripped.startswith(">")
+        body = stripped.lstrip(">").strip()
+        if _META_PREFIX.match(stripped) or (quoted and _META_HINT.search(body)) or _META_HINT.search(body):
+            start = index + 1
+            continue
+        break
+    cleaned = "\n".join(lines[start:]).strip()
+    return cleaned or markdown.strip()
 
 
 def _append_evidence_notice(markdown: str) -> str:

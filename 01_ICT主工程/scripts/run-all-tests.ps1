@@ -3,30 +3,15 @@ param(
   [int]$BackendPort = 8000,
   [int]$FrontendPort = 5173,
   [switch]$SkipInstall,
-  [switch]$SkipE2E,
-  [switch]$GeneratedFlow
+  [switch]$SkipE2E
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $backendDir = Join-Path $root "backend"
 $frontendDir = Join-Path $root "frontend-vue"
-$seedDir = Join-Path $root "roadshow-seed"
 $resultsDir = Join-Path $root "test-results"
 New-Item -ItemType Directory -Force -Path $resultsDir | Out-Null
-$runtimeDataDir = Join-Path $resultsDir ("runtime-data-" + [guid]::NewGuid().ToString("N"))
-New-Item -ItemType Directory -Force -Path $runtimeDataDir | Out-Null
-$generatedDataDir = Join-Path $resultsDir "generated-dataset"
-if ($GeneratedFlow) {
-  Write-Host "==== Generate isolated test dataset ====" -ForegroundColor Cyan
-  & python (Join-Path $root "tests\generate_test_dataset.py") "--output" $generatedDataDir
-  if ($LASTEXITCODE -ne 0) { throw "generated dataset failed with exit code $LASTEXITCODE" }
-  Get-ChildItem -LiteralPath $generatedDataDir -Force | Copy-Item -Destination $runtimeDataDir -Recurse -Force
-} elseif (Test-Path -LiteralPath $seedDir) {
-  Get-ChildItem -LiteralPath $seedDir -Force | Copy-Item -Destination $runtimeDataDir -Recurse -Force
-} else {
-  Get-ChildItem -LiteralPath (Join-Path $backendDir "data") -Force | Copy-Item -Destination $runtimeDataDir -Recurse -Force
-}
 
 function Write-Step($message) {
   Write-Host ""
@@ -83,8 +68,7 @@ try {
   Start-Sleep -Seconds 1
 
   $env:PYTHONPATH = $backendDir
-  $env:DATA_DIR = $runtimeDataDir
-  $env:ROADSHOW_BACKEND_PORT = "$BackendPort"
+  $env:DEMO_MODE = "true"
   $backend = Start-Process -FilePath "python" -WorkingDirectory $backendDir -ArgumentList @(
     "-m", "uvicorn", "app.main:app",
     "--host", $HostAddr,
@@ -104,11 +88,6 @@ try {
   Write-Step "Integration flow"
   Invoke-Checked { python (Join-Path $root "tests\integration_flow.py") "http://$HostAddr`:$BackendPort" } "integration flow"
 
-  if ($GeneratedFlow) {
-    Write-Step "Generated full flow"
-    Invoke-Checked { python (Join-Path $root "tests\generated_full_flow.py") "http://$HostAddr`:$BackendPort" } "generated full flow"
-  }
-
   Write-Step "Backend unit tests"
   Push-Location $backendDir
   $env:PYTHONPATH = $backendDir
@@ -124,10 +103,7 @@ try {
     Write-Step "Frontend E2E"
     Push-Location $frontendDir
     $env:PLAYWRIGHT_BASE_URL = "http://$HostAddr`:$FrontendPort"
-    Invoke-Checked { npm run test:roadshow -- --project=msedge --workers=1 } "roadshow E2E"
-    if ($GeneratedFlow) {
-      Invoke-Checked { npm run test:generated-flow -- --project=msedge --workers=1 } "generated flow E2E"
-    }
+    Invoke-Checked { npm run test:e2e -- --project=msedge --workers=1 } "frontend E2E"
     Pop-Location
   }
 } catch {

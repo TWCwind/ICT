@@ -68,8 +68,17 @@ const recommendations = ref<any[]>([])
 const pathLoading = ref(true)
 const feedLoading = ref(true)
 const pathRefreshing = ref(false)
+const refreshingAll = ref(false)
+const toast = ref('')
+let toastTimer: ReturnType<typeof setTimeout> | undefined
+function showToast(message: string, duration = 1000) {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = message
+  toastTimer = setTimeout(() => { toast.value = '' }, duration)
+}
 const planning = ref(false)
 const feedbackPending = ref('')
+const resourceFeedback = ref<{ id: string; action: 'like' | 'dislike'; message: string } | null>(null)
 const removingResourceId = ref('')
 const pathError = ref('')
 const feedError = ref('')
@@ -78,6 +87,14 @@ const notice = ref('')
 const selectedNodeId = ref('')
 const selectedResourceId = ref('')
 const showRules = ref(true)
+const rulesTrack = ref<HTMLElement | null>(null)
+
+function scrollRules(direction: number) {
+  const track = rulesTrack.value
+  if (!track) return
+  const step = Math.max(220, Math.round(track.clientWidth * 0.72))
+  track.scrollBy({ left: direction * step, behavior: 'smooth' })
+}
 const showAllRecommendations = ref(false)
 const goalInput = ref(goals.value || '')
 const planMeta = ref<PathMeta>({ strategy: [], dynamicRules: [], rationale: '' })
@@ -118,6 +135,28 @@ const currentPathMastery = computed(() => {
   const selected = selectedNode.value || currentPathStage.value
   return Math.max(0, Math.min(100, Math.round(Number(selected?.mastery) || 0)))
 })
+const currentStageProgress = computed(() => {
+  const stage: any = selectedNode.value || currentPathStage.value
+  const target = Math.max(0, Number(stage?.target_count) || 0)
+  const answered = Math.max(0, Number(stage?.answered_count) || 0)
+  const correct = Math.max(0, Number(stage?.correct_count) || 0)
+  const mastery = currentPathMastery.value
+  const passGoal = 80
+  const requiredCorrect = target ? Math.ceil((passGoal / 100) * target) : 0
+  const needCorrect = Math.max(0, requiredCorrect - correct)
+  const passed = target > 0 && answered >= target && mastery >= passGoal
+  let text = '先生成学习路径，再看这一阶段的掌握度。'
+  if (stage && !target) {
+    text = '本阶段还没有配套练习题。先在右侧资源里「开始学习」读资料，再从练习诊断进入本阶段题目，答题后掌握度才会开始累积。'
+  } else if (passed) {
+    text = `本阶段已达标：目标 ${target} 题、答对 ${correct} 题，已解锁下一阶段。继续做下一阶段的题会更稳。`
+  } else if (needCorrect > 0) {
+    text = `掌握度 = 本阶段答对题数 ÷ 目标题量（${target} 题）。已答 ${answered} 题、答对 ${correct} 题，再答对 ${needCorrect} 题即达 80%，可解锁下一阶段。`
+  } else if (stage) {
+    text = `答对题数已够（${correct}/${target}），把剩下的题做完并保持正确率 ≥80% 就能通过本阶段。`
+  }
+  return { target, answered, correct, mastery, needCorrect, passed, text }
+})
 const currentStageIndex = computed(() => {
   if (!overview.value?.nodes.length || !selectedNode.value) return 0
   return Math.max(0, overview.value.nodes.findIndex((item: any) => nodeId(item) === nodeId(selectedNode.value)))
@@ -132,6 +171,19 @@ const displayStages = computed(() => (overview.value?.nodes || []).map((node: an
   mastery: Number.isFinite(Number(node.mastery)) ? `${Number(node.mastery)}%` : '--',
   step: node.step || index + 1,
 })))
+// 蓝色进度波线只画到「最后一个已完成/进行中」阶段的节点处，待学习阶段保持灰色
+const routeProgressRatio = computed(() => {
+  const stages = displayStages.value as Array<{ status?: string }>
+  if (!stages.length) return 0
+  let reach = -1
+  stages.forEach((stage, index) => {
+    const status = String(stage.status || 'locked')
+    if (['completed', 'done', 'current', 'active'].includes(status)) reach = index
+  })
+  if (reach < 0) return 0
+  if (reach >= stages.length - 1) return 1
+  return Math.min(0.999, (reach + 0.5) / stages.length)
+})
 const learnerDimensions = computed(() => Object.fromEntries((profileOverview.value?.dimensions || []).map((item) => [item.key, item.value])))
 const pathRadarDimensions = computed(() => {
   const source = evaluationOverview.value?.dimensions || []
@@ -222,7 +274,17 @@ async function loadFeed(options: { preserveSelection?: boolean } = {}) {
 }
 
 async function refreshAll() {
-  await Promise.allSettled([loadPath({ background: true }), loadFeed({ preserveSelection: true }), loadLearnerEvidence()])
+  if (refreshingAll.value) return
+  refreshingAll.value = true
+  notice.value = ''
+  const startedAt = Date.now()
+  try {
+    await Promise.allSettled([loadPath({ background: true }), loadFeed({ preserveSelection: true }), loadLearnerEvidence()])
+    const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
+    showToast(`已按最新证据重新同步（用时 ${seconds} 秒）`)
+  } finally {
+    refreshingAll.value = false
+  }
 }
 
 async function loadLearnerEvidence() {
@@ -315,6 +377,13 @@ async function feedback(action: 'like' | 'dislike') {
     notice.value = action === 'like'
       ? '正向反馈已写入，推荐流已按最新权重刷新。'
       : '负向反馈已写入，系统会降低同类资源权重并判断是否需要策略进化。'
+    resourceFeedback.value = {
+      id,
+      action,
+      message: action === 'like'
+        ? '已记录：有帮助，推荐会按这个偏好继续加权重。'
+        : '已记录：暂缓推送，同类资源的权重已下调。',
+    }
     await loadFeed({ preserveSelection: true })
   } catch (reason: any) {
     actionError.value = reason?.message || '反馈提交失败'
@@ -377,6 +446,20 @@ async function removeCurrentResource() {
   }
 }
 
+async function startStagePractice() {
+  const stage: any = selectedNode.value || currentPathStage.value
+  if (!stage) {
+    actionError.value = '当前没有可练习的路径阶段，请先生成学习路径。'
+    return
+  }
+  const stageBanks = Array.isArray(stage.question_bank_ids) ? stage.question_bank_ids.map(String) : []
+  const bankId = String(stage.active_question_bank_id || stageBanks[0] || '')
+  await router.push({
+    path: '/exercise',
+    query: { stage: nodeId(stage), autostart: '1', ...(bankId ? { bank: bankId } : {}) },
+  })
+}
+
 async function startResourceReading() {
   if (!selectedResource.value) return
   if (isQuestionResource(selectedResource.value)) {
@@ -419,8 +502,16 @@ async function startResourceReading() {
     const title = resourceTitle(selectedResource.value)
     const safeTitle = title.replace(/[&<>"']/g, (char: string) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char))
     const content = renderMarkdown(text)
+    // 阅读页是手工拼的独立文档，必须把 KaTeX / Markdown 样式表带过去，否则公式会被压成一行乱码
+    const readerStyles = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+      .map((link) => link.href)
+      .filter((href) => /markdownRenderer|katex/i.test(href))
+    const styleLinks = (readerStyles.length ? readerStyles : Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).map((link) => link.href))
+      .map((href) => `<link rel="stylesheet" href="${href}">`)
+      .join('')
+    const ownHeading = /^\s*#\s+/.test(text)
     readingWindow.document.open()
-    readingWindow.document.write(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle}</title><style>body{margin:0;background:#f4f7fb;color:#20344f;font-family:"Microsoft YaHei","PingFang SC",sans-serif;line-height:1.8}.reader{box-sizing:border-box;width:min(920px,calc(100% - 32px));min-height:100vh;margin:0 auto;padding:48px 56px;background:#fff;box-shadow:0 0 40px rgba(31,70,120,.08)}h1,h2,h3,h4{color:#102a4c;line-height:1.35;margin-top:1.5em}h1{margin-top:0;font-size:30px}p,li{font-size:16px}pre{overflow:auto;padding:18px;border-radius:12px;background:#102033;color:#ecf5ff;font:14px/1.65 Consolas,monospace}code{font-family:Consolas,monospace}blockquote{margin:18px 0;padding:10px 18px;border-left:4px solid #2f74ff;background:#f1f6ff}table{width:100%;border-collapse:collapse}th,td{padding:10px;border:1px solid #dce7f5;text-align:left}@media(max-width:640px){.reader{width:100%;padding:28px 20px}}</style></head><body><main class="reader"><h1>${safeTitle}</h1>${content}</main></body></html>`)
+    readingWindow.document.write(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle}</title>${styleLinks}<style>body{margin:0;background:#f4f7fb;color:#20344f;font-family:"Microsoft YaHei","PingFang SC",sans-serif;line-height:1.8}.reader{box-sizing:border-box;width:min(920px,calc(100% - 32px));min-height:100vh;margin:0 auto;padding:48px 56px;background:#fff;box-shadow:0 0 40px rgba(31,70,120,.08)}h1,h2,h3,h4{color:#102a4c;line-height:1.35;margin-top:1.5em}h1{margin-top:0;font-size:30px}p,li{font-size:16px}pre{overflow:auto;padding:18px;border-radius:12px;background:#102033;color:#ecf5ff;font:14px/1.65 Consolas,monospace}code{font-family:Consolas,monospace}blockquote{margin:18px 0;padding:10px 18px;border-left:4px solid #2f74ff;background:#f1f6ff}table{width:100%;border-collapse:collapse}th,td{padding:10px;border:1px solid #dce7f5;text-align:left}.katex-display{margin:16px 0;padding:2px 0;overflow-x:auto;overflow-y:hidden}.katex{font-size:1.05em}table .katex{font-size:1em}@media(max-width:640px){.reader{width:100%;padding:28px 20px}}</style></head><body><main class="reader">${ownHeading ? '' : `<h1>${safeTitle}</h1>`}${content}</main></body></html>`)
     readingWindow.document.close()
   } catch (reason: any) {
     readingWindow.close()
@@ -504,6 +595,9 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="competition-page path-command-page">
+    <Teleport to="body">
+      <div v-if="toast" class="shot-toast" role="status" aria-live="polite"><Check :size="16" />{{ toast }}</div>
+    </Teleport>
     <form class="shot-path-goal" @submit.prevent="generatePath"><label for="path-real-goal">学习目标</label><input id="path-real-goal" v-model="goalInput" placeholder="输入希望达成的真实能力或项目成果" /><button type="submit" :disabled="planning || !goalInput.trim()"><LoaderCircle v-if="planning" class="spin" :size="15" /><Sparkles v-else :size="15" />{{ overview?.has_plan ? '重新规划' : '生成路径' }}</button></form>
     <section class="shot-path" aria-label="本周学习路径">
       <div v-if="pathError || feedError || actionError" class="shot-notice is-error"><CircleAlert :size="18" />{{ actionError || pathError || feedError }}<button type="button" @click="refreshAll">重新加载</button></div>
@@ -524,10 +618,11 @@ onBeforeUnmount(() => {
           <div class="shot-path-radar"><strong><Target :size="14" />能力证据</strong><div class="shot-path-radar-canvas"><svg viewBox="0 0 238 156" role="img" aria-label="学习路径能力雷达图"><g class="path-radar-grid"><polygon v-for="level in [25,50,75,100]" :key="level" :points="pathRadarPolygon(Array(5).fill(level))" /><line v-for="(point,index) in pathRadarAxes" :key="index" x1="119" y1="78" :x2="point.x" :y2="point.y" /></g><polygon class="path-radar-series" :points="pathRadarPolygon(pathRadarValues)" /><circle v-for="(item,index) in pathRadarDimensions" :key="item.label" :cx="pathRadarPoint(index,item.value).x" :cy="pathRadarPoint(index,item.value).y" r="2.8" /></svg><label class="radar-concept">{{ pathRadarDimensions[0].label }}<b>{{ pathRadarDimensions[0].value }}</b></label><label class="radar-apply">{{ pathRadarDimensions[1].label }}<b>{{ pathRadarDimensions[1].value }}</b></label><label class="radar-practice">{{ pathRadarDimensions[2].label }}<b>{{ pathRadarDimensions[2].value }}</b></label><label class="radar-memory">{{ pathRadarDimensions[3].label }}<b>{{ pathRadarDimensions[3].value }}</b></label><label class="radar-logic">{{ pathRadarDimensions[4].label }}<b>{{ pathRadarDimensions[4].value }}</b></label></div></div>
         </aside>
 
-        <main class="shot-path-main"><header><div><h1>为你生成的本周学习路径</h1><p>基于学习画像、练习表现和资源反馈动态调整</p></div><button type="button" :disabled="pathRefreshing || feedLoading" @click="refreshAll"><RefreshCw :size="15" />路径总览</button></header>
+        <main class="shot-path-main"><header><div><h1>为你生成的本周学习路径</h1><p>基于学习画像、练习表现和资源反馈动态调整</p></div><button type="button" :disabled="refreshingAll || pathRefreshing || feedLoading" @click="refreshAll"><LoaderCircle v-if="refreshingAll" class="spin" :size="15" /><RefreshCw v-else :size="15" />{{ refreshingAll ? '同步中…' : '路径总览' }}</button></header>
           <section class="shot-path-metrics"><article><small>当前掌握度</small><strong>{{ currentPathMastery }}%</strong><i class="metric-ring" :style="{ background: `conic-gradient(#1769ff 0 ${currentPathMastery}%, #dce8f6 ${currentPathMastery}% 100%)` }"><b></b></i></article><article class="metric-resources"><small>推荐资源</small><strong>{{ recommendations.length }}<em>个</em></strong><Layers3 :size="36" /></article></section>
+          <p class="shot-mastery-hint"><span>{{ currentStageProgress.text }}</span><button type="button" @click="startStagePractice"><Target :size="14" />去做阶段练习</button></p>
           <section v-if="displayStages.length" class="shot-route-track">
-            <svg class="shot-route-wave" viewBox="0 0 860 90" preserveAspectRatio="none" aria-hidden="true"><path class="wave-base" d="M0 52 C38 52 43 38 70 42 S112 62 150 48 S177 27 194 42 S250 74 302 24 S360 58 426 45 S488 66 558 45 S620 63 686 48 S765 58 860 50"/><path class="wave-done" d="M0 52 C38 52 43 38 70 42 S112 62 150 48 S177 27 194 42 S250 74 302 24"/></svg>
+            <svg class="shot-route-wave" viewBox="0 0 860 90" preserveAspectRatio="none" aria-hidden="true"><path class="wave-base" d="M0 52 C38 52 43 38 70 42 S112 62 150 48 S177 27 194 42 S250 74 302 24 S360 58 426 45 S488 66 558 45 S620 63 686 48 S765 58 860 50"/><path class="wave-done" pathLength="1" :style="{ strokeDasharray: `${routeProgressRatio} 1` }" d="M0 52 C38 52 43 38 70 42 S112 62 150 48 S177 27 194 42 S250 74 302 24 S360 58 426 45 S488 66 558 45 S620 63 686 48 S765 58 860 50"/></svg>
             <button v-for="(node,index) in displayStages" :key="node.id" type="button" :class="[`is-${node.status}`,{ active: node.id === selectedNodeId }]" @click="selectedNodeId = node.id">
               <mark v-if="node.status === 'warning'">需补强</mark>
               <div v-if="node.branches?.length" class="shot-route-branch-chain" :aria-label="`从${node.title}展开的学习分支`">
@@ -545,12 +640,30 @@ onBeforeUnmount(() => {
           <div v-else class="shot-empty">尚未生成学习路径。请在上方输入真实目标并启动规划。</div>
         </main>
 
-        <aside class="shot-path-resource"><header><h2>当前推送资源</h2></header><template v-if="selectedResource"><div class="shot-current-resource"><span><FileText :size="25" /></span><div><strong>{{ resourceTitle(selectedResource) }}</strong></div><b>{{ resourceScore(selectedResource) ?? '--' }}%</b><div class="shot-resource-tags"><em>{{ resourceType(selectedResource) }}</em><em v-for="tag in resourceTags(selectedResource).slice(0, 3)" :key="tag">{{ tag }}</em></div></div><section><h3>推荐理由</h3><p v-if="showRecommendationReason">{{ resourceReason(selectedResource) }}</p><h3>资源组合</h3><div class="shot-resource-chips"><span v-for="item in recommendations.slice(0, 4)" :key="resourceId(item)"><FileText :size="13" />{{ resourceType(item) }}</span></div></section><footer><button type="button" @click="startResourceReading"><CirclePlay :size="16" />开始学习</button><button type="button" :disabled="feedLoading" @click="replaceResource"><RefreshCw :size="15" />替换资源</button><button type="button" :aria-expanded="showRecommendationReason" @click="showRecommendationReason = !showRecommendationReason"><BookOpenCheck :size="15" />推荐依据</button><button type="button" :disabled="Boolean(feedbackPending)" @click="feedback('like')"><ThumbsUp :size="15" />有帮助</button><button type="button" :disabled="Boolean(feedbackPending)" @click="feedback('dislike')"><ThumbsDown :size="15" />暂缓推送</button><button class="shot-resource-delete" type="button" :disabled="Boolean(removingResourceId)" :aria-label="`从当前推送中删除${resourceTitle(selectedResource)}`" @click="removeCurrentResource"><LoaderCircle v-if="removingResourceId" class="spin" :size="15" /><Trash2 v-else :size="15" />{{ removingResourceId ? '删除中' : '删除推送' }}</button></footer></template><div v-else class="shot-empty">暂无推荐资源，先进入资源工坊生成内容。</div></aside>
+        <aside class="shot-path-resource"><header><h2>当前推送资源</h2></header><template v-if="selectedResource"><div class="shot-current-resource"><span><FileText :size="25" /></span><div><strong>{{ resourceTitle(selectedResource) }}</strong></div><b>{{ resourceScore(selectedResource) ?? '--' }}%</b><div class="shot-resource-tags"><em>{{ resourceType(selectedResource) }}</em><em v-for="tag in resourceTags(selectedResource).slice(0, 3)" :key="tag">{{ tag }}</em></div></div><section><h3>推荐理由</h3><p v-if="showRecommendationReason">{{ resourceReason(selectedResource) }}</p><h3>资源组合</h3><div class="shot-resource-chips"><span v-for="item in recommendations.slice(0, 4)" :key="resourceId(item)"><FileText :size="13" />{{ resourceType(item) }}</span></div></section><footer><button type="button" @click="startResourceReading"><CirclePlay :size="16" />开始学习</button><button type="button" :disabled="feedLoading" @click="replaceResource"><RefreshCw :size="15" />替换资源</button><button type="button" :aria-expanded="showRecommendationReason" @click="showRecommendationReason = !showRecommendationReason"><BookOpenCheck :size="15" />推荐依据</button><button type="button" :class="{ 'is-picked': resourceFeedback?.id === resourceId(selectedResource) && resourceFeedback?.action === 'like' }" :disabled="Boolean(feedbackPending)" @click="feedback('like')"><ThumbsUp :size="15" />有帮助</button><button type="button" :class="{ 'is-picked': resourceFeedback?.id === resourceId(selectedResource) && resourceFeedback?.action === 'dislike' }" :disabled="Boolean(feedbackPending)" @click="feedback('dislike')"><ThumbsDown :size="15" />暂缓推送</button><button class="shot-resource-delete" type="button" :disabled="Boolean(removingResourceId)" :aria-label="`从当前推送中删除${resourceTitle(selectedResource)}`" @click="removeCurrentResource"><LoaderCircle v-if="removingResourceId" class="spin" :size="15" /><Trash2 v-else :size="15" />{{ removingResourceId ? '删除中' : '删除推送' }}</button></footer><p v-if="resourceFeedback && resourceFeedback.id === resourceId(selectedResource)" class="shot-resource-feedback" role="status" aria-live="polite"><Check :size="14" />{{ resourceFeedback.message }}</p></template><div v-else class="shot-empty">暂无推荐资源，先进入资源工坊生成内容。</div></aside>
 
-        <section class="shot-dynamic-rules"><header><strong><ShieldCheck :size="17" />动态调整规则</strong><button type="button" aria-label="展开或收起动态调整规则" @click="showRules = !showRules"><ChevronDown :size="16" /></button></header><div v-if="showRules"><article v-for="(rule, index) in visibleRules" :key="rule" :class="{ active: index === 0 }"><strong>规则 {{ index + 1 }}</strong><p>{{ rule }}</p></article><article v-if="!visibleRules.length"><p>本次规划没有返回动态调整规则。</p></article></div></section>
+        <section class="shot-dynamic-rules"><header><strong><ShieldCheck :size="17" />动态调整规则</strong></header><div v-if="showRules" ref="rulesTrack"><article v-for="(rule, index) in visibleRules" :key="rule" :class="{ active: index === 0 }"><strong>规则 {{ index + 1 }}</strong><p>{{ rule }}</p></article><article v-if="!visibleRules.length"><p>本次规划没有返回动态调整规则。</p></article></div></section>
         <section class="shot-agent-chain"><header><strong><Bot :size="17" />多智能体协同</strong></header><div><article><i><UserRound :size="22" /></i><span><strong>画像智能体</strong><small>分析学习行为<br>构建学习画像</small></span></article><b><ArrowRight :size="20" /></b><article><i><GitBranch :size="22" /></i><span><strong>路径智能体</strong><small>规划学习路径<br>动态调整节点</small></span></article><b><ArrowRight :size="20" /></b><article><i><Layers3 :size="22" /></i><span><strong>资源智能体</strong><small>匹配优质资源<br>组合推送内容</small></span></article><b><ArrowRight :size="20" /></b><article><i><ChartNoAxesCombined :size="22" /></i><span><strong>评估智能体</strong><small>评估学习效果<br>反馈优化策略</small></span></article></div><footer><LockKeyhole :size="13" />多智能体协同驱动，持续优化个性化学习路径</footer></section>
       </template>
     </section>
+
+    <!-- 「闭环串联」原本挂在 .path-workspace 里面：那个容器是定高 + overflow:hidden，
+         展开后内容会被裁掉，页面也没有外层滚动条，表现为「展开了却看不见、往下滑不动」。
+         挪到工作区外面，让它参与页面正常文档流。 -->
+    <details class="shot-loop-chain path-loop-chain">
+      <summary>闭环串联：画像 → 路径 → 伴学 → 评估</summary>
+      <LearningLoopContext
+        stage="05"
+        stage-label="路径规划"
+        task="将多源学习证据编排为下一步行动"
+        input="画像、知识掌握、诊断与资源反馈"
+        process="路径规划智能体生成阶段与动态规则"
+        :output="overview?.nodes.length ? `${overview.nodes.length} 个学习阶段` : '等待路径规划'"
+        next-to="/tutor"
+        next-label="智能伴学"
+        status="路径执行中的问题进入伴学"
+      />
+    </details>
 
     <template v-if="false">
     <header class="os-page-header">
@@ -747,6 +860,12 @@ onBeforeUnmount(() => {
   background: #fff;
   box-shadow: 0 18px 48px rgba(36, 74, 120, .08);
 }
+/* 兜底：万一 details 又被放回定高容器里，展开时让容器长高，避免内容被裁掉 */
+.path-workspace:has(.shot-loop-chain[open]) {
+  height: auto;
+  overflow: visible;
+}
+.path-loop-chain { margin-top: 2px; }
 .path-workspace .path-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) 300px 220px;

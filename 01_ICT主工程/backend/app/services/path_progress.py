@@ -351,6 +351,42 @@ def _public_state(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def mastery_snapshot(student_id: str) -> dict[str, Any]:
+    """只读地取出「已作答阶段」的掌握度，不重新生成路径。
+
+    存在的理由：练习作答先把掌握度写进阶段状态（`record_stage_answer`），
+    而评估层原先只认知识图谱节点。图谱没有证据节点时，页面就会出现
+    「练了 20 题、知识掌握还是 0%」——那不是数据少，是两套口径没接上。
+    """
+    state = read_json(_state_path(student_id), {}) or {}
+    stages = state.get("stages") if isinstance(state.get("stages"), dict) else {}
+    rows: list[dict[str, Any]] = []
+    for stage_id, item in stages.items():
+        if not isinstance(item, dict):
+            continue
+        answered = int(item.get("answered_count") or 0)
+        if not answered:
+            continue
+        rows.append(
+            {
+                "stage_id": stage_id,
+                "title": str(item.get("title") or ""),
+                "mastery": float(item.get("mastery") or 0),
+                "answered_count": answered,
+                "correct_count": int(item.get("correct_count") or 0),
+                "target_count": int(item.get("target_count") or 0),
+            }
+        )
+    rows.sort(key=lambda item: item["stage_id"])
+    average = round(sum(item["mastery"] for item in rows) / len(rows), 1) if rows else 0.0
+    return {
+        "stages": rows,
+        "stage_count": len(rows),
+        "average_mastery": average,
+        "current_stage_id": str(state.get("current_stage_id") or ""),
+    }
+
+
 def _state_path(student_id: str):
     return get_user_dir(student_id) / "path_progress.json"
 

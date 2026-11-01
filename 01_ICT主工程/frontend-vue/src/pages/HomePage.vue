@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import {
+  switchToDemoStudent,
+  switchToOwnStudent,
+  useStudent,
+} from '@/composables/useStudent'
 import {
   ArrowRight,
   BookOpenCheck,
@@ -88,6 +94,17 @@ const resourceTypes: ResourceType[] = [
   { label: '实操案例', icon: Code2, desc: '面向任务的实践步骤' },
   { label: '视频 / 动画', icon: Video, desc: '短视频脚本与讲解设计' },
 ]
+
+const { studentId } = useStudent()
+const isDemoStudent = computed(() => studentId.value === 'demo')
+
+// 演示学生 demo 在后台有完整的项目、路径、错题与评估数据；个人学号是空白空间。
+// 这里给评委一个显式开关，切换后刷新页面让每个页面重新取数。
+function toggleDemoStudent() {
+  if (isDemoStudent.value) switchToOwnStudent()
+  else switchToDemoStudent()
+  window.location.reload()
+}
 </script>
 
 <template>
@@ -111,7 +128,15 @@ const resourceTypes: ResourceType[] = [
           <RouterLink class="apple-text-btn" to="/path">
             查看学习路径示例
           </RouterLink>
+          <button type="button" class="apple-text-btn" data-testid="switch-student" @click="toggleDemoStudent">
+            {{ isDemoStudent ? '退出演示数据（换回我的学习空间）' : '载入演示学生数据' }}
+          </button>
         </div>
+        <p class="apple-student-hint" data-testid="student-hint">
+          当前学生：<code>{{ studentId }}</code>
+          <span v-if="isDemoStudent"> · 演示数据（有完整画像、路径、错题与评估）</span>
+          <span v-else> · 个人空白空间（从画像开始一步一步生成）</span>
+        </p>
       </div>
 
       <div class="product-preview-shell" aria-label="系统产品预览">
@@ -269,3 +294,25 @@ const resourceTypes: ResourceType[] = [
     </footer>
   </div>
 </template>
+
+<style scoped>
+button.apple-text-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.apple-student-hint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-tertiary, #6b7280);
+}
+
+.apple-student-hint code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+</style>

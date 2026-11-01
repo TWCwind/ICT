@@ -54,6 +54,32 @@ def ensure_student(*, student_id: str, major: str | None, goals: str | None) -> 
     write_json(student_file, data)
 
 
+_STUDENT_TEXT_FIELDS = ("name", "major", "grade", "current_course", "goals")
+
+
+def patch_student(student_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+    """只写入非空且与现值不同的基本信息字段，返回落盘后的 student 数据。"""
+    user_dir = get_user_dir(student_id)
+    student_file = user_dir / "student.json"
+    data = read_json(student_file, {})
+    if not data:
+        data = {"id": student_id, "created_at": now_iso()}
+
+    changed = False
+    for key in _STUDENT_TEXT_FIELDS:
+        value = str(updates.get(key) or "").strip()
+        if not value or str(data.get(key) or "").strip() == value:
+            continue
+        data[key] = value
+        changed = True
+
+    if changed:
+        data["updated_at"] = now_iso()
+        write_json(student_file, data)
+
+    return data
+
+
 def insert_profile_snapshot(*, student_id: str, profile: dict[str, Any], evidence: dict[str, Any]) -> dict[str, Any]:
     user_dir = get_user_dir(student_id)
     profiles_file = user_dir / "profiles.json"
@@ -137,6 +163,39 @@ def list_resources(student_id: str) -> list[dict[str, Any]]:
     resources = read_json(resources_file, [])
     resources.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return resources
+
+
+def delete_resource_item(student_id: str, resource_id: str) -> dict[str, Any] | None:
+    """删除一条资源（档案袋条目）及正文文件；返回被删除的记录，未找到返回 None。"""
+    user_dir = get_user_dir(student_id)
+    resources_file = user_dir / "resources.json"
+    resources = read_json(resources_file, [])
+    target = next((item for item in resources if item.get("id") == resource_id), None)
+    if target is None:
+        return None
+    remaining = [item for item in resources if item.get("id") != resource_id]
+    write_json(resources_file, remaining)
+    removed_file = _remove_content_file(str(target.get("content_uri") or ""))
+    return {**target, "removed_file": removed_file}
+
+
+def _remove_content_file(content_uri: str) -> bool:
+    uri = content_uri.strip().lstrip("/")
+    if not uri:
+        return False
+    data_root = settings.data_path.resolve()
+    candidate = (settings.data_path / uri).resolve()
+    try:
+        candidate.relative_to(data_root)
+    except ValueError:
+        return False
+    if not candidate.is_file():
+        return False
+    try:
+        candidate.unlink()
+        return True
+    except OSError:
+        return False
 
 
 def insert_learning_event(student_id: str, event_type: str, payload: dict[str, Any]) -> None:

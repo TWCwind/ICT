@@ -1,4 +1,4 @@
-import { apiGet, apiPost, type ApiResponse } from '@/utils/api'
+import { apiDelete, apiGet, apiPost, type ApiResponse } from '@/utils/api'
 
 export type LearningMetric = {
   key: string
@@ -173,6 +173,25 @@ export async function getWorkshopOverview(studentId: string): Promise<WorkshopOv
   return dataOrThrow(
     await apiGet<WorkshopOverview>(`/api/workshop/overview?student_id=${encodeURIComponent(studentId)}`),
     '资源工坊数据加载失败',
+  )
+}
+
+export async function deleteWorkshopResource(studentId: string, resourceId: string): Promise<void> {
+  dataOrThrow<any>(
+    await apiDelete<any>(`/api/workshop/resources/${encodeURIComponent(resourceId)}?student_id=${encodeURIComponent(studentId)}`),
+    '删除档案失败',
+  )
+}
+
+export async function getWorkshopKeywords(
+  studentId: string,
+  resourceId: string,
+): Promise<{ resource_id: string; title: string; type: string; keywords: string[]; has_content: boolean }> {
+  return dataOrThrow<any>(
+    await apiGet<any>(
+      `/api/workshop/keywords?resource_id=${encodeURIComponent(resourceId)}&student_id=${encodeURIComponent(studentId)}`,
+    ),
+    '关键词提取失败',
   )
 }
 
