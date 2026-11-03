@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextvars
 import logging
 import atexit
+import os
 from datetime import datetime
 from pathlib import Path
 import warnings
@@ -78,7 +79,7 @@ def configure_logging(level: str = "INFO") -> None:
     root.addHandler(handler)
 
     repo_root = Path(__file__).resolve().parents[3]
-    log_dir = repo_root / "log"
+    log_dir = Path(os.getenv("LOG_DIR") or (repo_root / "log"))
     file_handler = DailyFileHandler(log_dir)
     file_handler.setLevel(lvl)
     file_handler.addFilter(RequestIdFilter())

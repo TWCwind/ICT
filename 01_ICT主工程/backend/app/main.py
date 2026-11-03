@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.agents.trace_log import record_request
 from app.api.app_router import api_router
 from app.core.config import settings
 from app.core.ids import new_id
@@ -92,6 +93,14 @@ def create_app() -> FastAPI:
             response = await call_next(request)
             cost_ms = (time.perf_counter() - start) * 1000
             logger.info("%s %s %s %.1fms", request.method, request.url.path, response.status_code, cost_ms)
+            # 旁路留痕：命中「后端路由 → MCP 工具」映射的操作会记一条，供
+            # GET /api/orchestration/trace 的 live 段展示；失败只写日志，不影响响应。
+            record_request(
+                request.method,
+                request.url.path,
+                request.query_params,
+                response.status_code,
+            )
             response.headers["x-request-id"] = request_id
             return response
         except Exception:

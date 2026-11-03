@@ -910,7 +910,7 @@ async function loadConfig() {
       if (xingyuanSdkConfigured.value) {
         setStatus('已切换为数字人老师语音，可以开始通话。')
       } else {
-        setStatus(voiceConfigErrorText.value || '语音辅导配置错误，请检查服务配置。', 'error')
+        setStatus(`语音辅导配置错误：${data.config_error}`, 'error')
       }
     } else if (data.transport !== 'websocket') {
       setStatus('当前语音服务连接方式暂不支持，请联系管理员检查配置。', 'error')
@@ -1516,7 +1516,6 @@ onBeforeUnmount(() => {
               <span class="digital-human-glow"></span>
               <span class="digital-human-floor"></span>
               <div class="digital-human-portrait" :class="{ 'sdk-visible': xingyuanSdkVisible && connected }">
-                <div class="digital-human-rig" aria-hidden="true"></div>
                 <div
                   id="xingyuan-avatar-sdk"
                   ref="xingyuanSdkMountRef"
@@ -1590,7 +1589,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="realtime-control-row">
-        <button class="studio-btn" type="button" :disabled="connecting || connected || startCallBlocked" :title="startCallTitle" @click="startCall">
+        <button class="studio-btn" type="button" :disabled="connecting || connected || Boolean(config.config_error && !avatarVoiceMode)" @click="startCall">
           {{ connecting ? '连接中' : '开始通话' }}
         </button>
         <button class="studio-btn secondary" type="button" :disabled="!connected" @click="interruptAi">打断 AI</button>

@@ -113,7 +113,9 @@ class PathProgressTest(unittest.TestCase):
 
     def test_knowledge_node_generation_calls_model_with_selected_topic(self):
         generated_bank = {"id": "knowledge-bank-1", "type": "question_bank", "content_uri": ""}
-        with patch.object(path_router.orchestrator, "generate", new=AsyncMock(return_value=[generated_bank])) as generate:
+        with patch.object(path_router, "llm_ready", return_value=True), patch.object(
+            path_router.orchestrator, "generate", new=AsyncMock(return_value=[generated_bank])
+        ) as generate:
             response = asyncio.run(
                 path_router.generate_stage_questions(
                     PathStageQuestionRequest(

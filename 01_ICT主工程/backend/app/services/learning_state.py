@@ -16,7 +16,7 @@ from app.repo import (
     read_json,
 )
 from app.services.knowledge_hub import mastery_data, overview as knowledge_overview
-from app.services.path_progress import overlay_path_progress
+from app.services.path_progress import mastery_snapshot, overlay_path_progress
 
 
 PROFILE_DIMENSIONS = [
@@ -404,7 +404,16 @@ def evaluation_overview(student_id: str) -> dict[str, Any]:
     correct = len([item for item in answered if item.get("correct") is True])
     accuracy = round(correct / len(answered) * 100, 1) if answered else 0
     node_states = list((knowledge_state.get("nodes") or {}).values())
-    mastery = round(sum(_number(item.get("mastery"), 0) for item in node_states) / len(node_states), 1) if node_states else 0
+    graph_mastery = round(sum(_number(item.get("mastery"), 0) for item in node_states) / len(node_states), 1) if node_states else 0
+    stage_snapshot = mastery_snapshot(student_id)
+    # 掌握度有两个真实来源：知识图谱节点（做完知识点自测才有）与学习路径阶段（答完练习题就有）。
+    # 优先用图谱；图谱没有证据节点时退回阶段掌握度，否则页面会出现「练了题、掌握度还是 0」。
+    if graph_mastery > 0:
+        mastery = graph_mastery
+        mastery_source = "knowledge_graph"
+    else:
+        mastery = stage_snapshot["average_mastery"]
+        mastery_source = "path_stage" if stage_snapshot["stage_count"] else "none"
     engagement = min(100, len(resources) * 3 + len(usages) * 8 + len(events) * 2)
     evidence_total = len(answered) + len(node_states) + len(usages) + len(resources) + len(events)
     resource_match = round(len(usages) * 100 / len(resources), 1) if resources else 0
@@ -423,6 +432,8 @@ def evaluation_overview(student_id: str) -> dict[str, Any]:
     return {
         "score": min(100, max(0, score)),
         "mastery": mastery,
+        "mastery_source": mastery_source,
+        "mastery_stages": stage_snapshot["stages"],
         "accuracy": accuracy,
         "engagement": engagement,
         "weak_points": weak_points,
@@ -430,6 +441,7 @@ def evaluation_overview(student_id: str) -> dict[str, Any]:
             "total": evidence_total,
             "exercise_attempts": len(answered),
             "knowledge_nodes": len(node_states),
+            "path_stages": stage_snapshot["stage_count"],
             "resource_items": len(resources),
             "feedback_items": len(usages),
             "learning_events": len(events),

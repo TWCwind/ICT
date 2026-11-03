@@ -11,6 +11,7 @@ from app.api.routers.integration import router as integration_router
 from app.api.routers.knowledge import router as knowledge_router
 from app.api.routers.mindmap import router as mindmap_router
 from app.api.routers.multimodal import router as multimodal_router
+from app.api.routers.orchestration import router as orchestration_router
 from app.api.routers.path import router as path_router
 from app.api.routers.ppt import router as ppt_router
 from app.api.routers.profile import router as profile_router
@@ -43,4 +44,5 @@ api_router.include_router(exercise_router)
 api_router.include_router(evolution_router)
 api_router.include_router(export_router)
 api_router.include_router(integration_router)
+api_router.include_router(orchestration_router)
 

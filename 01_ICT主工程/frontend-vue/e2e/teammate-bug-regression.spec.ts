@@ -129,6 +129,11 @@ test('exercise sections switch state and knowledge graph controls update real se
     }
   }
 
+  // This test intentionally exercises the populated graph after earlier changing
+  // the learner ID; select the demo learner explicitly instead of relying on
+  // shared state or silently inheriting demo data as a new learner.
+  await page.evaluate(() => localStorage.setItem('las_student_id', 'demo'))
+  await page.reload()
   await page.goto('/knowledge')
   await expect(page.locator('.kg-node').first()).toBeVisible()
   const initialGraphNodeCount = await page.locator('.kg-node').count()
@@ -334,6 +339,7 @@ test('backend outage exposes retry and the real local API recovers', async ({ pa
 })
 
 test('profile and evaluation charts explain real values and missing evidence', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('las_student_id', 'demo'))
   await login(page)
 
   const profileResponse = await page.request.get('/api/profile/demo/overview')
@@ -400,13 +406,17 @@ test('enterprise polish preserves mobile touch targets and truthful service stat
   expect((await startPractice.boundingBox())?.height).toBeGreaterThanOrEqual(44)
 
   await page.goto('/tutor')
-  await expect(page.locator('.realtime-status-chip')).toBeVisible()
+  const tutorStatus = page.locator('.tutor-video-shell .tb-chip, .tutor-video-shell .realtime-status-chip')
+  await expect(tutorStatus).toBeVisible()
   const pageText = await page.locator('body').innerText()
   expect(pageText).not.toMatch(/VOICE_REALTIME_|XINGYUAN\s*APP|APP_SECRET|Bearer\s+[\w.-]+/i)
   const voiceResponse = await page.request.get('/api/voice/realtime/config')
   expect(voiceResponse.ok()).toBe(true)
   const voiceConfig = await voiceResponse.json()
-  if (voiceConfig.config_error) {
+  if (!voiceConfig.data?.enabled) {
+    await expect(page.locator('.tutor-video-shell .tb-shell')).toContainText('语音辅导（浏览器模式）')
+    expect(pageText).not.toMatch(/服务已连接|实时数字人已连接/)
+  } else if (voiceConfig.data?.config_error) {
     await expect(page.locator('.realtime-call-grid')).toHaveClass(/is-unconfigured/)
     await expect(page.locator('.realtime-info-row')).toContainText(/本地演示模式|暂不可用/)
   }

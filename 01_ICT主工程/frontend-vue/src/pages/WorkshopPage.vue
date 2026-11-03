@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   Clock3,
   Download,
+  ExternalLink,
   Eye,
   FileArchive,
   FileInput,
@@ -19,22 +20,28 @@ import {
   FlaskConical,
   Layers3,
   LoaderCircle,
+  Maximize2,
   Network,
   PackageCheck,
   RefreshCw,
   Share2,
   Sparkles,
   Target,
+  Trash2,
   Upload,
   UsersRound,
   Video,
   WandSparkles,
+  X,
 } from 'lucide-vue-next'
 import MarkdownContent from '@/components/MarkdownContent.vue'
-import { normaliseGeneratedMarkdown } from '@/utils/markdownRenderer'
+import MindmapCanvas from '@/components/MindmapCanvas.vue'
+import { normaliseGeneratedMarkdown, renderMarkdown } from '@/utils/markdownRenderer'
 import {
+  deleteWorkshopResource,
   exportResourcePackage,
   generateResourcePackStream,
+  getWorkshopKeywords,
   getWorkshopOverview,
   type ResourceSummary,
   type WorkshopOverview,
@@ -87,6 +94,7 @@ const learningStyle = ref('')
 const selectedTypes = ref<string[]>(['lecture_doc'])
 const uploadedContext = ref<{ name: string; mode: string; text: string } | null>(null)
 const showAllRecords = ref(false)
+const deletingId = ref('')
 
 const generatedResources = ref<ResourceSummary[]>([])
 const selectedResource = ref<ResourceSummary | null>(null)
@@ -94,6 +102,7 @@ const selectedResourceIds = ref<string[]>([])
 const previewContent = ref('')
 const previewLoading = ref(false)
 const previewError = ref('')
+const previewExpanded = ref(false)
 const exportUrl = ref('')
 const liveTrace = ref<Array<{ key: string; label: string; role: string; status: string; verified: boolean }>>([])
 let previewRequestId = 0
@@ -102,18 +111,43 @@ const visibleResources = computed(() => generatedResources.value)
 const selectedTypeLabels = computed(() => resourceTypes.filter((item) => selectedTypes.value.includes(item.value)).map((item) => item.label))
 const selectedCount = computed(() => selectedResourceIds.value.length)
 const readablePreviewContent = computed(() => normaliseGeneratedMarkdown(previewContent.value))
+const mindmapSource = computed(() => {
+  const markdown = (readablePreviewContent.value || '').replace(/\r\n?/g, '\n')
+  const blocks: string[] = []
+  const fence = /```[a-zA-Z]*[ \t]*\n([\s\S]*?)```/g
+  let match: RegExpExecArray | null
+  while ((match = fence.exec(markdown))) blocks.push(match[1])
+  for (const block of blocks) {
+    if (/^\s*mindmap\b/i.test(block)) return block
+  }
+  const bare = /(^|\n)\s*mindmap\s*\n([\s\S]*)$/i.exec(markdown)
+  return bare ? `mindmap\n${bare[2]}` : ''
+})
 const displayedResources = computed(() => showAllRecords.value ? visibleResources.value : visibleResources.value.slice(0, 4))
-const generateDisabled = computed(() => generating.value || !selectedTypes.value.length || (!course.value.trim() && !chapter.value.trim() && !weakPoints.value.trim()))
-const generateTitle = computed(() => {
-  if (generating.value) return '多智能体协同生成中'
-  if (!selectedTypes.value.length) return '请先选择至少一种资源类型'
-  if (!course.value.trim() && !chapter.value.trim() && !weakPoints.value.trim()) return '请先填写课程、章节或薄弱点，再生成资源'
-  return '开始多智能体协同生成'
-})
-const smartRecommendations = computed(() => {
-  const tags = visibleResources.value.flatMap((item) => item.tags || [])
-  return tags.filter((tag, index) => tags.indexOf(tag) === index).slice(0, 4)
-})
+const contentKeywords = ref<string[]>([])
+const keywordsLoading = ref(false)
+const keywordsHint = ref('点击档案袋中的文件，从正文提取关键词')
+let keywordsRequestId = 0
+
+async function loadKeywords(resourceId: string) {
+  if (!resourceId) return
+  const requestId = ++keywordsRequestId
+  keywordsLoading.value = true
+  contentKeywords.value = []
+  keywordsHint.value = '正在从正文提取关键词……'
+  try {
+    const data = await getWorkshopKeywords(studentId.value, resourceId)
+    if (requestId !== keywordsRequestId) return
+    contentKeywords.value = data.keywords || []
+    keywordsHint.value = data.has_content ? '这份档案没有提取到合适的关键词' : '这份档案没有可提取的正文'
+  } catch (reason: any) {
+    if (requestId !== keywordsRequestId) return
+    contentKeywords.value = []
+    keywordsHint.value = reason?.message || '关键词提取失败'
+  } finally {
+    if (requestId === keywordsRequestId) keywordsLoading.value = false
+  }
+}
 const qualityLabel = computed(() => {
   const quality = overview.value?.quality
   if (!quality) return '等待质量检查'
@@ -306,8 +340,10 @@ async function openResource(resource: ResourceSummary) {
   const derivedUrl = resource.preview_url || (resource.content_uri ? `/${String(resource.content_uri).replace(/^\/+/, '')}` : '')
   const normalizedResource = { ...resource, preview_url: derivedUrl }
   selectedResource.value = normalizedResource
+  void loadKeywords(resource.id)
   previewContent.value = resource.content || resource.summary || ''
   previewError.value = ''
+  previewExpanded.value = false
   if (previewContent.value) return
   if (!derivedUrl) {
     previewError.value = '资源已生成，但后端没有返回可读取的正文地址。'
@@ -325,6 +361,68 @@ async function openResource(resource: ResourceSummary) {
   } finally {
     if (requestId === previewRequestId) previewLoading.value = false
   }
+}
+
+async function removeResource(resource: ResourceSummary) {
+  if (deletingId.value) return
+  const confirmed = window.confirm(`确定从档案袋删除「${resource.title}」吗？\n对应的文档文件会一并删除，且无法恢复。`)
+  if (!confirmed) return
+  deletingId.value = resource.id
+  error.value = ''
+  try {
+    await deleteWorkshopResource(studentId.value, resource.id)
+    generatedResources.value = generatedResources.value.filter((item) => item.id !== resource.id)
+    selectedResourceIds.value = selectedResourceIds.value.filter((id) => id !== resource.id)
+    if (selectedResource.value?.id === resource.id) {
+      selectedResource.value = null
+      previewContent.value = ''
+      previewError.value = ''
+      previewExpanded.value = false
+      contentKeywords.value = []
+      keywordsHint.value = '点击档案袋中的文件，从正文提取关键词'
+    }
+    notice.value = `已从档案袋删除「${resource.title}」，对应文档也已移除。`
+    await loadOverview()
+  } catch (reason: any) {
+    error.value = reason?.message || '删除档案失败，请稍后重试。'
+  } finally {
+    deletingId.value = ''
+  }
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] as string))
+}
+
+function openPreviewWindow() {
+  const resource = selectedResource.value
+  const title = resource?.title || '资源预览'
+  const body = renderMarkdown(previewContent.value || '')
+  const html = [
+    '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">',
+    `<title>${escapeHtml(title)}</title>`,
+    '<style>body{margin:0;padding:36px 44px;background:#fff;color:#1f2d3d;',
+    'font:14px/1.85 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}',
+    'article{max-width:860px;margin:0 auto}h1,h2,h3,h4{color:#12335f;line-height:1.45}',
+    'h1{font-size:24px}h2{font-size:19px;margin-top:28px}h3{font-size:16px}',
+    'h4{font-size:14px}table{border-collapse:collapse;width:100%;margin:12px 0}',
+    'th,td{border:1px solid #dbe6f6;padding:6px 10px;text-align:left}',
+    'th{background:#f3f7ff}code{background:#f3f6fb;padding:1px 5px;border-radius:4px;font-size:12px}',
+    'pre{background:#f7f9fd;padding:14px;border-radius:8px;overflow:auto}',
+    'blockquote{margin:12px 0;padding:8px 14px;border-left:3px solid #1769ff;background:#f5f9ff}',
+    'hr{border:0;border-top:1px solid #e6eefb;margin:24px 0}</style></head><body><article>',
+    body,
+    '</article></body></html>',
+  ].join('')
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const opened = window.open(url, '_blank')
+  if (!opened) {
+    URL.revokeObjectURL(url)
+    if (resource?.preview_url) window.open(resource.preview_url, '_blank')
+    return
+  }
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000)
 }
 
 function toggleResourceSelection(resourceId: string) {
@@ -361,7 +459,7 @@ onMounted(loadOverview)
 <template>
   <div class="competition-page workshop-command-page">
     <section class="shot-workshop" aria-label="资源工坊">
-      <div v-if="error" class="shot-notice is-error" role="alert"><CircleAlert :size="18" />{{ error }}<button type="button" @click="loadOverview">重新同步</button></div>
+      <div v-if="error" class="shot-notice is-error"><CircleAlert :size="18" />{{ error }}<button type="button" @click="loadOverview">重新同步</button></div>
       <div v-if="notice" class="shot-notice"><Check :size="18" />{{ notice }}</div>
 
       <div v-if="overviewLoading && !overview" class="shot-loading"><span class="os-spinner"></span><p>正在读取资源清单与协作角色……</p></div>
@@ -394,16 +492,17 @@ onMounted(loadOverview)
             <div class="shot-brief-fields"><label><span>课程 / 主题</span><input v-model="course" placeholder="输入要分析的真实课程或主题" /></label><label><span>章节 / 场景</span><input v-model="chapter" placeholder="输入章节、任务或应用场景" /></label></div>
             <textarea v-model="weakPoints" maxlength="500" rows="3" placeholder="请输入你的需求，例如：&#10;“生成《Python 函数》章节的讲解文档，重点讲解函数定义、参数、返回值，并配有示例代码”&#10;或上传参考资料，我们将基于你的需求生成高质量资源。"></textarea>
             <small class="shot-char-count">{{ weakPoints.length }}/500</small>
-            <footer><div><button type="button" @click="chooseUpload('reference')"><Upload :size="14" />上传参考资料</button><button type="button" @click="chooseUpload('outline')"><FileInput :size="14" />导入课程大纲</button><input ref="uploadInput" class="shot-file-input" type="file" accept=".txt,.md,.csv,.json" @change="handleUpload" /></div><button class="shot-generate" type="submit" :disabled="generateDisabled" :title="generateTitle"><LoaderCircle v-if="generating" class="spin" :size="17" /><WandSparkles v-else :size="17" />{{ generating ? '多智能体生成中' : '生成资源' }} <ArrowRight :size="16" /></button></footer>
+            <footer><div><button type="button" @click="chooseUpload('reference')"><Upload :size="14" />上传参考资料</button><button type="button" @click="chooseUpload('outline')"><FileInput :size="14" />导入课程大纲</button><input ref="uploadInput" class="shot-file-input" type="file" accept=".txt,.md,.csv,.json" @change="handleUpload" /></div><button class="shot-generate" type="submit" :disabled="generating || !selectedTypes.length || (!course.trim() && !chapter.trim() && !weakPoints.trim())"><LoaderCircle v-if="generating" class="spin" :size="17" /><WandSparkles v-else :size="17" />{{ generating ? '多智能体生成中' : '生成资源' }} <ArrowRight :size="16" /></button></footer>
           </form>
 
-          <section class="shot-records"><header><strong><i class="shot-section-mark"></i>生成记录</strong><button type="button" :disabled="visibleResources.length <= 4" :aria-expanded="showAllRecords" @click="showAllRecords = !showAllRecords">{{ showAllRecords ? '收起' : '查看全部' }} <ArrowRight :size="14" /></button></header><div class="shot-record-grid"><button v-for="resource in displayedResources" :key="resource.id" type="button" :class="{ active: selectedResource?.id === resource.id }" @click="openResource(resource)"><span><strong>{{ resource.title }}</strong><em>{{ resource.type_label || labelForType(resource.type) }}</em></span><small>{{ formatDate(resource.created_at) }}</small><i><Check :size="12" />已完成</i></button><div v-if="!visibleResources.length" class="shot-empty">暂无真实生成记录，提交上方需求后由后端分析并生成。</div></div></section>
+          <section class="shot-records" :class="{ 'is-expanded': showAllRecords }"><header><strong><i class="shot-section-mark"></i>档案袋</strong><button type="button" :disabled="visibleResources.length <= 4" :aria-expanded="showAllRecords" @click="showAllRecords = !showAllRecords">{{ showAllRecords ? '收起' : '查看全部' }} <ArrowRight :size="14" /></button></header><div class="shot-record-grid"><button v-for="resource in displayedResources" :key="resource.id" type="button" class="shot-record-card" :class="{ active: selectedResource?.id === resource.id, 'is-deleting': deletingId === resource.id }" :disabled="deletingId === resource.id" @click="openResource(resource)"><span><strong>{{ resource.title }}</strong><em>{{ resource.type_label || labelForType(resource.type) }}</em></span><small>{{ formatDate(resource.created_at) }}</small><i><Check :size="12" />已完成</i><span class="shot-record-del" role="button" tabindex="0" :aria-label="`删除档案 ${resource.title}`" :title="`删除「${resource.title}」`" @click.stop="removeResource(resource)" @keydown.enter.stop.prevent="removeResource(resource)"><Trash2 :size="13" /></span></button><div v-if="!visibleResources.length" class="shot-empty">档案袋还是空的，提交上方需求生成后会自动归档到这里。</div></div></section>
         </main>
 
         <aside class="shot-workshop__side">
         <section class="shot-progress"><header><strong><i class="shot-section-mark"></i>协同生成进度</strong><small>{{ generating ? `正在生成：${selectedTypeLabels.join('、')}` : selectedResource ? `已载入：${selectedResource.title}` : '等待提交真实生成任务' }}</small></header><ol><li v-for="agent in displayTraceItems" :key="agent.key" :class="{ current: agent.status === 'running' }"><i><Check v-if="agent.status === 'completed' || agent.status === 'persisted'" :size="13" /><LoaderCircle v-else-if="agent.status === 'running'" class="spin" :size="13" /><Clock3 v-else :size="13" /></i><span><strong>{{ agent.label }}</strong><small>{{ agent.role }}</small></span><em><LoaderCircle v-if="agent.status === 'running'" class="spin" :size="12" /><Check v-else-if="agent.verified" :size="13" />{{ agent.status === 'running' ? '处理中' : agent.verified ? '已完成' : '等待' }}</em></li></ol><p v-if="!displayTraceItems.length" class="shot-progress-empty">尚无本轮真实处理事件</p></section>
-          <section class="shot-preview"><header><strong><i class="shot-section-mark"></i>资源预览</strong></header><div class="shot-preview-paper"><template v-if="selectedResource"><header><span><FileText :size="14" /><strong>{{ selectedResource.title }}</strong><em>{{ resourceTypes.find((item) => item.value === selectedResource?.type)?.short || labelForType(selectedResource.type) }}</em></span></header><div class="shot-preview-content"><div v-if="previewLoading">正在载入正文……</div><MarkdownContent v-else-if="readablePreviewContent" :content="readablePreviewContent" /><p v-else>{{ selectedResource.summary || '该资源没有可预览正文。' }}</p></div></template><p v-else>生成或选择一份资源后查看预览。</p></div><div class="shot-dots"><i></i><i></i><i></i></div></section>
-          <section class="shot-smart-recommend"><header><strong><i class="shot-section-mark"></i>内容标签</strong><small>从真实生成资源中提取</small></header><div><span v-for="tag in smartRecommendations" :key="tag">{{ tag }}</span><small v-if="!smartRecommendations.length">暂无可提取标签</small></div></section>
+          <section class="shot-preview"><header><strong><i class="shot-section-mark"></i>资源预览</strong></header><div class="shot-preview-paper"><template v-if="selectedResource"><header><span><FileText :size="14" /><strong>{{ selectedResource.title }}</strong><em>{{ resourceTypes.find((item) => item.value === selectedResource?.type)?.short || labelForType(selectedResource.type) }}</em></span><button class="shot-preview-open" type="button" @click="previewExpanded = true"><Maximize2 :size="12" />查看全文</button></header><div class="shot-preview-content"><div v-if="previewLoading">正在载入正文……</div><MarkdownContent v-else-if="readablePreviewContent" :content="readablePreviewContent" /><p v-else-if="previewError">{{ previewError }}</p><p v-else>{{ selectedResource.summary || '该资源没有可预览正文。' }}</p></div></template><p v-else>生成或选择一份资源后查看预览。</p></div><div class="shot-dots"><i></i><i></i><i></i></div></section>
+          <Teleport to="body"><div v-if="previewExpanded && selectedResource" class="shot-preview-modal" role="dialog" aria-modal="true" @click.self="previewExpanded = false"><article :class="{ 'is-mindmap': !!mindmapSource }"><header><strong>{{ selectedResource.title }}</strong><div><button type="button" @click="openPreviewWindow"><ExternalLink :size="13" />新标签打开</button><button type="button" @click="previewExpanded = false"><X :size="14" />关闭</button></div></header><div class="shot-preview-modal__body"><template v-if="mindmapSource"><MindmapCanvas :source="mindmapSource" /><details class="mindmap-raw"><summary>查看文字版结构</summary><MarkdownContent :content="readablePreviewContent" /></details></template><MarkdownContent v-else-if="readablePreviewContent" :content="readablePreviewContent" /><p v-else>{{ previewError || '该资源没有可预览正文。' }}</p></div></article></div></Teleport>
+          <section class="shot-smart-recommend"><header><strong><i class="shot-section-mark"></i>内容标签</strong><small>{{ selectedResource ? '按当前档案正文提取' : '点击档案袋中的文件提取' }}</small></header><div><span v-for="tag in contentKeywords" :key="tag">{{ tag }}</span><small v-if="keywordsLoading">正在从正文提取关键词……</small><small v-else-if="!contentKeywords.length">{{ keywordsHint }}</small></div></section>
           <section class="shot-export"><button type="button" :disabled="!selectedCount || exporting" @click="exportSelected"><FileArchive :size="16" />{{ exporting ? '打包中' : `导出已选 ${selectedCount || ''}` }}</button><a v-if="exportUrl" :href="exportUrl" target="_blank" rel="noreferrer"><Download :size="16" />下载 ZIP</a></section>
         </aside>
       </template>
@@ -446,7 +545,7 @@ onMounted(loadOverview)
 
             <fieldset class="resource-type-fieldset"><legend>选择交付类型 <small>至少 1 项</small></legend><div class="resource-type-grid"><button v-for="item in resourceTypes" :key="item.value" class="resource-type-option" :class="{ 'is-selected': selectedTypes.includes(item.value) }" type="button" :aria-pressed="selectedTypes.includes(item.value)" @click="toggleResourceType(item.value)"><span class="type-code">{{ item.short }}</span><span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span><Check v-if="selectedTypes.includes(item.value)" :size="13" aria-hidden="true" /></button></div></fieldset>
 
-            <div class="generation-summary"><span><Sparkles :size="15" /><i><strong>{{ selectedTypes.length }} 类资源待生成</strong><small>{{ selectedTypeLabels.join(' · ') || '尚未选择资源类型' }}</small></i></span><button class="os-button os-button-primary generate-button" type="submit" :disabled="generateDisabled" :title="generateTitle"><LoaderCircle v-if="generating" class="spin" :size="15" /><WandSparkles v-else :size="15" />{{ generating ? '后端协同生成中' : '生成资源包' }}</button></div>
+            <div class="generation-summary"><span><Sparkles :size="15" /><i><strong>{{ selectedTypes.length }} 类资源待生成</strong><small>{{ selectedTypeLabels.join(' · ') || '尚未选择资源类型' }}</small></i></span><button class="os-button os-button-primary generate-button" type="submit" :disabled="generating || !selectedTypes.length || (!course.trim() && !chapter.trim() && !weakPoints.trim())"><LoaderCircle v-if="generating" class="spin" :size="15" /><WandSparkles v-else :size="15" />{{ generating ? '后端协同生成中' : '生成资源包' }}</button></div>
             <div v-if="generating" class="generation-live" role="status" aria-live="polite"><span class="indeterminate-track"><i></i></span><span><strong>等待后端返回真实结果</strong><small>当前接口未提供逐阶段百分比。</small></span></div>
           </form>
 

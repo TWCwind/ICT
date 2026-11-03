@@ -278,3 +278,24 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 截图路径：C:\Users\xiajun\AppData\Local\Temp\ict-enterprise-review-20261030。截图和临时脚本均未放入仓库。
 
 路演测试最初因服务已经退出而遇到连接拒绝；重新运行项目路演启动脚本并确认真实健康接口恢复后，完整路演套件与队友回归均通过。当前未重跑后端单测和 MCP 测试；AgentArts 云端仍未接入。'
+
+## 2026-11-03 合并 main 后最终复验
+
+本次在 PR #3 分支合并 `origin/main` 后，对合并结果及随后的缺陷修复重新执行检查。使用本地路演数据和真实 FastAPI；没有调用在线模型或 AgentArts 云端。
+
+| 命令 / 检查 | 实际结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过；ExerciseCenterPage 和 Markdown 渲染器仍有非阻塞大 chunk 提示 |
+| `npm run test:roadshow -- --project=msedge --workers=1` | 19/19 通过 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1` | 11/11 通过 |
+| `npx playwright test e2e/competition-responsive.spec.ts --project=msedge --workers=1` | 4/4 通过 |
+| `python -m unittest discover -s tests -p "test*.py" -v` | 45/45 通过 |
+| 本地 `GET /api/health` | ready；roadshow 模式；外部模型未配置 |
+| 本地 `GET /api/knowledge/graph` | 1 门课程、6 章、30 个知识点、2 个资源、43 条关系 |
+| 本地 `POST /api/tutor/ask` | 按预期返回“模型尚未配置”，没有伪造回答或学习分析 |
+| 页面截图采样 | 29 张；九个页面 1440×900，五个重点页面另覆盖 1280×720、1024×768、768×1024、390×844 |
+| 人工截图复核 | 查看五种尺寸总览与问题页原图；修复后手机工坊宽度等于视口，无明显遮挡、裁切或页面横向溢出 |
+
+截图位于 `C:\Users\xiajun\AppData\Local\Temp\ict-enterprise-review-20261103-final`，不在仓库。知识图谱窄屏使用图谱画布内部横向滑动。MCP 套件本轮未运行；AgentArts 云端未接入。Build 的 chunk 体积提示是已知非阻塞限制。

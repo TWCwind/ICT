@@ -106,6 +106,18 @@ def submit_exercise_answer(student_id: str, question_id: str, answer: Any) -> di
             "path_mastery": path_progress.get("mastery") if path_progress else None,
         },
     )
+    knowledge_hit = None
+    try:
+        from app.services.knowledge_hub import track_by_topic
+
+        knowledge_hit = track_by_topic(
+            student_id,
+            [*(record.get("tags") or []), record.get("knowledge_point", "")],
+            100.0 if correct else 0.0,
+            note=f"练习作答{'正确' if correct else '错误'}（{question_id}）",
+        )
+    except Exception:
+        knowledge_hit = None
 
     return {
         "correct": correct,
@@ -114,6 +126,7 @@ def submit_exercise_answer(student_id: str, question_id: str, answer: Any) -> di
         "record": record,
         "stats": exercise_summary(student_id),
         "path_progress": path_progress,
+        "knowledge_mastery": knowledge_hit,
     }
 
 

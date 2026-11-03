@@ -1,5 +1,7 @@
 import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 
 const markdown = new MarkdownIt({
   html: false,
@@ -131,15 +133,91 @@ export function normaliseGeneratedMarkdown(source: string) {
   return text
 }
 
+const MATH_BLOCK_RE = /\$\$([\s\S]+?)\$\$/g
+const MATH_INLINE_RE = /\$([^\n$]{1,200}?)\$/g
+const MATH_PLACEHOLDER_RE = /@@mathplaceholder(\d+)@@/g
+
+function extractMath(source: string) {
+  const rendered: string[] = []
+  const stash = (tex: string, displayMode: boolean) => {
+    const trimmed = tex.trim()
+    if (!trimmed) return ''
+    let html = ''
+    try {
+      html = katex.renderToString(trimmed, {
+        displayMode,
+        throwOnError: false,
+        strict: false,
+        output: 'html',
+      })
+    } catch {
+      html = ''
+    }
+    if (!html) return trimmed
+    rendered.push(html)
+    return `@@mathplaceholder${rendered.length - 1}@@`
+  }
+
+  let text = source.replace(MATH_BLOCK_RE, (_match, tex: string) => `\n\n${stash(tex, true)}\n\n`)
+  text = text.replace(MATH_INLINE_RE, (match, tex: string) => {
+    if (/[\u4e00-\u9fff]/.test(tex)) return match
+    return stash(tex, false)
+  })
+  return { text, rendered }
+}
+
+export function injectMath(html: string, rendered: string[]) {
+  if (!rendered.length) return html
+  return html.replace(MATH_PLACEHOLDER_RE, (_match, index: string) => rendered[Number(index)] ?? '')
+}
+
+/**
+ * 给「自定义 Markdown 渲染器」加公式支持：先抽出公式占位，交给外部渲染器，
+ * 再把 KaTeX 结果替换回去。外部渲染器不需要认识 `$...$`。
+ */
+export function renderWithMath(source: string, render: (text: string) => string) {
+  const { text, rendered } = extractMath(String(source ?? ''))
+  return injectMath(render(text), rendered)
+}
+
 export function renderMarkdown(source: string, options: { streaming?: boolean } = {}) {
   installDomPurifyHook()
   const input = options.streaming ? normaliseMarkdownForStreaming(source) : normaliseGeneratedMarkdown(source)
-  const rawHtml = markdown.render(input)
+  const { text: withMath, rendered: mathHtml } = extractMath(input)
+  const rawHtml = markdown.render(withMath)
 
-  return DOMPurify.sanitize(rawHtml, {
+  const cleanHtml = DOMPurify.sanitize(rawHtml, {
     USE_PROFILES: { html: true },
     ADD_ATTR: ['target', 'rel', 'class'],
     FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'style'],
   })
+  return injectMath(cleanHtml, mathHtml)
+}
+
+const MATH_PAREN_RE = /\\\(([\s\S]{1,300}?)\\\)/g
+const MATH_BRACKET_RE = /\\\[([\s\S]{1,600}?)\\\]/g
+
+function escapeHtmlText(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/**
+ * 只做「公式 + 换行」渲染，不解析 Markdown。
+ * 用于题干、选项这类必须保持原样的纯文本场景：公式会被 KaTeX 排好，其余字符原样输出。
+ */
+export function renderInlineMath(source: string) {
+  const input = String(source ?? '')
+  if (!input) return ''
+  const normalized = input
+    .replace(MATH_PAREN_RE, (_match, tex: string) => `$${tex}$`)
+    .replace(MATH_BRACKET_RE, (_match, tex: string) => `$$${tex}$$`)
+  if (!normalized.includes('$')) return escapeHtmlText(normalized).replace(/\n/g, '<br>')
+  const { text, rendered } = extractMath(normalized)
+  if (!rendered.length) return escapeHtmlText(normalized).replace(/\n/g, '<br>')
+  return injectMath(escapeHtmlText(text).replace(/\n/g, '<br>'), rendered)
 }

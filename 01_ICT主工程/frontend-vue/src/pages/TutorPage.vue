@@ -1,12 +1,27 @@
 <script setup lang="ts">
 import { Camera, Mic2, ShieldCheck, Sparkles, Video } from 'lucide-vue-next'
+import { onMounted, ref } from 'vue'
 import TutorRealtimeCall from '@/components/TutorRealtimeCall.vue'
+import TutorBrowserCall from '@/components/TutorBrowserCall.vue'
 
 const capabilities = [
   { icon: Camera, title: '双向视频课堂', copy: '需要浏览器摄像头权限和已启用的语音服务。' },
   { icon: Mic2, title: '实时语音交互', copy: '服务可用时支持连续对话、打断和麦克风控制。' },
   { icon: ShieldCheck, title: '学习过程留痕', copy: '通话成功后保存对话证据，用于画像更新与后续推荐。' },
 ]
+
+// null = 还不知道，true = 服务端实时语音可用，false = 未配置 → 走浏览器语音模式
+const realtimeReady = ref<boolean | null>(null)
+
+onMounted(async () => {
+  try {
+    const response = await fetch('/api/voice/realtime/config')
+    const payload = await response.json().catch(() => ({}))
+    realtimeReady.value = Boolean(payload?.enabled)
+  } catch {
+    realtimeReady.value = false
+  }
+})
 </script>
 
 <template>
@@ -20,7 +35,9 @@ const capabilities = [
     </header>
 
     <section class="tutor-video-shell">
-      <TutorRealtimeCall />
+      <TutorRealtimeCall v-if="realtimeReady === true" />
+      <TutorBrowserCall v-else-if="realtimeReady === false" />
+      <div v-else class="tutor-video-loading">正在检查语音辅导通道…</div>
     </section>
 
     <section class="tutor-capability-strip" aria-label="实时辅导能力">

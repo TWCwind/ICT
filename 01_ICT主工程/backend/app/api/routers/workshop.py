@@ -8,8 +8,11 @@ from fastapi.responses import StreamingResponse
 
 from app.api.streaming import stream_live_operation, stream_response
 from app.agents import Orchestrator
+from app.core.config import settings
 from app.core.ids import new_id
+from app.repo import delete_resource_item, list_resources
 from app.schemas import ApiResponse, ClarifyRequest, GenerateRequest
+from app.services.keyword_extract import extract_keywords
 from app.services.learning_state import workshop_overview
 
 
@@ -27,6 +30,79 @@ async def overview(student_id: str = Query(..., min_length=1)) -> ApiResponse:
             request_id=request_id,
             success=False,
             error={"code": "WORKSHOP_OVERVIEW_ERROR", "message": str(e)},
+        )
+
+
+def _read_resource_text(content_uri: str) -> str:
+    uri = content_uri.strip().lstrip("/")
+    if not uri:
+        return ""
+    data_root = settings.data_path.resolve()
+    candidate = (settings.data_path / uri).resolve()
+    try:
+        candidate.relative_to(data_root)
+    except ValueError:
+        return ""
+    if not candidate.is_file():
+        return ""
+    try:
+        return candidate.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return ""
+
+
+@router.get("/keywords", response_model=ApiResponse)
+async def resource_keywords(
+    resource_id: str = Query(..., min_length=1),
+    student_id: str = Query(..., min_length=1),
+) -> ApiResponse:
+    request_id = new_id()
+    try:
+        item = next((r for r in list_resources(student_id) if r.get("id") == resource_id), None)
+        if item is None:
+            return ApiResponse(
+                request_id=request_id,
+                success=False,
+                error={"code": "RESOURCE_NOT_FOUND", "message": "未找到这份档案记录"},
+            )
+        text = _read_resource_text(str(item.get("content_uri") or ""))
+        keywords = extract_keywords(text)
+        return ApiResponse(
+            request_id=request_id,
+            success=True,
+            data={
+                "resource_id": resource_id,
+                "title": item.get("title", ""),
+                "type": item.get("type", ""),
+                "keywords": keywords,
+                "has_content": bool(text.strip()),
+            },
+        )
+    except Exception as e:
+        return ApiResponse(
+            request_id=request_id,
+            success=False,
+            error={"code": "RESOURCE_KEYWORDS_ERROR", "message": str(e)},
+        )
+
+
+@router.delete("/resources/{resource_id}", response_model=ApiResponse)
+async def delete_resource(resource_id: str, student_id: str = Query(..., min_length=1)) -> ApiResponse:
+    request_id = new_id()
+    try:
+        removed = delete_resource_item(student_id=student_id, resource_id=resource_id)
+        if removed is None:
+            return ApiResponse(
+                request_id=request_id,
+                success=False,
+                error={"code": "RESOURCE_NOT_FOUND", "message": "未找到这份档案记录"},
+            )
+        return ApiResponse(request_id=request_id, success=True, data=removed)
+    except Exception as e:
+        return ApiResponse(
+            request_id=request_id,
+            success=False,
+            error={"code": "RESOURCE_DELETE_ERROR", "message": str(e)},
         )
 
 
