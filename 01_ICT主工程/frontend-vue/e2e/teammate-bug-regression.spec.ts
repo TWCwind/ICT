@@ -163,14 +163,32 @@ test('exercise sections switch state and knowledge graph controls update real se
 
 test('exercise loading and API failure show the right state and retry reaches the local API', async ({ page }) => {
   await login(page)
+
+  let releaseInitialization!: () => void
+  const initializationGate = new Promise<void>(resolve => { releaseInitialization = resolve })
+  await page.route(/\/api\/(?:path\/overview|resources)(?:\?|$)/, async route => {
+    await initializationGate
+    const response = await route.fetch()
+    await route.fulfill({ response })
+  })
   await page.goto('/exercise')
-  await page.getByRole('navigation', { name: '练习诊断导航' }).getByRole('button', { name: /智能做题/ }).click()
+  const smartPracticeTab = page.getByRole('navigation', { name: '练习诊断导航' }).getByRole('button', { name: /智能做题/ })
+  await smartPracticeTab.click()
+  await expect(smartPracticeTab).toHaveAttribute('aria-current', 'page')
+  const startPracticeButton = page.getByRole('button', { name: /开始做题|正在准备练习/ })
+  await expect(startPracticeButton).toBeDisabled()
+  releaseInitialization()
+  await expect(page.getByTestId('practice-start-panel')).toBeVisible()
+  await expect(smartPracticeTab).toHaveAttribute('aria-current', 'page')
+  await expect(startPracticeButton).toBeEnabled()
 
   let sessionCalls = 0
+  let releaseFirstSession!: () => void
+  const firstSessionGate = new Promise<void>(resolve => { releaseFirstSession = resolve })
   await page.route(/\/api\/exercise\/session(?:\?|$)/, async route => {
     sessionCalls += 1
     if (sessionCalls === 1) {
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await firstSessionGate
       await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Temporary service failure' })
       return
     }
@@ -179,11 +197,16 @@ test('exercise loading and API failure show the right state and retry reaches th
     await route.fulfill({ response })
   })
 
-  await page.getByRole('button', { name: '开始做题', exact: true }).click()
+  const firstSessionRequest = page.waitForRequest(request => request.url().includes('/api/exercise/session'))
+  await startPracticeButton.click()
+  await firstSessionRequest
   await expect(page.getByRole('status')).toContainText('正在载入本轮练习')
   await expect(page.locator('.exercise-session-state strong')).toBeFocused()
   await expect(page.locator('.practice-question-count strong')).toHaveText('正在载入题库')
   await expect(page.locator('.exercise-empty')).toHaveCount(0)
+  const failedSessionResponse = page.waitForResponse(response => response.url().includes('/api/exercise/session') && response.status() === 503)
+  releaseFirstSession()
+  await failedSessionResponse
   await expect(page.getByRole('alert')).toContainText('暂时无法载入练习')
   await expect(page.locator('.exercise-load-error > strong')).toBeFocused()
   await expect(page.locator('.practice-question-count strong')).toHaveText('题库载入失败')
@@ -429,4 +452,38 @@ test('enterprise polish preserves mobile touch targets and truthful service stat
   const mainHeight = (await page.locator('.shot-workshop__main').boundingBox())?.height || 0
   const sideHeight = (await page.locator('.shot-workshop__side').boundingBox())?.height || 0
   expect(sideHeight).toBeLessThan(mainHeight - 100)
+})
+
+test('profile history panel follows its content instead of reserving blank height', async ({ page }) => {
+  await login(page)
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 1024, height: 768 },
+    { width: 768, height: 1024 },
+  ]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/profile')
+    const panel = page.locator('.shot-timeline')
+    await expect(panel).toBeVisible()
+    const sizing = await panel.evaluate((element) => {
+      const style = getComputedStyle(element)
+      const header = element.querySelector('header')
+      const list = element.querySelector('ol')
+      const listStyle = list ? getComputedStyle(list) : null
+      return {
+        height: element.getBoundingClientRect().height,
+        contentHeight: (header?.getBoundingClientRect().height || 0)
+          + (list?.getBoundingClientRect().height || 0)
+          + (parseFloat(listStyle?.marginTop || '0') + parseFloat(listStyle?.marginBottom || '0'))
+          + parseFloat(style.paddingTop)
+          + parseFloat(style.paddingBottom),
+      }
+    })
+    expect(sizing.height, `timeline panel overflows its content at ${viewport.width}px`).toBeLessThanOrEqual(sizing.contentHeight + 4)
+    if (viewport.width === 768) {
+      const parentWidth = (await page.locator('.shot-profile__bottom').boundingBox())?.width || 0
+      const recommendationWidth = (await page.locator('.shot-profile__bottom > .shot-recommend').boundingBox())?.width || 0
+      expect(recommendationWidth, 'tablet recommendations should use the full row').toBeGreaterThanOrEqual(parentWidth - 2)
+    }
+  }
 })

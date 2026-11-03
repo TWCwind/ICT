@@ -161,6 +161,8 @@ const selectedCourse = ref('软件需求分析与建模')
 const customCourseCategory = ref('')
 const customCourse = ref('')
 const activePage = ref<WorkshopPageKey>('builder')
+const hasUserSelectedExercisePage = ref(false)
+const exerciseContextReady = ref(false)
 const practiceStarted = ref(false)
 const pendingPage = ref<WorkshopPageKey | null>(null)
 const showExamLeaveDialog = ref(false)
@@ -618,7 +620,7 @@ async function loadPathContext() {
     currentPathStage.value = stage || null
     if (!stage) {
       error.value = '当前没有可用的学习阶段，请先到路径推送生成学习路径。'
-      activePage.value = 'builder'
+      if (!hasUserSelectedExercisePage.value) activePage.value = 'builder'
       return
     }
     specificKnowledgePoint.value = String(stage.title || '')
@@ -630,7 +632,7 @@ async function loadPathContext() {
   } catch (reason: any) {
     error.value = reason?.message || '当前路径阶段加载失败'
     currentPathStage.value = null
-    activePage.value = 'builder'
+    if (!hasUserSelectedExercisePage.value) activePage.value = 'builder'
   } finally {
     pathContextLoading.value = false
   }
@@ -653,7 +655,7 @@ async function restoreActiveQuestionBanks() {
       setActiveQuestionBankIds([])
       activeExerciseQuestionLimit.value = Math.max(1, Math.min(50, totalQuestionCount.value || 10))
       activeExerciseDifficulty.value = 'mixed'
-      activePage.value = 'builder'
+      if (!hasUserSelectedExercisePage.value) activePage.value = 'builder'
       return
     }
     const orderedBanks = [...banks].sort((left: ResourceItem, right: ResourceItem) => {
@@ -674,7 +676,7 @@ async function restoreActiveQuestionBanks() {
       : stageBankIds.length ? [stageBankIds[stageBankIds.length - 1]] : [latestBank.id]
     setActiveQuestionBankIds(restoredIds)
     applyActiveQuestionBankConfig(banks.filter((bank: ResourceItem) => restoredIds.includes(String(bank.id))))
-    activePage.value = 'diagnosis'
+    if (!hasUserSelectedExercisePage.value) activePage.value = 'diagnosis'
   } catch {
     setActiveQuestionBankIds([])
   }
@@ -955,7 +957,7 @@ function switchDirect(page: WorkshopPageKey) {
 }
 
 async function startPractice() {
-  if (practiceStarted.value) return
+  if (!exerciseContextReady.value || practiceStarted.value) return
   closedLoopStatus.value = '正在载入本轮练习题目...'
   practiceStarted.value = true
   await nextTick()
@@ -969,6 +971,7 @@ function trySwitchPage(page: WorkshopPageKey) {
     }
     return
   }
+  hasUserSelectedExercisePage.value = true
   if (activePage.value === 'diagnosis' && page !== 'diagnosis' && exercisePageRef.value?.hasActiveExam?.()) {
     pendingPage.value = page
     showExamLeaveDialog.value = true
@@ -2689,8 +2692,12 @@ onMounted(async () => {
   prefersReducedMotion.value = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   loadMasteredGalaxyStars()
   void loadWrongBook()
-  await loadPathContext()
-  await restoreActiveQuestionBanks()
+  try {
+    await loadPathContext()
+    await restoreActiveQuestionBanks()
+  } finally {
+    exerciseContextReady.value = true
+  }
   if (shouldAutoStartStageBank.value && currentPathStage.value && !activeQuestionBankIds.value.length) {
     await generateFromCustomize()
   }
@@ -3307,9 +3314,10 @@ onBeforeUnmount(() => {
           <article><span>题目来源</span><strong>{{ activeQuestionBankIds.length ? `${activeQuestionBankIds.length} 份已选题库` : '开始后检查当前可用题目' }}</strong></article>
         </div>
         <div class="practice-start-actions">
-          <button class="studio-btn" type="button" @click="startPractice">开始做题</button>
+          <button class="studio-btn" type="button" :disabled="!exerciseContextReady" @click="startPractice">{{ exerciseContextReady ? '开始做题' : '正在准备练习…' }}</button>
           <button class="studio-btn ghost" type="button" @click="trySwitchPage('builder')">调整题库</button>
         </div>
+        <p v-if="!exerciseContextReady" class="practice-start-note" role="status">正在读取当前学习阶段和题库状态。</p>
         <p v-if="!activeQuestionBankIds.length" class="practice-start-note" role="note">
           当前没有已选的个性化题库。开始后会检查本地可用题目；如果没有题目，页面会提示先去题库定制。
         </p>

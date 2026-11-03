@@ -294,6 +294,11 @@ onMounted(loadProfile)
 <style scoped>
 .shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 900px) { .shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 621px) and (max-width: 900px) {
+  .shot-profile__bottom > .shot-recommend { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto; }
+  .shot-profile__bottom > .shot-recommend > header,
+  .shot-profile__bottom > .shot-recommend > .shot-recommend-all { grid-column: 1 / -1; }
+}
 @media (max-width: 620px) { .shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: minmax(0, 1fr); } }
 
 .shot-dimensions button {

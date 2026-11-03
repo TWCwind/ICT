@@ -371,3 +371,37 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 ### 截图人工验收
 
 最终截图位于 `C:\Users\xiajun\AppData\Local\Temp\ict-live-acceptance-20261103-018daa3`：六个主要页面在 1440×900、1280×720、1024×768、768×1024、390×844 共 30 张；画像、辅导、多模态在桌面和手机另 6 张；两张总览 JPEG。已使用图像查看工具查看两张总览、九个页面代表图、手机路径、桌面辅导/画像、多模态提示和 1024px 路径修复图。首页长篇宣传文本及版式均未改动，`HomePage.vue` 无 diff。
+
+## 2026-11-03 企业级前端复核与修复结果
+
+### 隔离环境与数据
+
+- 前端 `http://127.0.0.1:5174/` 代理到隔离后端 `http://127.0.0.1:8010/`；原路演服务 `5173/8000` 未停止。
+- 数据目录：`C:\Users\xiajun\AppData\Local\Temp\ict-enterprise-recheck-20261103-650120e`，manifest 标记 `test/generated/full-flow-v1`；3 个学生、5 个岗位、1 门课程、6 章、30 个知识点、2 个资源。写入流程均指向该隔离目录。
+- `/api/health` 返回 ready，模式为 roadshow，模型 `configured=false`、`demo_mode=true`。`/api/knowledge/graph?student_id=demo` 的真实统计：1 门课程、6 章、30 个知识点、2 个资源、43 条关系。
+
+### 最终测试命令与结果
+
+以下 Playwright 命令均设置 `PLAYWRIGHT_BASE_URL=http://127.0.0.1:5174`：
+
+| 命令 | 结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过：UI 契约审计成功 |
+| `npm run build` | 通过；1778 个模块，ExerciseCenterPage 585.26 kB 触发非阻塞 chunk 警告 |
+| `npm run test:roadshow -- --project=msedge --workers=1` | 19/19 通过 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1` | 12/12 通过，含时间线内容高度与慢初始化页签保护回归 |
+| `npx playwright test e2e/real-processing.spec.ts --project=msedge --workers=1` | 2/2 通过 |
+| `npx playwright test e2e/full-flow-generated.spec.ts --project=msedge --workers=1` | 2/2 通过；真实隔离数据在五种视口运行 |
+| `npx playwright test e2e/claude-round2-qa.spec.ts --project=msedge --workers=1` | 6/6 通过 |
+| 临时画像截图专项（五视口） | 1/1 通过；临时测试脚本已删除 |
+
+最终常规前端/E2E 套件 41/41 通过。测试期间曾发现练习页初始化竞态，回归用例在路径和题库请求延迟时复现“智能做题”页签被重置；修复后完整队友回归和路演套件均通过。画像高度断言初版漏算列表 margin，修正测试测量口径后通过，此项不是应用故障。
+
+### 截图与视觉验收
+
+截图和总览位于 `C:\Users\xiajun\AppData\Local\Temp\ict-enterprise-recheck-20261103-650120e`。九个路由（首页、画像、工坊、路径、练习、知识图谱、多模态、辅导、评估）有 1440×900 与 390×844 截图；首页、画像、练习、图谱、工坊、路径、评估覆盖 1440×900、1280×720、1024×768、768×1024、390×844。用图像工具查看了桌面/手机总览、画像五尺寸原图及工坊、图谱、路径代表图。页面无页面级横向溢出；画像单条时间线不再撑高，768px 推荐区铺满行；窄屏图谱通过内部横向滚动查看四列。
+
+### 未执行与限制
+
+本轮未运行后端单元测试、MCP 套件或 AgentArts 云端调用；AgentArts 云端未接入。模型未配置，资源生成、辅导和多模态服务的成功生成质量及新资源导出无法验收；页面和接口会如实显示未配置错误。
