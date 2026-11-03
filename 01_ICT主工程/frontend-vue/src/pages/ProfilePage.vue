@@ -280,140 +280,22 @@ onMounted(loadProfile)
             <div v-else class="profile-confidence-empty">暂无画像维度数据</div>
           </article>
           <article class="shot-explain"><header><strong><Lightbulb class="shot-panel-icon is-green" :size="17" />画像更新解释</strong></header><p>基于本轮对话内容，系统对画像进行了以下识别与更新：</p><ul><li v-for="dimension in profile.dimensions.slice(0, 5)" :key="dimension.key"><span><Check :size="12" /></span><strong>{{ dimension.label }}：</strong>{{ dimension.description }}</li></ul></article>
-          <article class="shot-change"><header><strong><TrendingUp class="shot-panel-icon is-violet" :size="17" />本轮变化</strong><span class="shot-change-legend"><i></i>来自最近两个快照</span></header><ul><li v-for="change in profileChanges.slice(0, 5)" :key="change.key"><strong>{{ change.label }}</strong><em>{{ change.before ? '调整' : '新增' }}</em><span>{{ change.before || '未识别' }} → {{ change.after || '未识别' }}</span></li><li v-if="!profileChanges.length"><span>暂无可比较的画像变化</span></li></ul></article>
+          <article v-if="profileChanges.length" class="shot-change"><header><strong><TrendingUp class="shot-panel-icon is-violet" :size="17" />本轮变化</strong><span class="shot-change-legend"><i></i>来自最近两个快照</span></header><ul><li v-for="change in profileChanges.slice(0, 5)" :key="change.key"><strong>{{ change.label }}</strong><em>{{ change.before ? '调整' : '新增' }}</em><span>{{ change.before || '未识别' }} → {{ change.after || '未识别' }}</span></li><li v-if="!profileChanges.length"><span>暂无可比较的画像变化</span></li></ul></article>
           <article class="shot-recommend"><header><strong><Sparkles class="shot-panel-icon" :size="17" />推荐动作</strong></header><RouterLink to="/workshop"><i class="shot-action-icon"><Box :size="17" /></i><span>资源推荐<small>为你优先推荐图解与案例类学习资源</small></span><ArrowRight :size="18" /></RouterLink><RouterLink to="/path"><i class="shot-action-icon"><Target :size="17" /></i><span>学习路径<small>生成需求分析与建模专项提升路径</small></span><ArrowRight :size="18" /></RouterLink><RouterLink to="/exercise"><i class="shot-action-icon"><ClipboardCheck :size="17" /></i><span>练习诊断<small>安排用例图与需求访谈对比练习</small></span><ArrowRight :size="18" /></RouterLink><RouterLink class="shot-recommend-all" to="/workshop">查看全部推荐 <ArrowRight :size="15" /></RouterLink></article>
         </div>
         <footer class="shot-profile-footer"><ShieldCheck :size="14" />慧思智学平台 · AI赋能教育，精准成就每一位学习者</footer>
       </template>
     </section>
 
-    <template v-if="false">
-    <header class="profile-topbar">
-      <div class="profile-heading">
-      <span class="os-eyebrow"><UserRoundSearch :size="14" /> 动态画像 · 画像证据台</span>
-        <div><h1>用户画像中枢</h1><p>汇集学习描述、练习行为与版本证据，持续维护可执行的六维学习画像。</p></div>
-      </div>
-      <div class="os-page-actions">
-        <button class="os-button" type="button" :disabled="loading || refreshing" @click="loadProfile">
-          <LoaderCircle v-if="refreshing" class="spin" :size="15" /><RefreshCw v-else :size="15" />{{ refreshing ? '正在同步' : '更新画像' }}
-        </button>
-        <button class="os-button" type="button" :disabled="!profile" @click="exportProfile"><Database :size="15" />导出画像</button>
-        <button class="os-button" type="button" :aria-expanded="showProfileRules" @click="showProfileRules = !showProfileRules"><History :size="15" />查看画像规则</button>
-      </div>
-    </header>
 
-    <section v-if="showProfileRules" class="profile-rule-strip" aria-label="画像更新规则">
-      <strong>画像更新规则</strong><span>对话补充、练习诊断、知识掌握与资源反馈共同形成版本化画像；新增证据不会直接覆盖已有可靠判断。</span>
-      <RouterLink to="/workshop">用画像生成资源 <ArrowRight :size="14" /></RouterLink>
-    </section>
-
-    <nav class="profile-flowbar" aria-label="画像工作流">
-      <span class="flow-step is-current"><b>01</b><i><strong>采集证据</strong><small>描述、错题与偏好</small></i></span>
-      <span class="flow-step"><b>02</b><i><strong>形成画像</strong><small>{{ profile ? `${percentValue(profile.completeness)}% 完整度` : '等待画像数据' }}</small></i></span>
-      <span class="flow-step"><b>03</b><i><strong>校准六维</strong><small>{{ profile ? `${identifiedCount} / 6 已识别` : '等待分析' }}</small></i></span>
-      <RouterLink class="flow-step flow-next" to="/workshop"><b>04</b><i><strong>驱动资源</strong><small>进入资源工坊</small></i><ArrowRight :size="15" /></RouterLink>
-    </nav>
-
-    <div v-if="error" class="os-alert profile-alert" role="alert" aria-live="assertive">
-      <CircleAlert :size="18" aria-hidden="true" /><span><strong>当前操作未完成</strong><small>{{ error }}</small></span>
-      <button class="os-button" type="button" :disabled="loading || refreshing || updating" @click="retryLastAction"><RotateCcw :size="14" />{{ failedDraft ? '重试本轮分析' : '重新加载' }}</button>
-    </div>
-    <div v-if="statusNotice" class="profile-notice" role="status" aria-live="polite"><Check :size="16" aria-hidden="true" />{{ statusNotice }}</div>
-
-    <section v-if="loading && !profile" class="os-card os-loading" role="status" aria-live="polite">
-      <div><span class="os-spinner"></span><p>正在读取画像快照与学习证据…</p></div>
-    </section>
-
-    <template v-else-if="profile">
-      <section class="profile-console">
-        <article class="profile-dialogue os-card" aria-labelledby="profile-interview-title">
-          <header class="panel-heading">
-              <div><span class="panel-index">01</span><span><small>证据输入</small><h2 id="profile-interview-title">补充画像证据</h2></span></div>
-            <span class="cp-status"><span class="profile-live-dot"></span>{{ updating ? '分析中' : '智能体就绪' }}</span>
-          </header>
-
-          <p class="panel-intro">用自然语言描述学习变化，系统会将本轮输入写入可追踪画像。</p>
-          <div class="dialogue-prompts" aria-label="画像补充提示">
-            <button type="button" @click="usePrompt('我最近在哪些知识点上反复出错？请根据已有记录更新画像。')">根据错题分析</button>
-            <button type="button" @click="usePrompt('我更适合图解、案例和分步讲解，请把这些偏好写入画像。')">补充学习偏好</button>
-            <button type="button" @click="usePrompt('我的目标是完成一份真实项目成果，请据此调整学习节奏与动机类型。')">补充学习目标</button>
-          </div>
-
-          <form class="dialogue-composer" @submit.prevent="submitProfile">
-            <label for="profile-evidence-input">本轮补充说明</label>
-            <textarea id="profile-evidence-input" ref="inputRef" v-model="input" placeholder="描述课程、目标、薄弱点、偏好或最近的学习变化…" rows="4" @keydown="handleComposerKeydown"></textarea>
-            <footer><span>Ctrl / ⌘ + Enter 快速分析</span><button class="os-button os-button-primary dialogue-send" type="submit" :disabled="!input.trim() || updating"><LoaderCircle v-if="updating" class="spin" :size="15" /><Send v-else :size="15" />{{ updating ? '正在分析' : '分析并更新' }}</button></footer>
-          </form>
-
-          <section class="dialogue-history" aria-label="画像分析对话">
-            <header><span><MessageSquareText :size="14" />分析记录</span><small>{{ messages.length }} 条消息</small></header>
-            <div class="dialogue-messages" aria-live="polite" aria-relevant="additions">
-              <div v-for="(message, index) in messages" :key="`${message.time}-${index}`" class="dialogue-message" :class="`is-${message.role}`">
-                <span class="message-role">{{ message.role === 'assistant' ? 'AI' : '我' }}</span><div><p>{{ message.content }}</p><time>{{ message.time }}</time></div>
-              </div>
-              <div v-if="updating" class="dialogue-message is-assistant is-thinking"><span class="message-role">AI</span><div><p><LoaderCircle :size="15" class="spin" />正在提取证据并形成分析结果…</p></div></div>
-            </div>
-          </section>
-        </article>
-
-        <div class="profile-results">
-          <article class="learner-strip os-card" aria-label="当前学习者画像摘要">
-            <div class="learner-label"><span class="panel-index">02</span><small>当前画像</small></div>
-            <div class="profile-avatar"><span class="profile-avatar-photo" role="img" aria-label="用户头像"></span><i></i></div>
-            <div class="profile-identity-copy"><h2>{{ profile.learner.display_name }}</h2><p>{{ profile.learner.major }} · {{ profile.learner.grade }}</p><small>{{ profile.learner.goals || '尚未补充学习目标' }}</small></div>
-            <div class="profile-strip-metric"><span>画像完整度</span><strong>{{ percentValue(profile.completeness) }}<small>%</small></strong><div class="os-progress" role="progressbar" aria-label="画像完整度" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="percentValue(profile.completeness)"><span :style="{ width: `${percentValue(profile.completeness)}%` }"></span></div></div>
-            <dl class="profile-meta"><div><dt>有效证据</dt><dd>{{ profile.evidence_count }} 条</dd></div><div><dt>当前版本</dt><dd>{{ profile.learner.profile_version }}</dd></div><div><dt>最近更新</dt><dd>{{ formatDate(profile.learner.updated_at) }}</dd></div></dl>
-          </article>
-
-          <article class="dimension-workbench os-card" aria-labelledby="dimension-title">
-            <header class="panel-heading dimension-header">
-              <div><span class="panel-index">03</span><span><small>六维画像</small><h2 id="dimension-title">六维画像校准</h2></span></div>
-              <span class="dimension-summary">{{ identifiedCount }} / 6 已识别 · 点击维度查看依据</span>
-            </header>
-
-            <div v-if="profile.dimensions.length" class="dimension-console-body">
-              <div class="dimension-rail" role="list" aria-label="画像维度">
-                <button v-for="(dimension, index) in profile.dimensions" :key="dimension.key" type="button" class="dimension-row" :class="{ active: selectedDimension?.key === dimension.key }" :aria-pressed="selectedDimension?.key === dimension.key" @click="selectedKey = dimension.key">
-                  <span class="dimension-index">0{{ index + 1 }}</span><span class="dimension-copy"><strong>{{ dimension.label }}</strong><small>{{ dimension.value }}</small></span><ChevronRight :size="15" aria-hidden="true" />
-                </button>
-              </div>
-
-              <section v-if="selectedDimension" class="dimension-detail" aria-live="polite">
-                <header><span class="detail-icon"><Brain :size="20" /></span><span><small>当前维度</small><strong>{{ selectedDimension.label }}</strong></span><span class="os-chip os-chip-active"><Check :size="12" />{{ selectedDimension.status === 'ready' ? '已识别' : '待补全' }}</span></header>
-                <p class="dimension-value">{{ selectedDimension.value }}</p><p class="dimension-desc">{{ selectedDimension.description }}</p>
-                <div class="detail-source"><Database :size="15" /><span><strong>{{ profile.evidence_count }} 条证据参与判断</strong><small>来自画像对话、练习与学习行为记录</small></span></div>
-              </section>
-            </div>
-            <div v-else class="cp-empty-state compact-empty"><span><Brain :size="23" /></span><h3>尚未形成维度判断</h3><p>补充学习目标、薄弱点和偏好后，画像智能体会在这里呈现分析结果。</p></div>
-          </article>
-
-          <article class="profile-ledger os-card" aria-label="学习焦点与画像版本">
-            <section class="evidence-focus-card">
-              <header><span><span class="panel-index">04</span><i><small>学习焦点</small><strong>当前学习焦点</strong></i></span><em>{{ profile.focus.weak_points.length }} 个优先卡点</em></header>
-              <h2>{{ profile.focus.headline }}</h2>
-              <div v-if="profile.focus.weak_points.length" class="focus-evidence-list"><div v-for="(item, index) in profile.focus.weak_points" :key="item"><span>{{ String(index + 1).padStart(2, '0') }}</span><strong>{{ item }}</strong><small>优先补齐</small></div></div>
-              <div v-else class="profile-inline-empty">暂无明确薄弱点，完成一次练习诊断后将自动补充。</div>
-              <div v-if="profile.focus.keywords.length" class="os-chip-list"><span v-for="item in profile.focus.keywords" :key="item" class="os-chip"># {{ item }}</span></div>
-            </section>
-
-            <section class="profile-history-card">
-              <header><span><History :size="15" /><i><small>版本记录</small><strong>画像版本记录</strong></i></span><em>{{ profile.history.length }} 个快照</em></header>
-              <div v-if="profile.history.length" class="history-list"><div v-for="(item, index) in profile.history" :key="item.id" class="history-row"><span class="history-dot" :class="{ current: index === 0 }"><Clock3 :size="13" /></span><span><strong>{{ item.version }} <em v-if="index === 0">当前</em></strong><small>{{ item.reason }}</small></span><time :datetime="item.created_at">{{ formatDate(item.created_at) }}</time></div></div>
-              <div v-else class="profile-inline-empty">暂无历史快照；画像版本变化后会在这里保留原因与时间。</div>
-            </section>
-          </article>
-        </div>
-      </section>
-
-      <section class="profile-next-step os-card-soft"><span class="next-step-icon"><Sparkles :size="19" /></span><span><strong>画像已接入资源生成链路</strong><small>资源类型、讲解方式与内容难度将根据当前薄弱点、目标和模态偏好组织。</small></span><RouterLink class="os-button os-button-primary" to="/workshop">进入资源工坊 <ArrowRight :size="15" /></RouterLink></section>
-    </template>
-
-    <section v-else class="os-card cp-empty-state"><span><UserRoundSearch :size="25" /></span><h3>暂时无法读取用户画像</h3><p>保留当前页面即可重试，已有输入不会因为重新加载而丢失。</p><button class="os-button os-button-primary" type="button" @click="loadProfile"><RefreshCw :size="15" />重新加载画像</button></section>
-    </template>
   </div>
 </template>
 
 <style scoped>
+.shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: minmax(0, 1fr); } }
+
 .shot-dimensions button {
   grid-template-rows: 1fr;
   align-items: center;

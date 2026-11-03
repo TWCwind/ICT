@@ -24,16 +24,8 @@ select {
 
 .portal-nav a { font-size: 13px; }
 .competition-page :is(p, li, label, small, span) { line-height: 1.55; }
-.shot-profile :is(p, li, small, dt, dd, button, em, span),
-.shot-workshop :is(p, li, small, dt, dd, button, em, span),
-.shot-path :is(p, li, small, dt, dd, button, em, label, span),
-.shot-evaluate :is(p, li, small, dt, dd, button, em, label, span) { font-size: 12px !important; }
-.competition-page .shot-profile :is(a, p, li, small, dt, dd, button, em, span),
-.competition-page .shot-workshop :is(p, li, small, dt, dd, button, em, span),
-.competition-page.path-command-page .shot-path :is(p, li, small, dt, dd, button, a, em, label, span),
-.competition-page.evaluate-command-page .shot-evaluate :is(p, li, small, dt, dd, button, em, label, span) { font-size: 12px !important; }
-.competition-page .shot-workshop .markdown-body h3 { font-size: 13px !important; }
-.competition-page .shot-workshop .markdown-body a { font-size: 11px !important; }
+.shot-profile :is(p, li, small, dt, dd, button, em, span), .shot-path :is(p, li, small, dt, dd, button, em, label, span) { font-size: 12px !important; }
+.competition-page .shot-profile :is(a, p, li, small, dt, dd, button, em, span), .competition-page.path-command-page .shot-path :is(p, li, small, dt, dd, button, a, em, label, span) { font-size: 12px !important; }
 
 /* Tutor: one focused realtime-video workspace, without the former Q&A dashboard. */
 .tutor-video-page {
@@ -76,8 +68,6 @@ select {
 .tutor-capability-note { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 7px; color: #71839b; font-size: 12px; }
 
 /* Keep the workshop side rail content-sized instead of stretching empty status cards. */
-.shot-workshop__side { align-self: start; height: fit-content; grid-template-rows: none !important; grid-auto-rows: max-content !important; }
-.shot-workshop__side .shot-progress { height: auto !important; min-height: 0; }
 
 /* Always provide a visible local avatar while Xingyun's renderer is unavailable. */
 .realtime-avatar.digital-human .digital-human-rig {
@@ -130,9 +120,6 @@ select {
 .wrongbook-radar .ability-list strong { white-space: nowrap; }
 
 /* Evaluation empty-state text must remain horizontal and use available width. */
-.shot-diagnosis ol li { grid-template-columns: 28px minmax(0,1fr) auto !important; }
-.shot-diagnosis ol li > span { min-width: 0; width: auto !important; writing-mode: horizontal-tb; word-break: normal; }
-.shot-diagnosis ol li strong, .shot-diagnosis ol li small { display: block; white-space: normal; overflow-wrap: anywhere; }
 
 /* Path sidebar radar must stay inside its panel instead of overlapping rules. */
 .shot-path-profile { overflow: hidden; }
@@ -271,16 +258,6 @@ select {
 
 /* Readable type and compact controls on small screens. */
 @media (max-width: 520px) {
-  .shot-workshop .shot-workshop-hero {
-    min-width: 0;
-    max-width: 100%;
-    padding-inline: 16px;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .shot-workshop .shot-workshop-copy,
-  .shot-workshop .shot-agent-orbit { min-width: 0; }
-  .shot-workshop .shot-workshop__main { grid-template-columns: minmax(0, 1fr); }
 
   .portal-nav-link {
     flex-direction: column;
@@ -292,8 +269,6 @@ select {
 
   .shot-profile__head .shot-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shot-profile__head .shot-actions button:last-child { grid-column: 1 / -1; }
-  .shot-evaluate__head .shot-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .shot-evaluate__head .shot-actions em { grid-column: 1 / -1; }
 }
 
 .shot-profile__bottom { grid-template-columns: minmax(250px, .8fr) repeat(3, minmax(0, 1fr)); }
@@ -320,20 +295,6 @@ select {
 .shot-profile :is(.shot-ai-tip, .shot-explain > p) { font-size: 13px !important; }
 .shot-profile :is(.shot-timeline, .shot-interview, .shot-matrix, .shot-profile__bottom article) > header strong { font-size: 14px; }
 
-.shot-evaluate .shot-score-row { min-height: 320px; }
-.shot-score-caveat { display: block; margin: 3px auto 0; max-width: 27ch; color: #d8e7f8; font-size: 11px !important; line-height: 1.45; }
-.shot-evaluate .shot-capability { display: grid; align-content: start; }
-.shot-evaluate .shot-capability-bars { display: grid; gap: 13px; margin: 18px 0 0; padding: 0; list-style: none; }
-.shot-evaluate .shot-capability-bars li { display: grid; grid-template-columns: minmax(80px, 132px) minmax(0, 1fr) minmax(58px, 76px); align-items: center; gap: 10px; min-height: 26px; }
-.shot-evaluate .shot-capability-bars li > span { color: #3c5573; font-size: 13px !important; }
-.shot-capability-track { height: 9px; overflow: hidden; border-radius: 999px; background: #e8eef7; }
-.shot-capability-track b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1769ff, #23a9dc); }
-.shot-capability-bars li > strong { color: #245fb8; font-size: 12px !important; text-align: right; }
-.shot-capability-bars li.is-unobserved > strong { color: #75859a; font-weight: 700; }
-.shot-capability-note { margin: 14px 0 0; padding-top: 10px; color: #6a7e96; border-top: 1px solid #e5ecf5; font-size: 12px !important; line-height: 1.5; }
-.shot-evaluate .shot-score > p { font-size: 12px !important; line-height: 1.6; }
-.shot-evaluate .shot-evidence-version footer small { font-size: 12px !important; }
-
 .graph-touch-hint { display: none; }
 .graph-scroll:focus-visible { outline: 3px solid #155eef; outline-offset: -3px; }
 @media (max-width: 820px) {
@@ -344,20 +305,12 @@ select {
   .workshop-shell-practice .studio-actions .studio-btn,
   .realtime-control-row .studio-btn,
   .apple-hero-actions .os-button,
-  .shot-workshop .shot-create > footer > div button,
-  .shot-workshop .shot-export :is(button, a),
-  .shot-workshop .shot-generate,
   .shot-profile :is(.shot-actions button, .shot-timeline header button, .shot-interview form footer button, .shot-prompts button),
   .shot-profile .shot-interview > header button { min-height: 44px !important; }
-  .competition-page .shot-evaluate button { min-height: 44px !important; }
-  .shot-workshop :is(.shot-brief-fields input, .shot-create > textarea) { min-height: 44px; }
   .graph-zoom-controls button { min-width: 44px; min-height: 44px; }
   .shot-profile__bottom { grid-template-columns: minmax(0, 1fr); }
   .shot-profile__bottom .profile-confidence-card { min-height: 0 !important; }
   .profile-confidence-list li { grid-template-columns: minmax(88px, 112px) minmax(0, 1fr) 44px; }
-  .shot-evaluate .shot-score-row { min-height: 0; }
-  .shot-evaluate .shot-capability-bars { gap: 15px; }
-  .shot-evaluate .shot-capability-bars li { grid-template-columns: minmax(90px, 1fr) minmax(0, 1.3fr) minmax(58px, auto); }
   .graph-touch-hint { display: block; margin: 0 8px 8px; padding: 9px 11px; color: #355b8f; border-radius: 9px; background: #edf4ff; font-size: 12px !important; line-height: 1.5; }
 }
 

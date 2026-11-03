@@ -281,7 +281,10 @@ test('tablet evaluation keeps all evidence columns inside the visible card', asy
   })
   expect(geometry.scrollWidth, 'evaluation score row must not internally clip a column').toBeLessThanOrEqual(geometry.width + 1)
   expect(geometry.cards.every(card => card.left >= geometry.left - 1 && card.right <= geometry.right + 1), JSON.stringify(geometry)).toBe(true)
-  await expect(page.locator('.shot-evidence-version')).toBeVisible()
+  const evidenceDetails = page.locator('.evaluation-evidence')
+  await expect(evidenceDetails).toBeVisible()
+  await evidenceDetails.locator('summary').click()
+  await expect(evidenceDetails.locator('ul li').first()).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 

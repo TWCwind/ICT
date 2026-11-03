@@ -299,3 +299,30 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 | 人工截图复核 | 查看五种尺寸总览与问题页原图；修复后手机工坊宽度等于视口，无明显遮挡、裁切或页面横向溢出 |
 
 截图位于 `C:\Users\xiajun\AppData\Local\Temp\ict-enterprise-review-20261103-final`，不在仓库。知识图谱窄屏使用图谱画布内部横向滑动。MCP 套件本轮未运行；AgentArts 云端未接入。Build 的 chunk 体积提示是已知非阻塞限制。
+
+## 2026-11-03 页面结构与视觉整理复测
+
+### 本地服务与截图
+
+- `GET http://127.0.0.1:8000/api/health`：HTTP 200，FastAPI `ready`，`mode=roadshow`，`demo_mode=true`，未配置真实模型。
+- 最终截图：33 张 PNG，位于系统临时目录 `C:\Users\xiajun\AppData\Local\Temp\ict-design-restructure\after-verified`；九页桌面和手机各一张，五个重点页面再覆盖 1280×720、1024×768、768×1024。
+- 检查视口宽度：33 个截图记录均未出现页面宽度超过视口的情况；390px 评估页宽度为 390px。
+- 已人工查看桌面和手机总览，以及评估页 1024×768/390×844、工坊 1280×720/768×1024、画像 1440×900、知识图谱页面。知识图谱画布在窄屏内部横向滚动，页面本身不横向溢出。
+- 首页 `HomePage.vue` 没有代码差异；首页长篇宣传正文未改写、删减或重新排序。
+
+### 前端命令与 Playwright
+
+| 命令 | 结果 |
+|---|---:|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过，按钮交互契约和已知静态数据回退检查通过 |
+| `npm run build` | 通过；ExerciseCenter 分包约 585 kB，保留非阻断 chunk 警告 |
+| `npm run test:roadshow -- --project=msedge --workers=1` 首轮 | 15/19 通过；768×1024 页面导航超时 1 项，另有一次 500 控制台提示导致截图用例失败；2 项未运行 |
+| `npx playwright test e2e/competition-responsive.spec.ts --project=msedge --workers=1` 复跑 | 4/4 通过 |
+| `npx playwright test e2e/interaction-qa.spec.ts --project=msedge --workers=1` 复跑 | 3/3 通过，含五尺寸截图、图谱键盘与错题星系状态 |
+| `npm run test:roadshow -- --project=msedge --workers=1` 完整复跑 | 19/19 通过，3.7 分钟 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1` | 11/11 通过 |
+
+队友回归首轮为 10/11：失败项要求已经移除的重复 `.shot-evidence-version` 卡片。现改为展开 `.evaluation-evidence` 并验证实际证据列表；该专项和全套回归均通过。路演首轮的一次 500 提示没有捕获完整 URL；同期后端日志中的本轮业务 API 均为 200，独立页面错误采集与完整套件复跑都没有复现。不能据此将首轮错误归因到某个具体资源。
+
+本轮只改前端和文档，没有运行后端单测或 MCP 测试；历史测试结果不计入本轮。AgentArts 云端没有接入。

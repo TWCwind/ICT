@@ -91,8 +91,7 @@
 .portal-main:not(.portal-main-home) .tutor-workbench,
 .portal-main:not(.portal-main-home) > .grid,
 .portal-main:not(.portal-main-home) > .knowledge-hub,
-.knowledge-workbench,
-.evaluation-workbench {
+.knowledge-workbench {
   min-height: auto !important;
 }
 
@@ -193,10 +192,6 @@
 .graph-stage,
 .graph-canvas {
   min-height: 440px !important;
-}
-
-.evaluation-workbench {
-  padding: 10px 12px 14px !important;
 }
 
 .evaluation-hero {

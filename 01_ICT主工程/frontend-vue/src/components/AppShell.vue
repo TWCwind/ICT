@@ -153,7 +153,7 @@ onBeforeUnmount(() => {
           class="portal-nav-link"
           :title="item.desc"
         >
-          <component :is="item.icon" :size="17" stroke-width="2.35" />
+          <component :is="item.icon" :size="20" stroke-width="2" />
           <span>{{ item.label }}</span>
         </RouterLink>
       </nav>
