@@ -1946,6 +1946,60 @@
 @media (min-width: 1181px) { .shot-route-track { --route-inset: 12px; } }
 @media (max-width: 760px) { .shot-route-track { --route-inset: 8px; } }
 
+/* 中等屏学习路径：覆盖晚加载的三栏桌面规则，避免时间线阶段被裁切。 */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .path-command-page {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding-inline: 16px;
+  }
+
+  .path-command-page .shot-path {
+    grid-template-columns: minmax(220px, .7fr) minmax(0, 1.8fr) !important;
+    grid-template-rows: auto;
+    width: 100%;
+    height: auto;
+    min-width: 0;
+  }
+
+  .path-command-page .shot-path-profile,
+  .path-command-page .shot-path-main {
+    grid-row: 1;
+    height: auto;
+    min-width: 0;
+  }
+
+  .path-command-page .shot-path-profile { grid-column: 1; }
+  .path-command-page .shot-path-main { grid-column: 2; }
+
+  .path-command-page .shot-path-resource {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    height: auto;
+    min-width: 0;
+  }
+
+  .path-command-page .shot-dynamic-rules,
+  .path-command-page .shot-agent-chain {
+    grid-row: auto;
+    min-width: 0;
+  }
+
+  .path-command-page .shot-dynamic-rules { grid-column: 1; }
+  .path-command-page .shot-agent-chain { grid-column: 2; }
+
+  .path-command-page .shot-route-track {
+    gap: 2px;
+    overflow-x: hidden;
+  }
+
+  .path-command-page .shot-route-track > button {
+    flex: 1 1 0;
+    min-width: 0 !important;
+  }
+}
+
 /* 题干 / 选项 / 解析里的公式排版 */
 .math-text p { margin: 0 0 8px; }
 .math-text p:last-child { margin-bottom: 0; }

@@ -326,3 +326,48 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 队友回归首轮为 10/11：失败项要求已经移除的重复 `.shot-evidence-version` 卡片。现改为展开 `.evaluation-evidence` 并验证实际证据列表；该专项和全套回归均通过。路演首轮的一次 500 提示没有捕获完整 URL；同期后端日志中的本轮业务 API 均为 200，独立页面错误采集与完整套件复跑都没有复现。不能据此将首轮错误归因到某个具体资源。
 
 本轮只改前端和文档，没有运行后端单测或 MCP 测试；历史测试结果不计入本轮。AgentArts 云端没有接入。
+
+## 2026-11-03 隔离样例全流程验收（当前工作区）
+
+### 环境与数据
+
+- 原路演端口 `5173/8000` 来自当前工作区且健康检查成功；避免污染路演数据，本轮可写流程改用隔离前端 `5174`、后端 `8010`。
+- 隔离目录：`C:\Users\xiajun\AppData\Local\Temp\ict-acceptance-20261103-018daa3`，通过 `python tests/generate_test_dataset.py --output C:\Users\xiajun\AppData\Local\Temp\ict-acceptance-20261103-018daa3` 生成，manifest 标记 `test/generated/full-flow-v1`；3 个学生、5 个岗位、1 门课程、6 章、30 个知识点、2 个资源，并包含练习/错题/学习记录及错误输入案例。
+- 独立后端启动命令：`$env:PYTHONPATH='C:\Users\xiajun\Desktop\ICT赛题2-AgentArts-A开发工作区\01_ICT主工程\backend'; $env:DATA_DIR='C:\Users\xiajun\AppData\Local\Temp\ict-acceptance-20261103-018daa3'; $env:DEMO_MODE='true'; $env:APP_ENV='roadshow'; python -m uvicorn app.main:app --host 127.0.0.1 --port 8010`。独立 Vite 进程从 `frontend-vue` 启动，`configFile:false`，将 `/api`、`/files`、`/exports` 代理到 8010。
+- 健康接口返回 ready、roadshow 模式、demo 数据标识开启、外部模型未配置。所有有写入操作只落在隔离目录。
+
+### 修复记录
+
+| 发现 | 根因与修复 | 复测 |
+|---|---|---|
+| 辅导页将模型未配置错误显示为“HTTP 200” | API 使用 HTTP 200 传递业务失败，消息位于 `error.message`；客户端只取顶层 `message`。现在按错误结构提取中文后端说明 | `e2e/real-processing.spec.ts` 2/2、路演套件 19/19 |
+| 1024px 学习路径阶段被裁切 | 后加载的三栏固定宽样式覆盖了中屏两栏规则，六个节点只有四个完全可见。覆盖为中屏两栏，并把推荐资源放到下一行，阶段卡片压缩至容器内 | `claude-round2-qa.spec.ts` 最终 6/6；1024×768 修复截图已人工查看 |
+| 评估页专项找不到 `.shot-capability__body` | 页面已从雷达图改为 `.shot-capability-bars`，专项仍查旧类名 | 断言已更新并随专项 6/6 通过 |
+| 生成图谱测试把资源数固定为 3 | 隔离图谱接口真实统计是 2，页面按接口返回渲染 | 改为从真实 API 读取统计并逐项核对，生成数据流程 2/2 |
+
+### 命令与结果
+
+| 命令 / 检查 | 实际结果 |
+|---|---|
+| `GET http://127.0.0.1:8000/api/health` 与隔离 `GET http://127.0.0.1:8010/api/health` | 两者 HTTP 200；隔离数据状态 ready；模型未配置 |
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过：可见按钮动作契约与静态数据回退审计通过 |
+| `npm run build` | 通过；ExerciseCenter 584.98 kB、Markdown renderer 385.05 kB 有非阻塞 chunk 体积提示 |
+| `npm run test:roadshow -- --project=msedge --workers=1 --reporter=line` | 19/19 通过（最终代码复测，6.5 分钟） |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1 --reporter=line` | 11/11 通过 |
+| `npx playwright test e2e/real-processing.spec.ts --project=msedge --workers=1 --reporter=line` | 2/2 通过；画像、路径、评估写入读回，题库生成、答题和错题入口可操作；未配置模型的错误如实展示 |
+| `npm run test:generated-flow -- --project=msedge --workers=1 --reporter=line` | 2/2 通过；五种视口截图，图谱统计按接口、最后章节可选择、资源数按接口且处于详情面板内 |
+| `npx playwright test e2e/claude-round2-qa.spec.ts --project=msedge --workers=1 --reporter=line` | 初次 4/6：一个旧评估选择器断言过期、一个 1024px 时间线确实裁切；修复 CSS 和断言后 6/6 通过 |
+| 临时截图专项 `e2e/_acceptance-extra-screenshots.spec.ts` | 1/1；补出画像、辅导、多模态桌面与手机截图；临时 spec 已移除 |
+| `$env:DATA_DIR='C:\Users\xiajun\AppData\Local\Temp\ict-acceptance-20261103-018daa3'; python -m unittest discover -s tests -p "test*.py" -v`（backend 目录） | 45/45 通过 |
+| `$env:DATA_DIR='C:\Users\xiajun\AppData\Local\Temp\ict-acceptance-20261103-018daa3'; python tests/generated_full_flow.py http://127.0.0.1:8010`（主工程目录） | 6/6 通过：数据契约、健康/学生、图谱语义统计、新学习者隔离、生成学生状态写入、异常响应 |
+
+### 真实用户流程与限制
+
+实际浏览覆盖 `/`、`/profile`、`/workshop`、`/path`、`/exercise`、`/knowledge`、`/multimodal`、`/tutor`、`/evaluate`。路演核心流程使用测试登录并覆盖退出/重新进入；完成画像、路径计划和评估报告 API 写入并读回。练习使用明确标记的本地模板题库、提交答案并检查结果统计。练习页签、历史星系、知识图谱节点/键盘/滚轮/全屏和中屏路径均做真实交互。
+
+模型未配置期间，资源生成、辅导回答和多模态资源生成都不能走成功分支；三者实际请求后均呈现服务端未配置原因，不生成伪内容。故新生成资源的成功预览/导出闭环无法在当前服务配置下验收。MCP 本轮未运行；AgentArts 云端未接入。
+
+### 截图人工验收
+
+最终截图位于 `C:\Users\xiajun\AppData\Local\Temp\ict-live-acceptance-20261103-018daa3`：六个主要页面在 1440×900、1280×720、1024×768、768×1024、390×844 共 30 张；画像、辅导、多模态在桌面和手机另 6 张；两张总览 JPEG。已使用图像查看工具查看两张总览、九个页面代表图、手机路径、桌面辅导/画像、多模态提示和 1024px 路径修复图。首页长篇宣传文本及版式均未改动，`HomePage.vue` 无 diff。

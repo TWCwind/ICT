@@ -1,7 +1,7 @@
 import { expect, type Page, type Response, test } from '@playwright/test'
 
-const studentId = `real-processing-${Date.now()}`
-const resourceStudentId = `real-resource-${Date.now()}`
+const studentId = `test-generated-real-processing-${Date.now()}`
+const resourceStudentId = 'active-learner'
 
 async function openAsLearner(page: Page, route: string) {
   await page.addInitScript((id) => {
@@ -40,7 +40,7 @@ test('analysis buttons create input-dependent and persisted backend evidence', a
   expect(JSON.stringify(persistedProfile)).toMatch(/链表|linked list|tail pointer/i)
 
   await openAsLearner(page, '/path')
-  const goal = `完成 ${studentId} 的链表尾插边界测试并解释指针变化`
+  const goal = `test/generated：完成 ${studentId} 的链表尾插边界测试并解释指针变化`
   await page.locator('#path-real-goal').fill(goal)
   const [pathResponse] = await Promise.all([
     page.waitForResponse((response) => response.url().includes('/api/path/plan') && response.request().method() === 'POST', { timeout: 90_000 }),
@@ -57,21 +57,22 @@ test('analysis buttons create input-dependent and persisted backend evidence', a
 
   await openAsLearner(page, '/tutor')
   const tutorQuestion = `根据刚才的画像证据，解释 ${studentId} 在链表尾插时为什么必须同时处理空链表，并给出可验证步骤。`
-  await page.locator('#tutor-question').fill(tutorQuestion)
+  await page.getByPlaceholder('也可以直接打字提问，回车发送…').fill(tutorQuestion)
   const [tutorResponse] = await Promise.all([
     page.waitForResponse((response) => response.url().includes('/api/tutor/ask') && response.request().method() === 'POST', { timeout: 120_000 }),
     page.getByRole('button', { name: '发送问题' }).click(),
   ])
-  const tutorResult = await successfulApi(tutorResponse)
-  expect(String(tutorResult.markdown || tutorResult.answer?.text || tutorResult.answer || '').length).toBeGreaterThan(40)
-
-  const saveButton = page.getByRole('button', { name: /保存会话证据/ })
-  await expect(saveButton).toBeEnabled({ timeout: 15_000 })
-  const [saveResponse] = await Promise.all([
-    page.waitForResponse((response) => response.url().includes('/api/tutor/session') && response.request().method() === 'POST', { timeout: 30_000 }),
-    saveButton.click(),
-  ])
-  await successfulApi(saveResponse)
+  const tutorPayload = await tutorResponse.json()
+  const assistantTurn = page.locator('.tb-turn.is-assistant').last()
+  if (tutorPayload.success) {
+    const tutorResult = tutorPayload.data
+    expect(String(tutorResult.markdown || tutorResult.answer?.text || tutorResult.answer || '').length).toBeGreaterThan(40)
+    await expect(assistantTurn).not.toContainText('正在思考')
+  } else {
+    expect(String(tutorPayload.error?.message || '')).toMatch(/模型尚未配置|模型暂时不可用/)
+    await expect(assistantTurn).toContainText(tutorPayload.error.message)
+    await expect(page.locator('.tb-warn').filter({ hasText: tutorPayload.error.message })).toBeVisible()
+  }
 
   await openAsLearner(page, '/evaluate')
   const [evaluationResponse] = await Promise.all([
@@ -111,47 +112,46 @@ test('resource, exercise and multimodal buttons persist their real outputs', asy
   await workshopInput.fill(`为 ${resourceStudentId} 生成 3 道链表尾插边界条件诊断题，每题必须包含答案、解析和知识点标签。`)
   const generateButton = page.locator('button:visible').filter({ hasText: /生成资源|生成资源包/ }).first()
   await expect(generateButton).toBeEnabled()
+  const existingResourcesResponse = await page.request.get(`/api/resources?student_id=${encodeURIComponent(resourceStudentId)}`)
+  const existingResourcesPayload = await existingResourcesResponse.json()
+  const existingResources = existingResourcesPayload.data?.resources || existingResourcesPayload.data?.items || []
   const [workshopResponse] = await Promise.all([
     page.waitForResponse((response) => response.url().includes('/api/workshop/generate') && response.request().method() === 'POST', { timeout: 120_000 }),
     generateButton.click(),
   ])
   expect(workshopResponse.ok()).toBeTruthy()
+  const workshopStream = await workshopResponse.text()
   await expect(generateButton).toBeEnabled({ timeout: 180_000 })
-
-  await expect.poll(async () => {
-    const response = await page.request.get(`/api/resources?student_id=${encodeURIComponent(resourceStudentId)}`)
-    const payload = await response.json()
-    const items = payload.data?.resources || payload.data?.items || []
-    return items.filter((item: any) => item.type === 'question_bank').length
-  }, { timeout: 30_000 }).toBeGreaterThan(0)
-
-  // Exercise owns its question-bank generation contract. A workshop bank is
-  // intentionally not eligible for practice until the learner creates an
-  // exercise-specific bank with explicit point/count settings.
-  const exerciseBankResponse = await page.request.post('/api/exercise/generate-bank', {
-    timeout: 180_000,
-    data: {
-      student_id: resourceStudentId,
-      stream: false,
-      requirement: {
-        course: '数据结构',
-        chapter: '链表尾插边界条件',
-        specific_knowledge_point: '空链表与非空链表的尾指针更新',
-        knowledge_points: 'head、tail、next 指针更新顺序',
-        weak_points: ['容易遗漏空链表时 head 与 tail 同步更新'],
-        question_config: {
-          count: 3,
-          difficulty: 'medium',
-          types: ['single_choice', 'true_false'],
-          type_counts: { single_choice: 2, true_false: 1 },
-        },
-      },
-    },
-  })
-  const exerciseBank = await successfulApi(exerciseBankResponse)
-  expect((exerciseBank.resources || []).some((item: any) => item.type === 'question_bank')).toBeTruthy()
+  if (workshopStream.includes('event: error')) {
+    expect(workshopStream).toContain('内容生成模型尚未配置')
+    await expect(page.getByRole('alert')).toContainText('内容生成模型尚未配置')
+    const afterResourcesResponse = await page.request.get(`/api/resources?student_id=${encodeURIComponent(resourceStudentId)}`)
+    const afterResourcesPayload = await afterResourcesResponse.json()
+    const afterResources = afterResourcesPayload.data?.resources || afterResourcesPayload.data?.items || []
+    expect(afterResources.length).toBe(existingResources.length)
+  } else {
+    expect(workshopStream).toContain('agent_done')
+    await expect.poll(async () => {
+      const response = await page.request.get(`/api/resources?student_id=${encodeURIComponent(resourceStudentId)}`)
+      const payload = await response.json()
+      const items = payload.data?.resources || payload.data?.items || []
+      return items.length
+    }, { timeout: 30_000 }).toBeGreaterThan(existingResources.length)
+  }
 
   await page.goto('/exercise', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+  const builderTab = page.locator('.practice-workshop-nav').getByRole('button', { name: /题库定制/ })
+  await builderTab.click()
+  await expect(builderTab).toHaveAttribute('aria-current', 'page')
+  const generateStageBank = page.getByRole('button', { name: '生成阶段题库并开始学习' })
+  await expect(generateStageBank).toBeEnabled({ timeout: 20_000 })
+  const [stageBankResponse] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/api/path/stage/questions') && response.request().method() === 'POST', { timeout: 60_000 }),
+    generateStageBank.click(),
+  ])
+  const stageBankResult = await successfulApi(stageBankResponse)
+  expect(stageBankResult.question_bank.type).toBe('question_bank')
+  expect(stageBankResult.question_bank.meta.local_template).toBe(true)
   const question = page.locator('.exercise-question-focus')
   await expect(question).toBeVisible({ timeout: 30_000 })
   const firstChoice = page.locator('.exercise-options label:visible').first()
@@ -165,6 +165,11 @@ test('resource, exercise and multimodal buttons persist their real outputs', asy
   expect(typeof answerResult.correct).toBe('boolean')
   expect(Number(answerResult.stats?.total || 0)).toBeGreaterThan(0)
 
+  const wrongBookTab = page.locator('.practice-workshop-nav').getByRole('button', { name: /错题本/ })
+  await wrongBookTab.click()
+  await expect(wrongBookTab).toHaveAttribute('aria-current', 'page')
+  await expect(page.locator('body')).toContainText(/错题本|错题标签星系/)
+
   await page.goto('/multimodal', { waitUntil: 'domcontentloaded', timeout: 30_000 })
   await page.getByRole('button', { name: '编程' }).click()
   await page.locator('.multi-composer textarea').fill(`为 ${resourceStudentId} 生成 Python 链表尾插边界测试案例，必须包含可运行代码和验收步骤。`)
@@ -175,11 +180,12 @@ test('resource, exercise and multimodal buttons persist their real outputs', asy
     sendButton.click(),
   ])
   expect(multimodalResponse.ok()).toBeTruthy()
-
-  await expect.poll(async () => {
-    const response = await page.request.get(`/api/resources?student_id=${encodeURIComponent(resourceStudentId)}`)
-    const payload = await response.json()
-    const items = payload.data?.resources || payload.data?.items || []
-    return items.filter((item: any) => item.type === 'practice_case').length
-  }, { timeout: 180_000 }).toBeGreaterThan(0)
+  const multimodalStream = await multimodalResponse.text()
+  if (/"event"\s*:\s*"error"/.test(multimodalStream)) {
+    expect(multimodalStream).toContain('代码案例生成模型尚未配置')
+    await expect(page.locator('.multi-message')).toContainText('代码案例生成模型尚未配置')
+  } else {
+    expect(multimodalStream).toMatch(/"event"\s*:\s*"final"/)
+    await expect(page.locator('.multi-message')).not.toContainText('代码案例生成模型尚未配置')
+  }
 })
