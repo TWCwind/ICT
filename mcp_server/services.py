@@ -10,13 +10,31 @@ from typing import Any
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 MAIN_PROJECT_ROOT = WORKSPACE_ROOT / "01_ICT主工程"
 BACKEND_ROOT = MAIN_PROJECT_ROOT / "backend"
+ROADSHOW_DATA_ROOT = MAIN_PROJECT_ROOT / "roadshow-data"
+ROADSHOW_SEED_ROOT = MAIN_PROJECT_ROOT / "roadshow-seed"
 BACKEND_DATA_ROOT = BACKEND_ROOT / "data"
 JOB_MODULE_ROOT = WORKSPACE_ROOT / "02_服创岗位能力模块" / "岗位图谱子系统"
 JOB_DATA_PATH = WORKSPACE_ROOT / "02_服创岗位能力模块" / "结构化岗位画像.json"
 
-# The original backend resolves DATA_DIR from the process working directory.
-# Set a stable package-relative default before importing its service layer.
-os.environ.setdefault("DATA_DIR", str(BACKEND_DATA_ROOT))
+def _select_data_root() -> Path:
+    """Use the same data lifecycle as the roadshow backend.
+
+    The MCP service used to read the developer's stale backend/data directory,
+    so AgentArts could receive a different learner profile from the UI.  A
+    caller-supplied DATA_DIR remains authoritative; otherwise prefer the
+    disposable roadshow runtime and then the reproducible seed package.
+    """
+    configured = os.environ.get("DATA_DIR", "").strip()
+    if configured:
+        return Path(configured).resolve()
+    for candidate in (ROADSHOW_DATA_ROOT, ROADSHOW_SEED_ROOT, BACKEND_DATA_ROOT):
+        if (candidate / "users" / "demo" / "student.json").is_file():
+            return candidate.resolve()
+    return ROADSHOW_SEED_ROOT.resolve()
+
+
+ACTIVE_DATA_ROOT = _select_data_root()
+os.environ.setdefault("DATA_DIR", str(ACTIVE_DATA_ROOT))
 for import_root in (BACKEND_ROOT, JOB_MODULE_ROOT):
     import_path = str(import_root)
     if import_path not in sys.path:
@@ -26,6 +44,9 @@ from app.repo import get_user_events  # noqa: E402
 from app.services.exercise_bank import exercise_summary  # noqa: E402
 from app.services.learning_state import activity_feed, path_overview, profile_overview  # noqa: E402
 from job_database import JobDatabase  # noqa: E402
+
+
+BACKEND_DATA_ROOT = ACTIVE_DATA_ROOT
 
 
 _SAFE_STUDENT_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -47,6 +68,14 @@ def _failure(code: str, message: str, *, details: dict[str, Any] | None = None) 
         "error": {"code": code, "message": message, "details": details or {}},
         "meta": {},
     }
+
+
+def _data_source_label() -> str:
+    try:
+        relative = ACTIVE_DATA_ROOT.relative_to(MAIN_PROJECT_ROOT)
+        return f"01_ICT主工程/{relative.as_posix()} + app.services"
+    except ValueError:
+        return f"{ACTIVE_DATA_ROOT} + app.services"
 
 
 def get_student_profile_data(student_id: str) -> dict[str, Any]:
@@ -86,7 +115,7 @@ def get_student_profile_data(student_id: str) -> dict[str, Any]:
                     "recent_activity": recent_activity,
                 },
             },
-            source="01_ICT主工程/backend/data + app.services",
+            source=_data_source_label(),
             data_mode="bundled_demo_data" if normalized_id == "demo" else "project_local_data",
         )
     except Exception as exc:
@@ -213,7 +242,7 @@ def get_project_status_data(student_id: str) -> dict[str, Any]:
         path = path_overview(normalized_id)
         return _success(
             {"student_id": normalized_id, "path": path},
-            source="01_ICT主工程/backend/data + app.services.learning_state.path_overview",
+            source=_data_source_label().replace(" + app.services", " + app.services.learning_state.path_overview"),
             data_mode="bundled_demo_data" if normalized_id == "demo" else "project_local_data",
         )
     except Exception as exc:

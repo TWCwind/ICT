@@ -42,8 +42,14 @@ def _material_path(*parts: str) -> Path:
 COURSE_DIR = _material_path("课程资料")
 SAMPLE_DIR = _material_path("生成示例")
 PATH_OUTPUT_DIR = _material_path("第三点_学习路径规划与资源推送", "输出结果")
-TEXTBOOK_DIR = PROJECT_ROOT / "uploads" / "textbooks"
-CHAPTER_KNOWLEDGE_DIR = TEXTBOOK_DIR / "chapter_knowledge"
+
+def _textbook_dir() -> Path:
+    """Resolve uploads from the active runtime data directory, including roadshow copies."""
+    return settings.data_path / "uploads" / "textbooks"
+
+
+def _chapter_knowledge_dir() -> Path:
+    return _textbook_dir() / "chapter_knowledge"
 
 # Knowledge-graph concepts are selected from course semantics first.  The
 # source documents in the demo library are converted books, so their opening
@@ -365,23 +371,27 @@ def ingest_textbook(student_id: str, filename: str, content: bytes) -> dict[str,
         raise ValueError("教材中可识别的正文过少，无法生成知识结构")
 
     textbook_id = hashlib.sha256(content).hexdigest()[:16]
-    TEXTBOOK_DIR.mkdir(parents=True, exist_ok=True)
-    CHAPTER_KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+    textbook_dir = _textbook_dir()
+    chapter_knowledge_dir = _chapter_knowledge_dir()
+    textbook_dir.mkdir(parents=True, exist_ok=True)
+    chapter_knowledge_dir.mkdir(parents=True, exist_ok=True)
     stored_name = f"{textbook_id}{suffix}"
-    (TEXTBOOK_DIR / stored_name).write_bytes(content)
+    (textbook_dir / stored_name).write_bytes(content)
 
     chapters = _build_uploaded_textbook_chapters(text, Path(safe_name).stem)
+    display_title = _semantic_course_title(Path(safe_name).stem, text)
     payload = {
         "textbook_id": textbook_id,
         "filename": safe_name,
+        "display_title": display_title,
         "content_hash": textbook_id,
-        "core_topic": Path(safe_name).stem,
+        "core_topic": display_title,
         "chapter_count": len(chapters),
         "total_kp_count": sum(len(item.get("keywords", [])) for item in chapters),
         "chapters": chapters,
     }
-    write_json(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json", payload)
-    index_path = CHAPTER_KNOWLEDGE_DIR / "index.json"
+    write_json(chapter_knowledge_dir / f"book_{textbook_id}.json", payload)
+    index_path = chapter_knowledge_dir / "index.json"
     index = read_json(index_path, {})
     if not isinstance(index, dict):
         index = {}
@@ -453,8 +463,12 @@ def _build_uploaded_textbook_chapters(text: str, title: str) -> list[dict[str, A
                 sections.append((match.group(1).strip(), body))
     if not sections:
         chunk_size = 5000
+        fallback_titles = _fallback_chapter_titles(text)
         sections = [
-            (f"{title}·第{index + 1}部分", text[start:start + chunk_size])
+            (
+                fallback_titles[index] if index < len(fallback_titles) else f"实践应用与复盘·模块 {index + 1}",
+                text[start:start + chunk_size],
+            )
             for index, start in enumerate(range(0, min(len(text), chunk_size * 20), chunk_size))
             if text[start:start + chunk_size].strip()
         ]
@@ -483,6 +497,42 @@ def _build_uploaded_textbook_chapters(text: str, title: str) -> list[dict[str, A
     return chapters
 
 
+def _fallback_chapter_titles(text: str) -> list[str]:
+    """Provide semantic labels when an uploaded document has no headings."""
+    semantic_titles = [
+        "学习目标与业务背景",
+        "核心概念与术语",
+        "方法流程与结构建模",
+        "质量约束与风险控制",
+        "实践应用与案例验证",
+        "综合评估与能力迁移",
+    ]
+    text_lower = (text or "").lower()
+    if "需求" in text_lower and "用例" in text_lower:
+        return [
+            "业务场景与需求范围",
+            "需求获取与表达",
+            "用例与行为建模",
+            "领域结构建模",
+            "质量与约束",
+            "验证与变更",
+        ]
+    return semantic_titles
+
+
+def _semantic_course_title(raw_title: str, evidence: str = "") -> str:
+    """Return a human-facing course title instead of an internal file key."""
+    title = re.sub(r"[_\-]+", " ", str(raw_title or "")).strip()
+    title = re.sub(r"\s+", " ", title)
+    if title and not _is_stale_chapter_title(title):
+        return title[:80]
+    evidence_lower = str(evidence or "").lower()
+    matches = [term for term in GRAPH_DOMAIN_CONCEPTS if term.lower() in evidence_lower]
+    if matches:
+        return f"{matches[0]}综合课程"
+    return "课程知识结构"
+
+
 def graph_data(
     student_id: str,
     course: str = "",
@@ -504,7 +554,7 @@ def graph_data(
             "nodes": [],
             "edges": [],
             "legend": _graph_legend(),
-            "stats": {"documents": 0, "chapters": 0, "concepts": 0, "relations": 0},
+            "stats": {"documents": 0, "chapters": 0, "concepts": 0, "resources": 0, "relations": 0},
         }
 
     selected = next(
@@ -563,6 +613,7 @@ def graph_data(
             "documents": 1,
             "chapters": chapter_count,
             "concepts": concept_count,
+            "resources": len([node for node in nodes if node["kind"] == "resource"]),
             "relations": len(edges),
         },
     }
@@ -571,23 +622,27 @@ def graph_data(
 def _graph_sources(student_id: str) -> list[dict[str, Any]]:
     sources: list[dict[str, Any]] = []
     seen_titles: set[str] = set()
-    index = _read_json_file(CHAPTER_KNOWLEDGE_DIR / "index.json")
+    chapter_knowledge_dir = _chapter_knowledge_dir()
+    index = _read_json_file(chapter_knowledge_dir / "index.json")
     if isinstance(index, dict):
         for textbook_id, metadata in index.items():
             owner = str(metadata.get("student_id") or "") if isinstance(metadata, dict) else ""
             if owner and owner != student_id:
                 continue
-            payload = _read_json_file(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json")
+            payload = _read_json_file(chapter_knowledge_dir / f"book_{textbook_id}.json")
             if not isinstance(payload, dict):
                 continue
-            title = Path(str(payload.get("filename") or metadata.get("filename") or textbook_id)).stem
+            title = _semantic_course_title(
+                str(payload.get("display_title") or payload.get("core_topic") or Path(str(payload.get("filename") or metadata.get("filename") or textbook_id)).stem),
+                " ".join(str(chapter.get("chapter_title", "")) for chapter in payload.get("chapters") or []),
+            )
             chapters = _deduplicate_chapters(payload.get("chapters") or [])
             sources.append(
                 {
                     "id": f"textbook:{textbook_id}",
                     "title": title,
                     "source_type": "uploaded_textbook",
-                    "path": str(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json"),
+                    "path": str(chapter_knowledge_dir / f"book_{textbook_id}.json"),
                     "summary": f"由上传教材自动解析，共识别 {len(chapters)} 个章节。",
                     "chapters": chapters,
                 }
@@ -600,7 +655,7 @@ def _graph_sources(student_id: str) -> list[dict[str, Any]]:
         sources.append(
             {
                 "id": f"course_material:{path.name}",
-                "title": path.stem.replace("_", " "),
+                "title": _semantic_course_title(path.stem.replace("_", " "), _read_text(path)),
                 "source_type": "course_material",
                 "path": str(path),
                 "summary": "课程资料库中的原始教学文档，选择后按正文内容提取知识模块。",
@@ -1007,6 +1062,8 @@ def _deduplicate_chapters(chapters: list[dict[str, Any]]) -> list[dict[str, Any]
     display_titles: dict[str, tuple[int, str]] = {}
     for chapter in chapters:
         display_title = _chapter_display_title(chapter)
+        if _is_stale_chapter_title(display_title):
+            continue
         title = re.sub(r"\s+", "", display_title).lower()
         if not title:
             continue
@@ -1033,6 +1090,15 @@ def _chapter_display_title(chapter: dict[str, Any]) -> str:
     if re.match(r"第\s*\d+\s*章", first_line) and len(first_line) <= 80:
         return first_line
     return original
+
+
+def _is_stale_chapter_title(title: str) -> bool:
+    normalized = re.sub(r"\s+", "", str(title or "")).lower()
+    return bool(
+        not normalized
+        or re.search(r"(?:book_|textbook_|第1部分|第01部分|视频推荐|b站|腾讯视频)", normalized, re.I)
+        or re.fullmatch(r"[0-9a-f]{16,32}", normalized)
+    )
 
 
 def _clean_keywords(values: list[Any], title: str = "") -> list[str]:
@@ -1220,18 +1286,20 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
     # question banks.  Index the textbook body itself (the original upload when
     # readable, otherwise the parsed chapter keywords) so textbook content is
     # retrievable and outranks derived resources.
-    textbook_index = _read_json_file(CHAPTER_KNOWLEDGE_DIR / "index.json")
+    chapter_knowledge_dir = _chapter_knowledge_dir()
+    textbook_dir = _textbook_dir()
+    textbook_index = _read_json_file(chapter_knowledge_dir / "index.json")
     if isinstance(textbook_index, dict):
         for textbook_id, metadata in textbook_index.items():
             owner = str(metadata.get("student_id") or "") if isinstance(metadata, dict) else ""
             if owner and owner != student_id:
                 continue
             filename = str(metadata.get("filename") or textbook_id) if isinstance(metadata, dict) else str(textbook_id)
-            stored = TEXTBOOK_DIR / f"{textbook_id}{Path(filename).suffix.lower()}"
+            stored = textbook_dir / f"{textbook_id}{Path(filename).suffix.lower()}"
             text = _read_text(stored)
             doc_path = stored
             if not text:
-                payload = _read_json_file(CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json")
+                payload = _read_json_file(chapter_knowledge_dir / f"book_{textbook_id}.json")
                 if not isinstance(payload, dict):
                     continue
                 parts: list[str] = []
@@ -1244,7 +1312,7 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
                             parts.append(value)
                     parts.extend(str(k).strip() for k in chapter.get("keywords") or [] if str(k).strip())
                 text = "\n".join(parts)
-                doc_path = CHAPTER_KNOWLEDGE_DIR / f"book_{textbook_id}.json"
+                doc_path = chapter_knowledge_dir / f"book_{textbook_id}.json"
             if not text:
                 continue
             title = Path(filename).stem

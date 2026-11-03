@@ -627,15 +627,20 @@ def _localize_profile_text(value: Any) -> str:
     return localized
 
 
-def _profile_dimension_confidence(snapshot: dict[str, Any], key: str) -> int:
-    """Estimate confidence only from persisted evidence attached to this snapshot."""
+def _profile_dimension_confidence(snapshot: dict[str, Any], key: str) -> int | None:
+    """Estimate confidence only from evidence explicitly linked to this dimension."""
     if not str(snapshot.get(key, "")).strip():
-        return 0
+        return None
     evidence = snapshot.get("evidence") or {}
-    source_count = len(_string_list(evidence.get("weak_points")))
-    source_count += len(_string_list(evidence.get("keywords")))
-    source_count += len(evidence.get("evolution_records") or [])
-    source_count += 1 if str(evidence.get("user_text", "")).strip() else 0
+    dimensions = evidence.get("dimensions") or {}
+    if not isinstance(dimensions, dict):
+        return None
+    dimension_sources = dimensions.get(key)
+    if isinstance(dimension_sources, dict):
+        dimension_sources = dimension_sources.get("sources")
+    source_count = len(_string_list(dimension_sources))
+    if source_count == 0:
+        return None
     return min(95, 50 + source_count * 5)
 
 

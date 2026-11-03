@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.db.sqlite import init_db
 from app.main import create_app
 from app.repo import get_user_events, read_json
-from app.services.learning_state import _localize_profile_text, evaluation_overview, path_overview, profile_overview
+from app.services.learning_state import _localize_profile_text, _profile_dimension_confidence, evaluation_overview, path_overview, profile_overview
 from app.services.exercise_bank import _ability_radar, build_exercise_session, wrong_book_summary
 from app.services.knowledge_hub import mastery_data
 
@@ -143,7 +143,7 @@ class BackendContractRegressionTest(unittest.TestCase):
         evaluation = evaluation_overview(student_id)
 
         self.assertEqual(profile["completeness"], 0)
-        self.assertTrue(all(item["confidence"] == 0 for item in profile["dimensions"]))
+        self.assertTrue(all(item["confidence"] is None for item in profile["dimensions"]))
         self.assertFalse(path["has_plan"])
         self.assertEqual(path["nodes"], [])
         self.assertEqual(path["stage_count"], 0)
@@ -158,6 +158,23 @@ class BackendContractRegressionTest(unittest.TestCase):
         self.assertEqual(mastery["summary"]["average_mastery"], 0)
         self.assertTrue(all(item["mastery"] == 0 for item in mastery["nodes"]))
         self.assertTrue(all(item["evidence_count"] == 0 for item in mastery["nodes"]))
+
+    def test_profile_confidence_is_unknown_without_attached_evidence(self) -> None:
+        snapshot = {"knowledge_base_level": "beginner", "cognitive_style": "visual"}
+        self.assertIsNone(_profile_dimension_confidence(snapshot, "knowledge_base_level"))
+        self.assertIsNone(
+            _profile_dimension_confidence(
+                {**snapshot, "evidence": {"weak_points": ["用例图"], "keywords": ["建模"]}},
+                "knowledge_base_level",
+            )
+        )
+        self.assertEqual(
+            _profile_dimension_confidence(
+                {**snapshot, "evidence": {"dimensions": {"knowledge_base_level": ["quiz:17"]}}},
+                "knowledge_base_level",
+            ),
+            55,
+        )
 
     def test_ability_radar_uses_overall_evidence_when_transfer_tags_are_missing(self) -> None:
         radar = _ability_radar(

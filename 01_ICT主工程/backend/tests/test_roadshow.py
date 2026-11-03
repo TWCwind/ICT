@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from app.core.config import settings
-from app.services.knowledge_hub import graph_data
+from app.services.knowledge_hub import _build_uploaded_textbook_chapters, graph_data
 
 
 class RoadshowKnowledgeDataTest(unittest.TestCase):
@@ -50,6 +50,18 @@ class RoadshowKnowledgeDataTest(unittest.TestCase):
         graph = graph_data("new-roadshow-learner", max_nodes=56)
         self.assertEqual(graph["nodes"], [])
         self.assertEqual(graph["stats"]["chapters"], 0)
+
+    def test_unheaded_upload_uses_semantic_chapter_labels(self) -> None:
+        body = (
+            "需求分析需要先识别业务场景、干系人和系统边界，再通过需求访谈和用户故事表达目标。"
+            "用例图描述参与者与系统行为，领域模型和类图帮助建立结构，非功能需求需要转化为性能指标和验收标准。"
+        ) * 120
+        chapters = _build_uploaded_textbook_chapters(body, "内部文件哈希")
+        titles = [chapter["chapter_title"] for chapter in chapters]
+        self.assertGreaterEqual(len(titles), 3)
+        for title in titles:
+            self.assertNotRegex(title, r"[0-9a-f]{16,32}|book_|textbook_|第1部分|视频推荐|B站|腾讯视频")
+        self.assertIn("需求获取与表达", titles)
 
 
 if __name__ == "__main__":

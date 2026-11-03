@@ -394,7 +394,7 @@ async function ask(question: string) {
     })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok || payload?.success === false) {
-      throw new Error(payload?.message || `辅导请求失败：HTTP ${response.status}`)
+      throw new Error(payload?.error?.message || payload?.detail?.[0]?.msg || payload?.message || `辅导请求失败：HTTP ${response.status}`)
     }
     const answer = pickAnswer(payload)
     replyTurn.text = answer || '这次没有拿到有效回答，换个问法再试一次。'
@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
 
     <form class="tb-composer" @submit.prevent="sendTyped">
       <input v-model="input" type="text" placeholder="也可以直接打字提问，回车发送…" :disabled="busy" />
-      <button type="submit" :disabled="busy || !input.trim()">
+      <button type="submit" :disabled="busy || !input.trim()" :aria-label="busy ? '正在发送问题' : '发送问题'" title="发送问题">
         <Loader2 v-if="busy" class="spin" :size="16" />
         <Send v-else :size="16" />
       </button>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, nextTick, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   BrainCircuit,
@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-vue-next'
 import { useStudent } from '@/composables/useStudent'
+import ConnectionNotice from '@/components/ConnectionNotice.vue'
 
 type NavItem = {
   to: string
@@ -40,6 +41,9 @@ const showPassword = ref(false)
 const loginError = ref('')
 const captchaCode = '2VV3'
 const settingsOpen = ref(false)
+const settingsMenuRef = ref<HTMLElement | null>(null)
+const settingsTriggerRef = ref<HTMLButtonElement | null>(null)
+const settingsPanelRef = ref<HTMLElement | null>(null)
 const { studentId, major, goals } = useStudent()
 
 const nav: NavItem[] = [
@@ -81,10 +85,50 @@ function logout() {
   void router.replace('/')
 }
 
+async function toggleSettings() {
+  if (settingsOpen.value) {
+    settingsOpen.value = false
+    return
+  }
+  settingsOpen.value = true
+  await nextTick()
+  const initialFocus = settingsPanelRef.value?.querySelector<HTMLElement>('input, textarea')
+    || settingsPanelRef.value?.querySelector<HTMLElement>('button, a')
+  initialFocus?.focus()
+}
+
+function closeSettings(restoreFocus = false) {
+  if (!settingsOpen.value) return
+  settingsOpen.value = false
+  if (restoreFocus) {
+    void nextTick(() => settingsTriggerRef.value?.focus())
+  }
+}
+
+function handleSettingsKeydown(event: KeyboardEvent) {
+  if (settingsOpen.value && event.key === 'Escape') {
+    event.preventDefault()
+    closeSettings(true)
+  }
+}
+
+function handleOutsidePointerDown(event: PointerEvent) {
+  if (settingsOpen.value && !settingsMenuRef.value?.contains(event.target as Node | null)) {
+    closeSettings()
+  }
+}
+
 onMounted(() => {
+  window.addEventListener('keydown', handleSettingsKeydown)
+  document.addEventListener('pointerdown', handleOutsidePointerDown)
   if (!isAuthed.value && route.path !== '/') {
     void router.replace('/')
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleSettingsKeydown)
+  document.removeEventListener('pointerdown', handleOutsidePointerDown)
 })
 </script>
 
@@ -109,26 +153,28 @@ onMounted(() => {
           class="portal-nav-link"
           :title="item.desc"
         >
-          <component :is="item.icon" :size="17" stroke-width="2.35" />
+          <component :is="item.icon" :size="20" stroke-width="2" />
           <span>{{ item.label }}</span>
         </RouterLink>
       </nav>
 
-      <div class="portal-user-menu">
-        <button class="portal-user-trigger" type="button" :aria-expanded="settingsOpen" aria-label="打开用户设置" @click="settingsOpen = !settingsOpen">
+      <div ref="settingsMenuRef" class="portal-user-menu">
+        <button ref="settingsTriggerRef" class="portal-user-trigger" type="button" aria-controls="portal-settings-panel" :aria-expanded="settingsOpen" aria-label="打开用户设置" @click="toggleSettings">
           <UserRound :size="17" />
           <span>用户设置</span>
           <Settings :size="15" />
         </button>
-        <section v-if="settingsOpen" class="portal-settings-panel" aria-label="用户设置面板">
-          <header><strong>用户设置</strong><button type="button" aria-label="关闭用户设置" @click="settingsOpen = false"><X :size="17" /></button></header>
+        <section v-if="settingsOpen" id="portal-settings-panel" ref="settingsPanelRef" class="portal-settings-panel" aria-label="用户设置面板">
+          <header><strong>用户设置</strong><button type="button" aria-label="关闭用户设置" @click="closeSettings(true)"><X :size="17" /></button></header>
           <label><span>学习者 ID</span><input v-model="studentId" autocomplete="off" /></label>
           <label><span>专业方向</span><input v-model="major" placeholder="例如：软件工程" autocomplete="off" /></label>
           <label><span>学习目标</span><textarea v-model="goals" rows="3" placeholder="描述希望达成的能力或成果"></textarea></label>
-          <footer><RouterLink to="/profile" @click="settingsOpen = false">完善用户画像</RouterLink><button type="button" @click="logout">退出登录</button></footer>
+          <footer><RouterLink to="/profile" @click="closeSettings()">完善用户画像</RouterLink><button type="button" @click="logout">退出登录</button></footer>
         </section>
       </div>
     </header>
+
+    <ConnectionNotice />
 
     <main class="portal-main" :class="{ 'portal-main-home': route.path === '/' }">
       <slot />

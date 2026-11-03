@@ -3,9 +3,9 @@ import { expect, type Page, test } from '@playwright/test'
 const routes = [
   { path: '/profile', slug: 'profile', title: '用户画像中枢', root: '.competition-page' },
   { path: '/workshop', slug: 'workshop', title: /资源工坊/, root: '.competition-page' },
-  { path: '/knowledge', slug: 'knowledge', title: /知识图谱|操作系统实现之路/, root: '.knowledge-course-map' },
+  { path: '/knowledge', slug: 'knowledge', title: /知识图谱|软件需求分析与建模/, root: '.knowledge-course-map' },
   { path: '/path', slug: 'path', title: /本周学习路径/, root: '.competition-page' },
-  { path: '/tutor', slug: 'tutor', title: '智能辅导', root: '.competition-page' },
+  { path: '/tutor', slug: 'tutor', title: /实时视频辅导|智能辅导/, root: '.competition-page' },
   { path: '/evaluate', slug: 'evaluate', title: /学习效果评估与策略进化/, root: '.competition-page' },
 ] as const
 
@@ -17,6 +17,10 @@ const viewports = [
 ] as const
 
 async function login(page: Page) {
+  await page.addInitScript(() => {
+    // Responsive captures need a populated course, so select the explicit demo learner.
+    localStorage.setItem('las_student_id', 'demo')
+  })
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   const loginButton = page.getByRole('button', { name: /登录并进入系统/ })
   if (await loginButton.isVisible().catch(() => false)) {

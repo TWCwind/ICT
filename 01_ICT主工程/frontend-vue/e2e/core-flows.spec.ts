@@ -91,6 +91,13 @@ test('all core pages open without blank screen', async ({ page }) => {
   }
 })
 
+test('home page exposes synchronized local learning evidence', async ({ page }) => {
+  await gotoAuthed(page, '/')
+  await expect(page.locator('.live-evidence')).toBeVisible()
+  await expect(page.locator('.live-evidence')).toContainText(/接口已同步|等待建立画像/)
+  await expect(page.locator('.live-evidence')).not.toContainText('undefined')
+})
+
 test('profile page updates learning profile', async ({ page }) => {
   await gotoAuthed(page, '/profile')
   await fillFirstEditable(
@@ -124,11 +131,19 @@ test('path page shows route nodes and recommendation panel', async ({ page }) =>
   })
 })
 
-test('tutor page exposes the realtime video classroom without legacy structured Q&A', async ({ page }) => {
+test('tutor page exposes the configured local voice experience without claiming unavailable services', async ({ page }) => {
   await gotoAuthed(page, '/tutor')
-  await expect(page.locator('.realtime-tutor-panel')).toBeVisible()
-  await expect(page.getByRole('button', { name: '开始通话' })).toBeVisible()
-  await expect(page.locator('.digital-human-rig')).toBeVisible()
+  const browserMode = page.locator('.tutor-video-shell .tb-shell')
+  const realtimeMode = page.locator('.tutor-video-shell .realtime-tutor-panel')
+  await expect(browserMode.or(realtimeMode)).toBeVisible()
+  if (await browserMode.isVisible()) {
+    await expect(browserMode).toContainText('语音辅导（浏览器模式）')
+    await expect(browserMode.getByRole('button', { name: '开始说话' })).toBeVisible()
+    await expect(browserMode.locator('.tb-avatar')).toBeVisible()
+  } else {
+    await expect(realtimeMode.getByRole('button', { name: '开始通话' })).toBeVisible()
+    await expect(realtimeMode.locator('.digital-human-rig')).toBeVisible()
+  }
   await expect(page.locator('textarea')).toHaveCount(0)
 })
 
@@ -136,9 +151,10 @@ test('exercise page can load and submit practice', async ({ page }) => {
   await gotoAuthed(page, '/exercise')
   await clickIfVisible(page, /载入练习|生成题目|开始/)
   await expect(page.locator('body')).toContainText(/题|提交|下一题|练习/, { timeout: 15_000 })
-  const option = page.locator('input[type="radio"]').first()
+  const option = page.locator('.exercise-options label:visible').first()
   if (await option.isVisible().catch(() => false)) {
-    await option.check()
+    await option.click()
+    await expect(option.locator('input[type="radio"], input[type="checkbox"]')).toBeChecked()
   }
   await clickIfVisible(page, /提交答案|提交/)
   await expect(page.locator('body')).toContainText(/解析|正确|错误|诊断|建议|下一题/, { timeout: 15_000 })
