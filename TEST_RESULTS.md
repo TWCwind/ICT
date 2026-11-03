@@ -405,3 +405,26 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 ### 未执行与限制
 
 本轮未运行后端单元测试、MCP 套件或 AgentArts 云端调用；AgentArts 云端未接入。模型未配置，资源生成、辅导和多模态服务的成功生成质量及新资源导出无法验收；页面和接口会如实显示未配置错误。
+
+
+## 2026-11-03 画像置信度与全站视觉复核
+
+隔离服务：前端 `http://127.0.0.1:5174`、后端 `http://127.0.0.1:8010`，数据位于系统临时目录 `ict-enterprise-audit-qa-20261103/test/generated`。原路演服务 5173/8000 未停止。隔离目录由当前 `roadshow-seed` 拷贝并添加专用视觉样例；所有测试写入仅在临时目录。
+
+### 最终命令结果
+
+| 命令 | 结果 |
+|---|---|
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过：可见按钮有动作，未发现已知固定数据回退 |
+| `npm run build` | 通过；1778 个模块，ExerciseCenterPage 585.26 kB 有非阻断 chunk 警告 |
+| `npm run test:roadshow -- --project=msedge --workers=1` | 最终运行 19/19 通过 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1` | 最终运行 13/13 通过 |
+| `python -m unittest discover -s tests -p "test*.py" -v` | 46/46 通过 |
+| 临时九页截图审计 | 39 张页面/视口截图，0 控制台/API 错误、0 页面横向溢出、0 可疑文本；另有一张维度置信度颜色对照图 |
+
+路演第一次运行中有一项失败：核心练习测试只查 radio，但当时真实题目为多选 checkbox。截图显示选项状态实际已变化；修正断言同时接受 radio/checkbox 后，专项 1/1 通过，最终路演套件 19/19。队友回归初次也有一条断言期待旧文案“暂无证据”；按新接口语义更新为“暂无维度级证据”，最终全组 13/13。
+
+真实 profile API 中 demo 的六个置信度为 `null`，因为 seed 只有快照级关键词/薄弱点，没有维度级来源。独立 generated 样例的接口返回 55%、60%、65%、70%、75%、80%；截图确认六种颜色映射不同且数值与接口一致。首页长篇宣传文件无差异。
+
+截图目录：`C:\Users\xiajun\AppData\Local\Temp\ict-enterprise-ui-audit-20261103-e3dfeb7\after`。已查看桌面/手机页面总览、画像原尺寸五视口、生成样例颜色对照图。MCP 未运行；AgentArts 云端未接入；真实模型未配置，未验证依赖模型的成功生成质量。

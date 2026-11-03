@@ -377,13 +377,38 @@ test('profile and evaluation charts explain real values and missing evidence', a
   await expect(confidenceCard).toContainText('画像判断置信度')
   await expect(confidenceCard).toContainText('不是学习成绩')
   const confidenceRows = confidenceCard.locator('li')
-  await expect(confidenceRows).toHaveCount(profilePayload.data.dimensions.length)
-  for (const dimension of profilePayload.data.dimensions) {
-    const progress = confidenceCard.getByRole('progressbar', { name: `${dimension.label}画像判断置信度` })
-    if (dimension.status === 'ready') {
-      await expect(progress).toHaveAttribute('value', String(dimension.confidence))
-    } else {
-      await expect(confidenceCard.locator('.profile-confidence-pending')).toContainText('暂无数据')
+  const confidenceColors: string[] = []
+  const hasDimensionConfidence = profilePayload.data.dimensions.some((dimension: { status: string; confidence: number | null }) => dimension.status === 'ready' && dimension.confidence !== null)
+  if (hasDimensionConfidence) {
+    await expect(confidenceRows).toHaveCount(profilePayload.data.dimensions.length)
+    for (const dimension of profilePayload.data.dimensions) {
+      const progress = confidenceCard.getByRole('progressbar', { name: `${dimension.label}画像判断置信度` })
+      const row = confidenceRows.filter({ hasText: dimension.label })
+      if (dimension.status === 'ready' && dimension.confidence !== null) {
+        await expect(progress).toHaveAttribute('value', String(dimension.confidence))
+        confidenceColors.push(await progress.evaluate((element) => getComputedStyle(element).accentColor))
+      } else if (dimension.status === 'ready') {
+        await expect(progress).toHaveCount(0)
+        await expect(row).toContainText('待补充证据')
+        await expect(row).toContainText('暂无独立证据')
+      } else {
+        await expect(progress).toHaveCount(0)
+        await expect(row).toContainText('等待采集')
+        await expect(row).toContainText('暂无数据')
+      }
+    }
+    expect(new Set(confidenceColors).size).toBe(confidenceColors.length)
+  } else {
+    await expect(confidenceRows).toHaveCount(0)
+    await expect(confidenceCard.locator('.profile-confidence-pending-grid > span')).toHaveCount(profilePayload.data.dimensions.length)
+    await expect(confidenceCard.locator('.profile-confidence-empty')).toContainText(
+      profilePayload.data.dimensions.some((dimension: { status: string }) => dimension.status === 'ready')
+        ? '暂无维度级证据'
+        : '画像维度尚未识别',
+    )
+    for (const dimension of profilePayload.data.dimensions) {
+      const row = confidenceCard.locator('.profile-confidence-pending-grid > span').filter({ hasText: dimension.label })
+      await expect(row).toContainText(dimension.status === 'ready' ? '待补充证据' : '等待采集')
     }
   }
 
@@ -409,6 +434,36 @@ test('profile and evaluation charts explain real values and missing evidence', a
     await expect(rows.filter({ hasText: '迁移应用' })).toContainText(`${transfer.value}%`)
   }
   await expect(page.locator('.shot-score-caveat')).toContainText('阶段参考')
+})
+
+test('profile does not reuse snapshot evidence as dimension confidence and panels follow content height', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('las_student_id', 'demo'))
+  await login(page)
+  const profileResponse = await page.request.get('/api/profile/demo/overview')
+  expect(profileResponse.ok()).toBe(true)
+  const profilePayload = await profileResponse.json()
+  expect(profilePayload.success).toBe(true)
+  expect(profilePayload.data.dimensions.every((dimension: { confidence: number | null }) => dimension.confidence === null)).toBe(true)
+
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/profile')
+  const confidenceCard = page.locator('.profile-confidence-card')
+  await expect(confidenceCard.locator('progress')).toHaveCount(0)
+  await expect(confidenceCard.locator('.profile-confidence-empty')).toContainText('暂无维度级证据')
+  await expect(confidenceCard.locator('.profile-confidence-pending-grid > span')).toHaveCount(profilePayload.data.dimensions.length)
+
+  const layout = await page.locator('.shot-profile__bottom').evaluate((element) => {
+    const style = getComputedStyle(element)
+    const cards = Array.from(element.children).map((card) => {
+      const rect = card.getBoundingClientRect()
+      return { top: rect.top, height: rect.height, minHeight: getComputedStyle(card).minHeight }
+    })
+    return { alignItems: style.alignItems, cards }
+  })
+  expect(layout.alignItems).toBe('start')
+  expect(layout.cards.every((card) => card.minHeight === '0px')).toBe(true)
+  expect(new Set(layout.cards.map((card) => Math.round(card.height))).size).toBeGreaterThan(1)
+  expect(Math.max(...layout.cards.map((card) => card.top)) - Math.min(...layout.cards.map((card) => card.top))).toBeLessThan(2)
 })
 
 test('enterprise polish preserves mobile touch targets and truthful service states', async ({ page }) => {

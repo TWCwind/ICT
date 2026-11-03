@@ -154,7 +154,7 @@ test('exercise page can load and submit practice', async ({ page }) => {
   const option = page.locator('.exercise-options label:visible').first()
   if (await option.isVisible().catch(() => false)) {
     await option.click()
-    await expect(option.locator('input[type="radio"]')).toBeChecked()
+    await expect(option.locator('input[type="radio"], input[type="checkbox"]')).toBeChecked()
   }
   await clickIfVisible(page, /提交答案|提交/)
   await expect(page.locator('body')).toContainText(/解析|正确|错误|诊断|建议|下一题/, { timeout: 15_000 })

@@ -61,15 +61,30 @@ const selectedDimension = computed<ProfileDimension | null>(() =>
 
 const identifiedCount = computed(() => profile.value?.dimensions.filter((item) => item.status === 'ready').length || 0)
 
+const profileConfidenceAppearanceByKey: Record<string, { tone: string; color: string }> = {
+  knowledge_base_level: { tone: 'knowledge', color: '#356ed1' },
+  cognitive_style: { tone: 'cognitive', color: '#087f83' },
+  mistake_patterns: { tone: 'mistake', color: '#a96b0b' },
+  modality_preference: { tone: 'modality', color: '#7652bd' },
+  pace_preference: { tone: 'pace', color: '#147f9c' },
+  motivation_style: { tone: 'motivation', color: '#268057' },
+}
+
 const profileConfidence = computed(() => (profile.value?.dimensions || []).map((dimension) => {
-  const confidence = Number(dimension.confidence)
+  const confidence = dimension.confidence == null ? Number.NaN : Number(dimension.confidence)
+  const identified = dimension.status === 'ready'
+  const appearance = profileConfidenceAppearanceByKey[dimension.key] || profileConfidenceAppearanceByKey.knowledge_base_level
   return {
     key: dimension.key,
     label: dimension.label,
-    ready: dimension.status === 'ready' && Number.isFinite(confidence),
+    identified,
+    hasEvidence: identified && Number.isFinite(confidence),
+    tone: appearance.tone,
+    color: appearance.color,
     score: Number.isFinite(confidence) ? percentValue(confidence) : 0,
   }
 }))
+const profileConfidenceHasEvidence = computed(() => profileConfidence.value.some((dimension) => dimension.hasEvidence))
 const profileTags = computed(() => {
   const learner = profile.value?.learner || {}
   return [learner.major, ...(profile.value?.focus.keywords || []), ...(profile.value?.focus.weak_points || [])]
@@ -264,22 +279,32 @@ onMounted(loadProfile)
           </article>
         </div>
 
-        <div class="shot-profile__bottom">
+        <div class="shot-profile__bottom" :class="{ 'has-changes': profileChanges.length > 0 }">
           <article class="shot-radar profile-confidence-card" aria-labelledby="profile-confidence-title">
             <header><strong id="profile-confidence-title"><Radar class="shot-panel-icon" :size="17" />画像判断置信度</strong><span>不是学习成绩</span></header>
-            <p class="profile-confidence-intro">条形长度表示系统对画像判断的置信度，分值来自当前画像接口。</p>
-            <ul v-if="profileConfidence.length" class="profile-confidence-list" aria-label="六维画像判断置信度">
-              <li v-for="dimension in profileConfidence" :key="dimension.key">
-                <span class="profile-confidence-label"><strong>{{ dimension.label }}</strong><small>{{ dimension.ready ? '已有画像依据' : '等待采集' }}</small></span>
-                <progress v-if="dimension.ready" :value="dimension.score" max="100" :aria-label="`${dimension.label}画像判断置信度`">{{ dimension.score }}%</progress>
-                <span v-else class="profile-confidence-pending">暂无数据</span>
-                <strong v-if="dimension.ready" class="profile-confidence-value">{{ dimension.score }}%</strong>
+            <p class="profile-confidence-intro">只展示明确关联到该画像维度的证据置信度；快照级证据不重复计入各维度。</p>
+            <ul v-if="profileConfidenceHasEvidence" class="profile-confidence-list" aria-label="六维画像判断置信度">
+              <li v-for="dimension in profileConfidence" :key="dimension.key" :style="{ '--confidence-color': dimension.color }">
+                <span class="profile-confidence-label"><strong>{{ dimension.label }}</strong><small>{{ dimension.hasEvidence ? '有画像证据' : dimension.identified ? '待补充证据' : '等待采集' }}</small></span>
+                <progress v-if="dimension.hasEvidence" :class="`tone-${dimension.tone}`" :value="dimension.score" max="100" :aria-label="`${dimension.label}画像判断置信度`">{{ dimension.score }}%</progress>
+                <span v-else class="profile-confidence-pending">{{ dimension.identified ? '暂无独立证据' : '暂无数据' }}</span>
+                <strong v-if="dimension.hasEvidence" class="profile-confidence-value">{{ dimension.score }}%</strong>
                 <strong v-else class="profile-confidence-value is-pending">—</strong>
               </li>
             </ul>
+            <div v-else-if="profileConfidence.length" class="profile-confidence-empty">
+              <strong>{{ identifiedCount ? '暂无维度级证据' : '画像维度尚未识别' }}</strong>
+              <p>快照级关键词和薄弱点不能直接代表单项判断，补充可追溯证据后才会显示置信度。</p>
+              <div class="profile-confidence-pending-grid" aria-label="画像维度采集状态">
+                <span v-for="dimension in profileConfidence" :key="dimension.key">
+                  <strong>{{ dimension.label }}</strong>
+                  <small>{{ dimension.identified ? '待补充证据' : '等待采集' }}</small>
+                </span>
+              </div>
+            </div>
             <div v-else class="profile-confidence-empty">暂无画像维度数据</div>
           </article>
-          <article class="shot-explain"><header><strong><Lightbulb class="shot-panel-icon is-green" :size="17" />画像更新解释</strong></header><p>基于本轮对话内容，系统对画像进行了以下识别与更新：</p><ul><li v-for="dimension in profile.dimensions.slice(0, 5)" :key="dimension.key"><span><Check :size="12" /></span><strong>{{ dimension.label }}：</strong>{{ dimension.description }}</li></ul></article>
+          <article class="shot-explain"><header><strong><Lightbulb class="shot-panel-icon is-green" :size="17" />画像更新解释</strong></header><p>基于本轮对话内容，系统对画像进行了以下识别与更新：</p><ul><li v-for="dimension in profile.dimensions.slice(0, 5)" :key="dimension.key"><span><Check :size="12" /></span><span class="profile-explanation-copy"><strong>{{ dimension.label }}</strong><span>{{ dimension.description }}</span></span></li></ul></article>
           <article v-if="profileChanges.length" class="shot-change"><header><strong><TrendingUp class="shot-panel-icon is-violet" :size="17" />本轮变化</strong><span class="shot-change-legend"><i></i>来自最近两个快照</span></header><ul><li v-for="change in profileChanges.slice(0, 5)" :key="change.key"><strong>{{ change.label }}</strong><em>{{ change.before ? '调整' : '新增' }}</em><span>{{ change.before || '未识别' }} → {{ change.after || '未识别' }}</span></li><li v-if="!profileChanges.length"><span>暂无可比较的画像变化</span></li></ul></article>
           <article class="shot-recommend"><header><strong><Sparkles class="shot-panel-icon" :size="17" />推荐动作</strong></header><RouterLink to="/workshop"><i class="shot-action-icon"><Box :size="17" /></i><span>资源推荐<small>为你优先推荐图解与案例类学习资源</small></span><ArrowRight :size="18" /></RouterLink><RouterLink to="/path"><i class="shot-action-icon"><Target :size="17" /></i><span>学习路径<small>生成需求分析与建模专项提升路径</small></span><ArrowRight :size="18" /></RouterLink><RouterLink to="/exercise"><i class="shot-action-icon"><ClipboardCheck :size="17" /></i><span>练习诊断<small>安排用例图与需求访谈对比练习</small></span><ArrowRight :size="18" /></RouterLink><RouterLink class="shot-recommend-all" to="/workshop">查看全部推荐 <ArrowRight :size="15" /></RouterLink></article>
         </div>
@@ -292,14 +317,27 @@ onMounted(loadProfile)
 </template>
 
 <style scoped>
-.shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 900px) { .shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 621px) and (max-width: 900px) {
+.shot-profile__bottom { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+.shot-profile__bottom.has-changes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (min-width: 821px) and (max-width: 1180px) {
+  .shot-profile__bottom,
+  .shot-profile__bottom.has-changes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shot-profile__bottom:not(.has-changes) > .shot-recommend { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .shot-profile__bottom:not(.has-changes) > .shot-recommend > header,
+  .shot-profile__bottom:not(.has-changes) > .shot-recommend > .shot-recommend-all { grid-column: 1 / -1; }
+}
+@media (min-width: 621px) and (max-width: 820px) {
+  .shot-profile__bottom,
+  .shot-profile__bottom.has-changes { grid-template-columns: minmax(0, 1fr); }
   .shot-profile__bottom > .shot-recommend { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto; }
   .shot-profile__bottom > .shot-recommend > header,
   .shot-profile__bottom > .shot-recommend > .shot-recommend-all { grid-column: 1 / -1; }
 }
-@media (max-width: 620px) { .shot-profile__bottom:has(> .shot-recommend:nth-child(3)) { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 620px) {
+  .shot-profile__bottom,
+  .shot-profile__bottom.has-changes { grid-template-columns: minmax(0, 1fr); }
+  .shot-profile__bottom > .shot-recommend { grid-template-columns: minmax(0, 1fr); }
+}
 
 .shot-dimensions button {
   grid-template-rows: 1fr;
