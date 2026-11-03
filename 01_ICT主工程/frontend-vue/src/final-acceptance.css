@@ -57,6 +57,16 @@ select {
 .tutor-video-shell > .realtime-tutor-panel { margin: 0; }
 .tutor-video-page .realtime-tutor-body { padding: 16px; }
 .tutor-video-page .realtime-call-grid { min-height: 540px; }
+.tutor-video-page .realtime-call-grid.is-unconfigured {
+  grid-template-columns: minmax(0, 1.12fr) minmax(260px, .88fr);
+  grid-template-rows: minmax(0, 1.25fr) minmax(0, .75fr);
+  grid-template-areas: "avatar self" "avatar history";
+  height: 390px;
+  min-height: 0;
+}
+.tutor-video-page .realtime-call-grid.is-unconfigured .realtime-ai-room { grid-area: avatar; }
+.tutor-video-page .realtime-call-grid.is-unconfigured .realtime-self-room { grid-area: self; }
+.tutor-video-page .realtime-call-grid.is-unconfigured .realtime-chat-room { grid-area: history; }
 
 .tutor-capability-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .tutor-capability-strip article { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 14px 16px; border: 1px solid var(--qa-line); border-radius: 16px; background: #fff; }
@@ -64,6 +74,10 @@ select {
 .tutor-capability-strip p { margin: 3px 0 0; color: var(--qa-muted); font-size: 12px; }
 .tutor-capability-icon { display: grid; flex: 0 0 40px; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: #eaf3ff; color: #2362ff; }
 .tutor-capability-note { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 7px; color: #71839b; font-size: 12px; }
+
+/* Keep the workshop side rail content-sized instead of stretching empty status cards. */
+.shot-workshop__side { align-self: start; height: fit-content; grid-template-rows: none !important; grid-auto-rows: max-content !important; }
+.shot-workshop__side .shot-progress { height: auto !important; min-height: 0; }
 
 /* Always provide a visible local avatar while Xingyun's renderer is unavailable. */
 .realtime-avatar.digital-human .digital-human-rig {
@@ -208,6 +222,21 @@ select {
 @media (max-width: 900px) { .exercise-empty-steps, .exercise-empty-config, .exercise-empty-preflight, .exercise-empty-outcomes > div { grid-template-columns: 1fr; } }
 
 @media (max-width: 900px) {
+  .tutor-video-page .realtime-call-grid.is-unconfigured {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: none;
+    height: auto;
+  }
+  .tutor-video-page .realtime-call-grid.is-unconfigured .realtime-ai-room,
+  .tutor-video-page .realtime-call-grid.is-unconfigured .realtime-self-room,
+  .tutor-video-page .realtime-call-grid.is-unconfigured .realtime-chat-room { grid-area: auto; }
+  .tutor-video-page .realtime-call-grid.is-unconfigured .realtime-ai-room { min-height: 300px; }
+  .tutor-video-page .realtime-call-grid.is-unconfigured .realtime-self-room { min-height: 190px; }
+  .tutor-video-page .realtime-call-grid.is-unconfigured .realtime-chat-room { min-height: 170px; }
+}
+
+@media (max-width: 900px) {
   .tutor-video-page { width: min(100% - 24px, 1540px); }
   .tutor-video-hero { align-items: flex-start; flex-direction: column; }
   .tutor-capability-strip { grid-template-columns: 1fr; }
@@ -296,7 +325,22 @@ select {
 
 .graph-touch-hint { display: none; }
 .graph-scroll:focus-visible { outline: 3px solid #155eef; outline-offset: -3px; }
-@media (max-width: 720px) {
+@media (max-width: 820px) {
+  .portal-header .portal-brand { min-height: 44px; }
+  .portal-header .portal-user-trigger { min-width: 44px; min-height: 44px; justify-content: center; }
+  .competition-page .os-button,
+  .exercise-practice-center .studio-btn,
+  .workshop-shell-practice .studio-actions .studio-btn,
+  .realtime-control-row .studio-btn,
+  .apple-hero-actions .os-button,
+  .shot-workshop .shot-create > footer > div button,
+  .shot-workshop .shot-export :is(button, a),
+  .shot-workshop .shot-generate,
+  .shot-profile :is(.shot-actions button, .shot-timeline header button, .shot-interview form footer button, .shot-prompts button),
+  .shot-profile .shot-interview > header button { min-height: 44px !important; }
+  .competition-page .shot-evaluate button { min-height: 44px !important; }
+  .shot-workshop :is(.shot-brief-fields input, .shot-create > textarea) { min-height: 44px; }
+  .graph-zoom-controls button { min-width: 44px; min-height: 44px; }
   .shot-profile__bottom { grid-template-columns: minmax(0, 1fr); }
   .shot-profile__bottom .profile-confidence-card { min-height: 0 !important; }
   .profile-confidence-list li { grid-template-columns: minmax(88px, 112px) minmax(0, 1fr) 44px; }

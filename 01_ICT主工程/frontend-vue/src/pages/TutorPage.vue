@@ -3,9 +3,9 @@ import { Camera, Mic2, ShieldCheck, Sparkles, Video } from 'lucide-vue-next'
 import TutorRealtimeCall from '@/components/TutorRealtimeCall.vue'
 
 const capabilities = [
-  { icon: Camera, title: '双向视频课堂', copy: '启用本地摄像头，与数字人辅导老师保持同屏交流。' },
-  { icon: Mic2, title: '实时语音交互', copy: '支持连续对话、随时打断与麦克风静音控制。' },
-  { icon: ShieldCheck, title: '学习过程留痕', copy: '通话结束后保存对话证据，用于更新画像与后续推荐。' },
+  { icon: Camera, title: '双向视频课堂', copy: '需要浏览器摄像头权限和已启用的语音服务。' },
+  { icon: Mic2, title: '实时语音交互', copy: '服务可用时支持连续对话、打断和麦克风控制。' },
+  { icon: ShieldCheck, title: '学习过程留痕', copy: '通话成功后保存对话证据，用于画像更新与后续推荐。' },
 ]
 </script>
 

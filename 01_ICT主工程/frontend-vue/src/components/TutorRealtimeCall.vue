@@ -42,7 +42,7 @@ const micMuted = ref(false)
 const cameraOff = ref(false)
 const aiSpeaking = ref(false)
 const userSpeaking = ref(false)
-const statusText = ref('正在读取 Realtime 配置...')
+const statusText = ref('正在检查语音服务状态…')
 const statusKind = ref<'info' | 'error'>('info')
 const conversation = ref<ConversationMessage[]>([])
 const saveStatus = ref('')
@@ -92,7 +92,7 @@ const playbackSources = new Set<AudioBufferSourceNode>()
 
 const hintText = computed(() => {
   if (avatarVoiceMode.value) return ''
-  if (config.value.config_error) return '语音辅导服务还没有配置完成，请先检查密钥和连接地址。'
+  if (config.value.config_error) return '实时语音服务当前不可用，请联系管理员检查服务状态。'
   if (!connected.value) return '点击开始通话后，浏览器会请求摄像头和麦克风权限。'
   if (aiSpeaking.value) return 'AI 正在回答；可以直接开口或点击“打断 AI”。'
   if (userSpeaking.value) return '正在听你说话。'
@@ -104,9 +104,14 @@ const voiceConfigErrorText = computed(() => {
   const raw = config.value.config_error
   if (!raw) return ''
   if (/realtime voice is disabled/i.test(raw)) {
-    return '语音通话服务未启用：当前为本地演示模式，未配置 VOICE_REALTIME_* 外部语音服务，因此无法发起实时通话。'
+    return '当前为本地演示模式，实时语音服务尚未启用，暂时无法发起通话。'
   }
-  return `语音辅导配置错误：${raw}`
+  return '实时语音服务暂不可用，请联系管理员检查服务配置。'
+})
+const publicAvatarStatus = computed(() => safeProviderMessage(avatarStatus.value, '数字人服务暂不可用，请联系管理员检查服务配置。'))
+const publicVoiceStatus = computed(() => {
+  if (!avatarVoiceMode.value && config.value.config_error) return voiceConfigErrorText.value
+  return safeProviderMessage(statusText.value, '实时语音服务暂不可用，请稍后重试或联系管理员。')
 })
 const startCallBlocked = computed(() => Boolean(config.value.config_error) && !avatarVoiceMode.value)
 const startCallTitle = computed(() => {
@@ -115,6 +120,14 @@ const startCallTitle = computed(() => {
   if (startCallBlocked.value) return `暂时无法通话：${voiceConfigErrorText.value}`
   return '发起实时语音通话'
 })
+
+function safeProviderMessage(value: unknown, fallback: string) {
+  const message = String(value || '').trim()
+  if (!message) return ''
+  if (/(VOICE_REALTIME_|XINGYUAN[\s_-]*APP[\s_-]*(ID|SECRET)|APP[\s_-]*(ID|SECRET)|Bearer\s+\S+|(?:https?|wss?):\/\/\S+)/i.test(message)) return fallback
+  if (/^(TypeError|ReferenceError|WebSocket|Failed to fetch|HTTP\s*\d)/i.test(message)) return fallback
+  return message
+}
 
 function setStatus(text: string, kind: 'info' | 'error' = 'info') {
   statusText.value = text
@@ -203,7 +216,7 @@ async function loadAvatarConfig() {
     const sdkData = await sdkResponse.json().catch(() => ({}))
     avatarConfig.value = data
     xingyuanSdkConfig.value = sdkData
-    avatarStatus.value = data.enabled ? '星元具身数字人已就绪' : (data.config_error || '数字人视频引擎未配置完整')
+    avatarStatus.value = data.enabled ? '数字人服务已完成配置' : '数字人服务当前未启用，请联系管理员检查服务配置。'
   } catch {
     avatarStatus.value = '数字人视频引擎配置读取失败'
   } finally {
@@ -900,12 +913,12 @@ async function loadConfig() {
         setStatus(voiceConfigErrorText.value || '语音辅导配置错误，请检查服务配置。', 'error')
       }
     } else if (data.transport !== 'websocket') {
-      setStatus('当前语音辅导连接不是 WebSocket 地址，请配置 wss:// 地址。', 'error')
+      setStatus('当前语音服务连接方式暂不支持，请联系管理员检查配置。', 'error')
     } else {
       setStatus('配置已就绪，可以开始通话。')
     }
-  } catch (error: any) {
-    setStatus(`读取配置失败：${error?.message || '网络错误'}`, 'error')
+  } catch {
+    setStatus('读取语音服务状态失败，请稍后重试。', 'error')
   }
 }
 
@@ -1483,7 +1496,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="studio-panel-body realtime-tutor-body">
-      <div class="realtime-call-grid">
+    <div class="realtime-call-grid" :class="{ 'is-unconfigured': startCallBlocked }">
         <main class="realtime-ai-room" :class="{ connected, 'sdk-ready': xingyuanSdkConfigured }">
           <div class="realtime-room-head">
             <div>
@@ -1540,7 +1553,7 @@ onBeforeUnmount(() => {
               <i v-for="n in 18" :key="n" :style="{ animationDelay: `${n * 0.04}s` }"></i>
             </div>
             <p v-if="!avatarVoiceMode">{{ hintText }}</p>
-            <p v-if="avatarStatus" class="digital-human-provider-status">{{ avatarStatus }}</p>
+            <p v-if="avatarStatus" class="digital-human-provider-status">{{ publicAvatarStatus }}</p>
           </div>
         </main>
 
@@ -1592,7 +1605,7 @@ onBeforeUnmount(() => {
 
       <div class="realtime-info-row">
         <div class="realtime-status-text" :class="{ error: statusKind === 'error' }">
-          {{ avatarVoiceMode ? statusText : config.config_error ? voiceConfigErrorText : statusText }}
+          {{ publicVoiceStatus }}
           <span v-if="saveStatus"> · {{ saveStatus }}</span>
         </div>
       </div>

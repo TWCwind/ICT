@@ -259,3 +259,22 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 | 截图与人工查看 | 39 张 PNG；九个页面 1440×900，五个重点页面再覆盖 1280×720、1024×768、768×1024、390×844。截图及总览在 `%TEMP%\ict-ui-review-20261030\`；已人工查看，无页面级横向溢出或明显裁切、遮挡、乱码 |
 
 本轮是前端可视化改进，没有重跑后端单元测试和 MCP 套件；本地健康接口及图表依赖的两个真实 API 已在本轮检查中验证。AgentArts 云端未接入。
+
+## 2026-11-03 企业级前端体验回归
+
+| 检查 | 实际结果 |
+|---|---|
+| 本地路演启动 | 初始检查时前后端均未监听，Playwright 首次专项探针遇到连接拒绝；运行 start-roadshow.ps1 -NoBrowser 后，5173/8000 恢复，GET /api/health 返回 success=true、FastAPI ready、roadshow 模式 |
+| npm run check | 通过 |
+| npm run audit:ui | 通过；可见按钮均有交互绑定，页面未发现已知固定数据回退 |
+| npm run build | 通过，1768 modules transformed；ExerciseCenterPage 583.26 kB，保留非阻塞 chunk 警告 |
+| npm run test:roadshow -- --project=msedge --workers=1 | 19/19 通过（约 5.4 分钟） |
+| npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1 | 11/11 通过 |
+| 企业体验专项用例 | 1/1 通过；验证手机触控高度、语音未配置时的真实状态与敏感配置过滤、工坊侧栏高度 |
+| 页面截图采样 | 29/29；九个路由桌面尺寸及五个重点路由的四种附加尺寸；页面级横向溢出 0，控制台错误 0，4xx/5xx API 响应 0 |
+| 触控尺寸检查 | 390×844 和 768×1024 下可见按钮中低于 44px 的数量均为 0 |
+| 人工截图复核 | 已查看桌面、平板、手机总览以及工坊、评估原尺寸；无明显裁切、遮挡、横向溢出或内部配置泄露 |
+
+截图路径：C:\Users\xiajun\AppData\Local\Temp\ict-enterprise-review-20261030。截图和临时脚本均未放入仓库。
+
+路演测试最初因服务已经退出而遇到连接拒绝；重新运行项目路演启动脚本并确认真实健康接口恢复后，完整路演套件与队友回归均通过。当前未重跑后端单测和 MCP 测试；AgentArts 云端仍未接入。'

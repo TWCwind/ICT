@@ -13,7 +13,7 @@ const routes = [
 ] as const
 
 async function login(page: Page) {
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
   const loginGate = page.locator('.login-gate')
   if (await loginGate.isVisible().catch(() => false)) {
     await page.getByPlaceholder('手机号').fill('10000000000')
@@ -377,4 +377,43 @@ test('profile and evaluation charts explain real values and missing evidence', a
     await expect(rows.filter({ hasText: '迁移应用' })).toContainText(`${transfer.value}%`)
   }
   await expect(page.locator('.shot-score-caveat')).toContainText('阶段参考')
+})
+
+test('enterprise polish preserves mobile touch targets and truthful service states', async ({ page }) => {
+  await login(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+
+  await page.goto('/knowledge')
+  const touchTargets = [
+    page.locator('.portal-brand'),
+    page.locator('.portal-user-trigger'),
+    ...await page.locator('.graph-zoom-controls button').all(),
+  ]
+  for (const target of touchTargets) {
+    const box = await target.boundingBox()
+    expect(box?.height, await target.getAttribute('aria-label')).toBeGreaterThanOrEqual(44)
+  }
+
+  await page.goto('/exercise')
+  const startPractice = page.getByRole('button', { name: /生成阶段题库并开始/ }).first()
+  await expect(startPractice).toBeVisible()
+  expect((await startPractice.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+
+  await page.goto('/tutor')
+  await expect(page.locator('.realtime-status-chip')).toBeVisible()
+  const pageText = await page.locator('body').innerText()
+  expect(pageText).not.toMatch(/VOICE_REALTIME_|XINGYUAN\s*APP|APP_SECRET|Bearer\s+[\w.-]+/i)
+  const voiceResponse = await page.request.get('/api/voice/realtime/config')
+  expect(voiceResponse.ok()).toBe(true)
+  const voiceConfig = await voiceResponse.json()
+  if (voiceConfig.config_error) {
+    await expect(page.locator('.realtime-call-grid')).toHaveClass(/is-unconfigured/)
+    await expect(page.locator('.realtime-info-row')).toContainText(/本地演示模式|暂不可用/)
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/workshop')
+  const mainHeight = (await page.locator('.shot-workshop__main').boundingBox())?.height || 0
+  const sideHeight = (await page.locator('.shot-workshop__side').boundingBox())?.height || 0
+  expect(sideHeight).toBeLessThan(mainHeight - 100)
 })
