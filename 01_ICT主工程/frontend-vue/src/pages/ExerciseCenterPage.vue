@@ -1239,9 +1239,9 @@ function makeNebulaTexture(seedKey: string, width = 1024, height = 1024, density
   canvas.height = height
   const ctx = canvas.getContext('2d')!
   const base = ctx.createLinearGradient(0, 0, width, height)
-  base.addColorStop(0, 'rgba(3,6,18,1)')
-  base.addColorStop(0.42, 'rgba(7,11,30,1)')
-  base.addColorStop(1, 'rgba(2,3,10,1)')
+  base.addColorStop(0, 'rgba(46, 64, 86,1)')
+  base.addColorStop(0.42, 'rgba(46, 64, 86,1)')
+  base.addColorStop(1, 'rgba(46, 64, 86,1)')
   ctx.fillStyle = base
   ctx.fillRect(0, 0, width, height)
 
@@ -1252,27 +1252,27 @@ function makeNebulaTexture(seedKey: string, width = 1024, height = 1024, density
     const radius = width * (0.16 + (seed % 340) / 1000)
     const hue = seed % 6
     const colorA = hue === 0
-      ? 'rgba(64,116,255,0.3)'
+      ? 'rgba(162, 199, 225,0.3)'
       : hue === 1
-        ? 'rgba(182,78,255,0.28)'
+        ? 'rgba(162, 199, 225,0.28)'
         : hue === 2
-          ? 'rgba(42,224,240,0.25)'
+          ? 'rgba(119, 194, 174,0.25)'
           : hue === 3
-            ? 'rgba(255,156,74,0.21)'
+            ? 'rgba(238, 154, 171,0.21)'
             : hue === 4
-              ? 'rgba(58,248,166,0.23)'
-              : 'rgba(255,82,182,0.23)'
+              ? 'rgba(119, 194, 174,0.23)'
+              : 'rgba(238, 154, 171,0.23)'
     const colorB = hue === 0
-      ? 'rgba(24,38,84,0.08)'
+      ? 'rgba(46, 64, 86,0.08)'
       : hue === 1
-        ? 'rgba(50,32,82,0.08)'
+        ? 'rgba(46, 64, 86,0.08)'
         : hue === 2
-          ? 'rgba(16,58,72,0.07)'
+          ? 'rgba(35, 64, 58,0.07)'
           : hue === 3
-            ? 'rgba(80,48,34,0.055)'
+            ? 'rgba(74, 38, 48,0.055)'
             : hue === 4
-              ? 'rgba(18,68,58,0.06)'
-              : 'rgba(70,34,60,0.06)'
+              ? 'rgba(35, 64, 58,0.06)'
+              : 'rgba(46, 64, 86,0.06)'
     const cloud = ctx.createRadialGradient(x, y, 0, x, y, radius)
     cloud.addColorStop(0, colorA)
     cloud.addColorStop(0.5, colorB)
@@ -1304,9 +1304,9 @@ function makeNebulaTexture(seedKey: string, width = 1024, height = 1024, density
     ctx.rotate(((seed % 160) - 80) * Math.PI / 180)
     const veil = ctx.createLinearGradient(-width * 0.58, 0, width * 0.58, 0)
     veil.addColorStop(0, 'rgba(0,0,0,0)')
-    veil.addColorStop(0.36, 'rgba(38,220,240,0.095)')
-    veil.addColorStop(0.5, 'rgba(100,126,255,0.125)')
-    veil.addColorStop(0.64, 'rgba(238,82,220,0.105)')
+    veil.addColorStop(0.36, 'rgba(119, 194, 174,0.095)')
+    veil.addColorStop(0.5, 'rgba(207, 226, 241,0.125)')
+    veil.addColorStop(0.64, 'rgba(162, 199, 225,0.105)')
     veil.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.fillStyle = veil
     ctx.fillRect(-width * 0.58, -height * 0.085, width * 1.16, height * 0.17)
@@ -1346,10 +1346,10 @@ function makeDistantGalaxyTexture(seedKey: string, size = 512) {
   ctx.scale(1, 0.42 + (seed % 18) / 100)
 
   const palette = seed % 5
-  const coreColor = palette === 0 ? 'rgba(255,248,224,0.9)' : palette === 1 ? 'rgba(222,238,255,0.88)' : palette === 2 ? 'rgba(236,214,255,0.86)' : palette === 3 ? 'rgba(208,255,238,0.82)' : 'rgba(255,217,176,0.86)'
-  const armA = palette === 0 ? 'rgba(255,220,170,0.4)' : palette === 1 ? 'rgba(145,190,255,0.4)' : palette === 2 ? 'rgba(194,142,255,0.38)' : palette === 3 ? 'rgba(120,236,210,0.34)' : 'rgba(255,154,190,0.32)'
-  const armB = palette === 0 ? 'rgba(140,178,255,0.3)' : palette === 1 ? 'rgba(120,230,238,0.28)' : palette === 2 ? 'rgba(255,170,214,0.28)' : palette === 3 ? 'rgba(170,210,255,0.26)' : 'rgba(255,214,130,0.28)'
-  const armC = palette === 0 ? 'rgba(190,142,255,0.2)' : palette === 1 ? 'rgba(255,210,158,0.2)' : palette === 2 ? 'rgba(130,220,255,0.2)' : palette === 3 ? 'rgba(255,190,120,0.18)' : 'rgba(150,190,255,0.2)'
+  const coreColor = palette === 0 ? 'rgba(252, 239, 213,0.9)' : palette === 1 ? 'rgba(236, 244, 250,0.88)' : palette === 2 ? 'rgba(236, 244, 250,0.86)' : palette === 3 ? 'rgba(223, 242, 235,0.82)' : 'rgba(246, 195, 208,0.86)'
+  const armA = palette === 0 ? 'rgba(248, 223, 174,0.4)' : palette === 1 ? 'rgba(207, 226, 241,0.4)' : palette === 2 ? 'rgba(207, 226, 241,0.38)' : palette === 3 ? 'rgba(183, 225, 212,0.34)' : 'rgba(246, 195, 208,0.32)'
+  const armB = palette === 0 ? 'rgba(207, 226, 241,0.3)' : palette === 1 ? 'rgba(183, 225, 212,0.28)' : palette === 2 ? 'rgba(246, 195, 208,0.28)' : palette === 3 ? 'rgba(207, 226, 241,0.26)' : 'rgba(248, 223, 174,0.28)'
+  const armC = palette === 0 ? 'rgba(207, 226, 241,0.2)' : palette === 1 ? 'rgba(246, 195, 208,0.2)' : palette === 2 ? 'rgba(183, 225, 212,0.2)' : palette === 3 ? 'rgba(246, 195, 208,0.18)' : 'rgba(207, 226, 241,0.2)'
 
   const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.48)
   halo.addColorStop(0, coreColor)
@@ -1375,7 +1375,7 @@ function makeDistantGalaxyTexture(seedKey: string, size = 512) {
     }
     ctx.strokeStyle = arm === 0 ? armA : arm === 1 ? armB : armC
     ctx.lineWidth = size * (0.028 + arm * 0.007)
-    ctx.shadowColor = palette === 2 ? 'rgba(190,130,255,0.5)' : palette === 3 ? 'rgba(110,240,210,0.42)' : 'rgba(140,190,255,0.46)'
+    ctx.shadowColor = palette === 2 ? 'rgba(207, 226, 241,0.5)' : palette === 3 ? 'rgba(183, 225, 212,0.42)' : 'rgba(207, 226, 241,0.46)'
     ctx.shadowBlur = 34
     ctx.stroke()
   }
@@ -1389,7 +1389,7 @@ function makeDistantGalaxyTexture(seedKey: string, size = 512) {
     const x = Math.cos(spin) * radius + ((dotSeed % 30) - 15)
     const y = Math.sin(spin) * radius * 0.55 + ((hashText(`${seedKey}-dot-y-${i}`) % 24) - 12)
     const dot = 0.45 + (dotSeed % 14) / 10
-    ctx.fillStyle = i % 7 === 0 ? 'rgba(255,238,190,0.9)' : palette === 2 ? 'rgba(238,212,255,0.82)' : palette === 3 ? 'rgba(194,255,236,0.78)' : palette === 4 ? 'rgba(255,196,220,0.76)' : 'rgba(224,242,255,0.78)'
+    ctx.fillStyle = i % 7 === 0 ? 'rgba(252, 239, 213,0.9)' : palette === 2 ? 'rgba(236, 244, 250,0.82)' : palette === 3 ? 'rgba(223, 242, 235,0.78)' : palette === 4 ? 'rgba(251, 227, 233,0.76)' : 'rgba(236, 244, 250,0.78)'
     ctx.beginPath()
     ctx.arc(x, y, dot, 0, Math.PI * 2)
     ctx.fill()
@@ -1431,10 +1431,10 @@ function makeLabelTexture(text: string, subtext = '') {
   ctx.textAlign = 'center'
   ctx.shadowColor = 'rgba(0,0,0,0.9)'
   ctx.shadowBlur = 8
-  ctx.fillStyle = 'rgba(245,250,255,0.92)'
+  ctx.fillStyle = 'rgba(248, 251, 253,0.92)'
   ctx.font = '700 28px Microsoft YaHei, system-ui, sans-serif'
   ctx.fillText(text.slice(0, 9), 128, 40)
-  ctx.fillStyle = 'rgba(174,215,255,0.8)'
+  ctx.fillStyle = 'rgba(207, 226, 241,0.8)'
   ctx.font = '600 18px Microsoft YaHei, system-ui, sans-serif'
   ctx.fillText(subtext, 128, 68)
   const texture = new THREE.CanvasTexture(canvas)
@@ -1458,16 +1458,16 @@ function requestReferenceGalaxyTexture() {
     ctx.drawImage(image, 0, sourceY, image.width, sourceHeight, 0, 0, canvas.width, canvas.height)
 
     const coolTint = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-    coolTint.addColorStop(0, 'rgba(18, 40, 88, 0.16)')
-    coolTint.addColorStop(0.45, 'rgba(255, 232, 188, 0.04)')
-    coolTint.addColorStop(1, 'rgba(85, 56, 132, 0.16)')
+    coolTint.addColorStop(0, 'rgba(46, 64, 86, 0.16)')
+    coolTint.addColorStop(0.45, 'rgba(252, 239, 213, 0.04)')
+    coolTint.addColorStop(1, 'rgba(106, 147, 184, 0.16)')
     ctx.fillStyle = coolTint
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     const coreBloom = ctx.createRadialGradient(canvas.width * 0.5, canvas.height * 0.49, 0, canvas.width * 0.5, canvas.height * 0.49, canvas.width * 0.22)
-    coreBloom.addColorStop(0, 'rgba(255,255,246,0.34)')
-    coreBloom.addColorStop(0.2, 'rgba(255,230,186,0.16)')
-    coreBloom.addColorStop(0.58, 'rgba(120,170,255,0.07)')
+    coreBloom.addColorStop(0, 'rgba(254, 249, 238,0.34)')
+    coreBloom.addColorStop(0.2, 'rgba(252, 239, 213,0.16)')
+    coreBloom.addColorStop(0.58, 'rgba(207, 226, 241,0.07)')
     coreBloom.addColorStop(1, 'rgba(0,0,0,0)')
     ctx.fillStyle = coreBloom
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -1641,7 +1641,7 @@ function rebuildTagGalaxyScene(width: number, height: number) {
   galaxyDeepField = new THREE.Points(deepGeometry, new THREE.PointsMaterial({ size: 2.25, vertexColors: true, transparent: true, opacity: 0.58, blending: THREE.AdditiveBlending, depthWrite: false }))
   galaxyScene.add(galaxyDeepField)
 
-  const spaceWashTexture = makeGlowTexture('rgba(104,128,255,0.46)', 'rgba(62,72,170,0.3)', 'rgba(0,0,0,0)', 256)
+  const spaceWashTexture = makeGlowTexture('rgba(207, 226, 241,0.46)', 'rgba(106, 147, 184,0.3)', 'rgba(0,0,0,0)', 256)
   const spaceWash = new THREE.Sprite(new THREE.SpriteMaterial({ map: spaceWashTexture, transparent: true, opacity: 0.62, blending: THREE.AdditiveBlending, depthWrite: false }))
   spaceWash.position.set(0, 0, -1080)
   spaceWash.scale.set(3000, 1900, 1)
@@ -1664,7 +1664,7 @@ function rebuildTagGalaxyScene(width: number, height: number) {
     photoPlane.userData = { baseScaleX: 1, baseScaleY: 1, type: 'photo' }
     galaxyBackdrop.add(photoPlane)
   }
-  const wideNebulaTexture = makeGlowTexture('rgba(94,170,255,0.24)', 'rgba(154,70,230,0.16)', 'rgba(0,0,0,0)', 256)
+  const wideNebulaTexture = makeGlowTexture('rgba(207, 226, 241,0.24)', 'rgba(162, 199, 225,0.16)', 'rgba(0,0,0,0)', 256)
   for (let i = 0; i < 5; i += 1) {
     const wide = new THREE.Sprite(new THREE.SpriteMaterial({ map: wideNebulaTexture, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }))
     const seed = hashText(`wide-nebula-${i}`)
@@ -1677,13 +1677,13 @@ function rebuildTagGalaxyScene(width: number, height: number) {
     galaxyScene.add(wide)
   }
 
-  const softHaloTexture = makeGlowTexture('rgba(255,246,220,0.42)', 'rgba(98,145,230,0.17)', 'rgba(0,0,0,0)', 256)
+  const softHaloTexture = makeGlowTexture('rgba(252, 239, 213,0.42)', 'rgba(162, 199, 225,0.17)', 'rgba(0,0,0,0)', 256)
   const innerHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: softHaloTexture, transparent: true, opacity: referenceTexture ? 0.34 : 0.64, blending: THREE.AdditiveBlending, depthWrite: false }))
   innerHalo.position.set(0, -6, -205)
   innerHalo.scale.set(680, 460, 1)
   innerHalo.userData = { baseScaleX: 680, baseScaleY: 460 }
   galaxyBackdrop.add(innerHalo)
-  const edgeMistTexture = makeGlowTexture('rgba(110,155,240,0.13)', 'rgba(70,84,170,0.09)', 'rgba(0,0,0,0)', 256)
+  const edgeMistTexture = makeGlowTexture('rgba(207, 226, 241,0.13)', 'rgba(106, 147, 184,0.09)', 'rgba(0,0,0,0)', 256)
   for (let i = 0; i < 4; i += 1) {
     const mist = new THREE.Sprite(new THREE.SpriteMaterial({ map: edgeMistTexture, transparent: true, opacity: 0.13, blending: THREE.AdditiveBlending, depthWrite: false }))
     const seed = hashText(`reference-mist-${i}`)
@@ -1764,7 +1764,7 @@ function rebuildTagGalaxyScene(width: number, height: number) {
   galaxyTrackGroup.rotation.z = -0.25
   galaxyScene.add(galaxyTrackGroup)
 
-  const nebulaTexture = makeGlowTexture('rgba(140,190,255,0.12)', 'rgba(108,92,210,0.08)', 'rgba(0,0,0,0)', 256)
+  const nebulaTexture = makeGlowTexture('rgba(207, 226, 241,0.12)', 'rgba(162, 199, 225,0.08)', 'rgba(0,0,0,0)', 256)
   for (let i = 0; i < 5; i += 1) {
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nebulaTexture, transparent: true, opacity: referenceTexture ? 0.11 : 0.25, blending: THREE.AdditiveBlending, depthWrite: false }))
     const seed = hashText(`three-nebula-${i}`)
@@ -1778,9 +1778,9 @@ function rebuildTagGalaxyScene(width: number, height: number) {
   }
 
   galaxyCore = new THREE.Group()
-  const coreTexture = makeGlowTexture('rgba(255,255,255,0.96)', 'rgba(255,224,180,0.34)', 'rgba(110,160,255,0)', 256)
-  const coreBloomTexture = makeGlowTexture('rgba(255,244,210,0.42)', 'rgba(120,168,255,0.14)', 'rgba(0,0,0,0)', 256)
-  const coreMistTexture = makeGlowTexture('rgba(210,232,255,0.2)', 'rgba(145,104,210,0.1)', 'rgba(0,0,0,0)', 256)
+  const coreTexture = makeGlowTexture('rgba(255,255,255,0.96)', 'rgba(252, 239, 213,0.34)', 'rgba(207, 226, 241,0)', 256)
+  const coreBloomTexture = makeGlowTexture('rgba(252, 239, 213,0.42)', 'rgba(207, 226, 241,0.14)', 'rgba(0,0,0,0)', 256)
+  const coreMistTexture = makeGlowTexture('rgba(236, 244, 250,0.2)', 'rgba(162, 199, 225,0.1)', 'rgba(0,0,0,0)', 256)
   const coreGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: coreTexture, transparent: true, opacity: referenceTexture ? 0.62 : 0.8, blending: THREE.AdditiveBlending, depthWrite: false }))
   coreGlow.scale.set(260, 220, 1)
   const coreBloom = new THREE.Sprite(new THREE.SpriteMaterial({ map: coreBloomTexture, transparent: true, opacity: referenceTexture ? 0.5 : 0.66, blending: THREE.AdditiveBlending, depthWrite: false }))
@@ -1798,9 +1798,9 @@ function rebuildTagGalaxyScene(width: number, height: number) {
     const active = activeGalaxyTag.value === node.tag
     const related = activeGalaxyTag.value && node.isRelated
     const texture = makeGlowTexture(
-      active ? 'rgba(104,255,198,1)' : related ? 'rgba(106,210,255,0.98)' : `hsla(${node.hue},100%,68%,0.96)`,
-      active ? 'rgba(118,255,210,0.68)' : related ? 'rgba(94,190,255,0.58)' : `hsla(${node.hue},100%,58%,0.5)`,
-      active ? 'rgba(34,255,185,0)' : related ? 'rgba(64,180,255,0)' : `hsla(${node.hue},100%,54%,0)`,
+      active ? 'rgba(183, 225, 212,1)' : related ? 'rgba(183, 225, 212,0.98)' : `hsla(${node.hue},100%,68%,0.96)`,
+      active ? 'rgba(183, 225, 212,0.68)' : related ? 'rgba(183, 225, 212,0.58)' : `hsla(${node.hue},100%,58%,0.5)`,
+      active ? 'rgba(119, 194, 174,0)' : related ? 'rgba(119, 194, 174,0)' : `hsla(${node.hue},100%,54%,0)`,
       128
     )
     const star = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: active ? 1 : related ? 0.78 : 0.5 }))
@@ -2054,7 +2054,7 @@ function drawTagGalaxy() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, width, height)
 
-  ctx.fillStyle = '#02030a'
+  ctx.fillStyle = '#2e4056'
   ctx.fillRect(0, 0, width, height)
 
   const nodes = tagGalaxy.value.nodes
@@ -2070,8 +2070,8 @@ function drawTagGalaxy() {
   const scaleBase = Math.min(width, height) / 390 * zoom
 
   const skyGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(width, height) * 0.65)
-  skyGlow.addColorStop(0, 'rgba(56, 85, 130, 0.22)')
-  skyGlow.addColorStop(0.45, 'rgba(18, 30, 62, 0.2)')
+  skyGlow.addColorStop(0, 'rgba(106, 147, 184, 0.22)')
+  skyGlow.addColorStop(0.45, 'rgba(46, 64, 86, 0.2)')
   skyGlow.addColorStop(1, 'rgba(0, 0, 0, 0)')
   ctx.fillStyle = skyGlow
   ctx.fillRect(0, 0, width, height)
@@ -2079,10 +2079,10 @@ function drawTagGalaxy() {
   ctx.save()
   ctx.globalCompositeOperation = 'screen'
   const nebulaPalette = [
-    ['rgba(68, 124, 205, 0.24)', 'rgba(68, 124, 205, 0)'],
-    ['rgba(92, 151, 255, 0.18)', 'rgba(92, 151, 255, 0)'],
-    ['rgba(157, 113, 214, 0.14)', 'rgba(157, 113, 214, 0)'],
-    ['rgba(84, 208, 222, 0.12)', 'rgba(84, 208, 222, 0)'],
+    ['rgba(162, 199, 225, 0.24)', 'rgba(162, 199, 225, 0)'],
+    ['rgba(207, 226, 241, 0.18)', 'rgba(207, 226, 241, 0)'],
+    ['rgba(162, 199, 225, 0.14)', 'rgba(162, 199, 225, 0)'],
+    ['rgba(119, 194, 174, 0.12)', 'rgba(119, 194, 174, 0)'],
   ]
   for (let i = 0; i < 7; i += 1) {
     const seed = hashText(`nebula-${i}`)
@@ -2123,7 +2123,7 @@ function drawTagGalaxy() {
     ctx.arc(x, y, r, 0, Math.PI * 2)
     ctx.fill()
     if (bright > 96) {
-      ctx.strokeStyle = 'rgba(210, 232, 255, 0.32)'
+      ctx.strokeStyle = 'rgba(236, 244, 250, 0.32)'
       ctx.lineWidth = 0.7
       ctx.beginPath()
       ctx.moveTo(x - r * 3, y)
@@ -2151,7 +2151,7 @@ function drawTagGalaxy() {
       const size = 0.7 + layer * 0.5 + (seed % 8) / 12
       const trail = 10 + layer * 9 + (seed % 12)
       const particle = ctx.createLinearGradient(x - trail, y + trail * 0.22, x, y)
-      particle.addColorStop(0, 'rgba(120, 180, 255, 0)')
+      particle.addColorStop(0, 'rgba(207, 226, 241, 0)')
       particle.addColorStop(1, `rgba(210, 235, 255, ${alpha})`)
       ctx.strokeStyle = particle
       ctx.lineWidth = size
@@ -2191,11 +2191,11 @@ function drawTagGalaxy() {
   ctx.translate(centerX, centerY + height * 0.02)
   ctx.rotate(galaxyTilt)
   const disk = ctx.createRadialGradient(0, 0, 0, 0, 0, galaxyMajor)
-  disk.addColorStop(0, 'rgba(255, 245, 222, 0.92)')
-  disk.addColorStop(0.12, 'rgba(255, 231, 200, 0.62)')
-  disk.addColorStop(0.28, 'rgba(172, 199, 230, 0.35)')
-  disk.addColorStop(0.58, 'rgba(81, 118, 166, 0.22)')
-  disk.addColorStop(1, 'rgba(8, 15, 32, 0)')
+  disk.addColorStop(0, 'rgba(252, 239, 213, 0.92)')
+  disk.addColorStop(0.12, 'rgba(251, 227, 233, 0.62)')
+  disk.addColorStop(0.28, 'rgba(207, 226, 241, 0.35)')
+  disk.addColorStop(0.58, 'rgba(106, 147, 184, 0.22)')
+  disk.addColorStop(1, 'rgba(46, 64, 86, 0)')
   ctx.scale(1, galaxyMinor / galaxyMajor)
   ctx.fillStyle = disk
   ctx.beginPath()
@@ -2225,9 +2225,9 @@ function drawTagGalaxy() {
   ctx.filter = 'blur(9px)'
   const core = ctx.createRadialGradient(-8, -6, 0, 0, 0, 170)
   core.addColorStop(0, 'rgba(255, 255, 255, 1)')
-  core.addColorStop(0.18, 'rgba(255, 252, 235, 0.98)')
-  core.addColorStop(0.4, 'rgba(255, 226, 184, 0.68)')
-  core.addColorStop(0.66, 'rgba(162, 196, 246, 0.34)')
+  core.addColorStop(0.18, 'rgba(254, 249, 238, 0.98)')
+  core.addColorStop(0.4, 'rgba(252, 239, 213, 0.68)')
+  core.addColorStop(0.66, 'rgba(207, 226, 241, 0.34)')
   core.addColorStop(1, 'rgba(255, 255, 255, 0)')
   ctx.fillStyle = core
   ctx.beginPath()
@@ -2236,8 +2236,8 @@ function drawTagGalaxy() {
   ctx.globalCompositeOperation = 'screen'
   const coreDepth = ctx.createRadialGradient(-26, -20, 0, 0, 0, 128)
   coreDepth.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
-  coreDepth.addColorStop(0.28, 'rgba(255, 246, 218, 0.58)')
-  coreDepth.addColorStop(0.62, 'rgba(110, 166, 245, 0.22)')
+  coreDepth.addColorStop(0.28, 'rgba(252, 239, 213, 0.58)')
+  coreDepth.addColorStop(0.62, 'rgba(207, 226, 241, 0.22)')
   coreDepth.addColorStop(1, 'rgba(255, 255, 255, 0)')
   ctx.fillStyle = coreDepth
   ctx.beginPath()
@@ -2245,8 +2245,8 @@ function drawTagGalaxy() {
   ctx.fill()
   const dreamHaze = ctx.createRadialGradient(0, 0, 0, 0, 0, 220)
   dreamHaze.addColorStop(0, 'rgba(255, 255, 255, 0.6)')
-  dreamHaze.addColorStop(0.28, 'rgba(168, 210, 255, 0.26)')
-  dreamHaze.addColorStop(0.62, 'rgba(159, 112, 220, 0.18)')
+  dreamHaze.addColorStop(0.28, 'rgba(207, 226, 241, 0.26)')
+  dreamHaze.addColorStop(0.62, 'rgba(162, 199, 225, 0.18)')
   dreamHaze.addColorStop(1, 'rgba(255, 255, 255, 0)')
   ctx.fillStyle = dreamHaze
   ctx.beginPath()
@@ -2255,8 +2255,8 @@ function drawTagGalaxy() {
   ctx.filter = 'blur(16px)'
   const hotCore = ctx.createRadialGradient(-10, -8, 0, 0, 0, 82)
   hotCore.addColorStop(0, 'rgba(255, 255, 255, 1)')
-  hotCore.addColorStop(0.52, 'rgba(255, 255, 246, 0.92)')
-  hotCore.addColorStop(1, 'rgba(255, 236, 205, 0)')
+  hotCore.addColorStop(0.52, 'rgba(254, 249, 238, 0.92)')
+  hotCore.addColorStop(1, 'rgba(252, 239, 213, 0)')
   ctx.fillStyle = hotCore
   ctx.beginPath()
   ctx.arc(0, 0, 76, 0, Math.PI * 2)
@@ -2296,15 +2296,15 @@ function drawTagGalaxy() {
 
   const edgeBlend = ctx.createRadialGradient(centerX, centerY, Math.min(width, height) * 0.22, centerX, centerY, Math.max(width, height) * 0.72)
   edgeBlend.addColorStop(0, 'rgba(0, 0, 0, 0)')
-  edgeBlend.addColorStop(0.7, 'rgba(4, 9, 22, 0.18)')
-  edgeBlend.addColorStop(1, 'rgba(2, 3, 10, 0.78)')
+  edgeBlend.addColorStop(0.7, 'rgba(46, 64, 86, 0.18)')
+  edgeBlend.addColorStop(1, 'rgba(46, 64, 86, 0.78)')
   ctx.fillStyle = edgeBlend
   ctx.fillRect(0, 0, width, height)
   const topMist = ctx.createLinearGradient(0, 0, 0, height)
-  topMist.addColorStop(0, 'rgba(60, 92, 150, 0.16)')
-  topMist.addColorStop(0.18, 'rgba(20, 35, 72, 0.08)')
+  topMist.addColorStop(0, 'rgba(106, 147, 184, 0.16)')
+  topMist.addColorStop(0.18, 'rgba(46, 64, 86, 0.08)')
   topMist.addColorStop(0.78, 'rgba(0, 0, 0, 0)')
-  topMist.addColorStop(1, 'rgba(9, 13, 26, 0.32)')
+  topMist.addColorStop(1, 'rgba(46, 64, 86, 0.32)')
   ctx.fillStyle = topMist
   ctx.fillRect(0, 0, width, height)
 
@@ -2356,7 +2356,7 @@ function drawTagGalaxy() {
     beam.addColorStop(1, `rgba(115, 179, 255, ${alpha})`)
     ctx.strokeStyle = beam
     ctx.lineWidth = Math.max(0.8, Math.min(4.2, link.weight)) * ((a.perspective + b.perspective) / 2) * (selectedLink ? 1.28 : 1)
-    ctx.shadowColor = selectedLink ? 'rgba(190, 230, 255, 0.42)' : 'rgba(100, 170, 255, 0.2)'
+    ctx.shadowColor = selectedLink ? 'rgba(223, 242, 235, 0.42)' : 'rgba(207, 226, 241, 0.2)'
     ctx.shadowBlur = selectedLink ? 14 : 7
     ctx.beginPath()
     ctx.moveTo(a.px, a.py)
@@ -2375,20 +2375,20 @@ function drawTagGalaxy() {
     const haloRadius = radius * (active ? 2.8 : 2.25)
     const star = ctx.createRadialGradient(node.px, node.py, 0, node.px, node.py, haloRadius)
     star.addColorStop(0, '#ffffff')
-    star.addColorStop(0.12, active ? 'rgba(250,255,242,0.98)' : related ? 'rgba(234,246,255,0.92)' : 'rgba(234,246,255,0.62)')
-    star.addColorStop(0.42, active ? 'rgba(130, 255, 205, 0.42)' : related ? `hsla(${node.hue}, 90%, 66%, 0.34)` : `hsla(${node.hue}, 70%, 62%, 0.16)`)
+    star.addColorStop(0.12, active ? 'rgba(254, 249, 238,0.98)' : related ? 'rgba(248, 251, 253,0.92)' : 'rgba(248, 251, 253,0.62)')
+    star.addColorStop(0.42, active ? 'rgba(183, 225, 212, 0.42)' : related ? `hsla(${node.hue}, 90%, 66%, 0.34)` : `hsla(${node.hue}, 70%, 62%, 0.16)`)
     star.addColorStop(1, 'rgba(255, 255, 255, 0)')
-    ctx.shadowColor = active ? 'rgba(177, 255, 221, 0.52)' : 'rgba(132, 194, 255, 0.28)'
+    ctx.shadowColor = active ? 'rgba(183, 225, 212, 0.52)' : 'rgba(207, 226, 241, 0.28)'
     ctx.shadowBlur = active ? 18 : 10
     ctx.fillStyle = star
     ctx.beginPath()
     ctx.arc(node.px, node.py, haloRadius, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = active ? 'rgba(235, 255, 245, 0.92)' : 'rgba(221, 239, 255, 0.78)'
+    ctx.fillStyle = active ? 'rgba(243, 250, 247, 0.92)' : 'rgba(236, 244, 250, 0.78)'
     ctx.beginPath()
     ctx.arc(node.px, node.py, Math.max(1.2, radius * 0.24), 0, Math.PI * 2)
     ctx.fill()
-    ctx.strokeStyle = active ? 'rgba(226, 255, 240, 0.34)' : 'rgba(210, 232, 255, 0.2)'
+    ctx.strokeStyle = active ? 'rgba(223, 242, 235, 0.34)' : 'rgba(236, 244, 250, 0.2)'
     ctx.lineWidth = 0.7
     ctx.beginPath()
     ctx.moveTo(node.px - radius * 1.15, node.py)
@@ -2398,13 +2398,13 @@ function drawTagGalaxy() {
     ctx.stroke()
     ctx.shadowBlur = 0
     ctx.globalAlpha = unrelated ? 0.46 : 1
-    ctx.fillStyle = active ? 'rgba(255,255,255,0.94)' : related ? 'rgba(236, 246, 255, 0.82)' : 'rgba(216, 232, 255, 0.56)'
+    ctx.fillStyle = active ? 'rgba(255,255,255,0.94)' : related ? 'rgba(248, 251, 253, 0.82)' : 'rgba(236, 244, 250, 0.56)'
     ctx.font = `${Math.max(11, 12 * node.perspective)}px system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.shadowColor = 'rgba(0, 0, 0, 0.82)'
     ctx.shadowBlur = 5
     ctx.fillText(node.tag, node.px, node.py + radius + 15)
-    ctx.fillStyle = active ? '#b8ffd9' : 'rgba(185, 215, 255, 0.88)'
+    ctx.fillStyle = active ? '#dff2eb' : 'rgba(236, 244, 250, 0.88)'
     ctx.font = `${Math.max(9, 10 * node.perspective)}px system-ui, sans-serif`
     ctx.fillText(`${node.count}题`, node.px, node.py + radius + 28)
     ctx.globalAlpha = 1

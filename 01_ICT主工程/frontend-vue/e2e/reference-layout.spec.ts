@@ -1,3 +1,4 @@
+import { readCaptcha } from './helpers/captcha'
 import { expect, test, type Page } from '@playwright/test'
 
 const pages = [
@@ -13,7 +14,7 @@ async function gotoAuthed(page: Page, path: string) {
   if (await loginButton.isVisible().catch(() => false)) {
     await page.getByPlaceholder('手机号').fill('10000000000')
     await page.getByPlaceholder('密码').fill('demo123')
-    await page.getByPlaceholder('验证码').fill('2VV3')
+    await page.getByPlaceholder('验证码').fill(await readCaptcha(page))
     await loginButton.click()
     await expect(page.locator('.login-gate')).toBeHidden()
   }

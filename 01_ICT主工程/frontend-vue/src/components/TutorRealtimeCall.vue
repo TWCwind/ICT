@@ -1286,7 +1286,7 @@ function drawDigitalHumanFrame(time: number) {
     ctx.save()
     ctx.globalCompositeOperation = 'multiply'
     ctx.globalAlpha = 0.24 + mouthOpen * 0.32
-    ctx.fillStyle = '#8d263a'
+    ctx.fillStyle = '#c2586f'
     ctx.beginPath()
     ctx.ellipse(mouthX, mouthY + mouthOpen * 2.2, 11 + mouthOpen * 2.5, 2.5 + mouthOpen * 4.5, 0, 0, Math.PI * 2)
     ctx.fill()

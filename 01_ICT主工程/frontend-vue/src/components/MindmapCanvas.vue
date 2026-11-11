@@ -270,14 +270,14 @@ const viewBox = computed(() => {
   return `${cx - halfW} ${cy - halfH} ${halfW * 2} ${halfH * 2}`
 })
 
-const FILLS = ['#2f6bff', '#e8f0ff', '#f2f7ff', '#f7faff']
-const TEXTS = ['#ffffff', '#1b3a6b', '#274564', '#35506e']
+const FILLS = ['#ac93d0', '#faf7fe', '#faf7fe', '#faf7fe']
+const TEXTS = ['#ffffff', '#3a3149', '#3a3149', '#7e63a8']
 
 function fillFor(depth: number): string {
   return FILLS[Math.min(depth, FILLS.length - 1)]
 }
 function strokeFor(depth: number): string {
-  return depth === 0 ? '#1f57d6' : depth === 1 ? '#b9d0ff' : '#d7e4f7'
+  return depth === 0 ? '#7e63a8' : depth === 1 ? '#efe7f8' : '#efe7f8'
 }
 function textFor(depth: number): string {
   return TEXTS[Math.min(depth, TEXTS.length - 1)]
@@ -395,41 +395,41 @@ function onPointerUp() {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: #64748b;
+  font-size: 13.5px;
+  color: #7a738c;
 }
 
 .mindmap-canvas__toolbar button {
   min-width: 30px;
   height: 26px;
   padding: 0 8px;
-  border: 1px solid #dbe4f0;
+  border: 1px solid #efe7f8;
   border-radius: 7px;
   background: #fff;
-  color: #334155;
-  font-size: 12px;
+  color: #2e2833;
+  font-size: 13.5px;
   cursor: pointer;
 }
 
 .mindmap-canvas__toolbar button:hover {
-  border-color: #93b4ef;
-  color: #1f57d6;
+  border-color: #d3c2ea;
+  color: #7e63a8;
 }
 
 .mindmap-canvas__svg {
   flex: 1;
   width: 100%;
   min-height: 380px;
-  border: 1px solid #e6eefb;
+  border: 1px solid #efe7f8;
   border-radius: 14px;
-  background: linear-gradient(180deg, #fbfdff, #f4f8ff);
+  background: linear-gradient(180deg, #faf7fe, #faf7fe);
   cursor: grab;
   touch-action: none;
 }
 
 .mindmap-edge {
   fill: none;
-  stroke: #b9cdea;
+  stroke: #d3c2ea;
   stroke-width: 1.6;
 }
 
@@ -439,7 +439,7 @@ function onPointerUp() {
 }
 
 .mindmap-node text {
-  font-size: 13px;
+  font-size: 14px;
   font-family: inherit;
   user-select: none;
 }
@@ -449,26 +449,26 @@ function onPointerUp() {
 }
 
 .mindmap-node.is-hovered rect {
-  filter: drop-shadow(0 3px 8px rgba(47, 107, 255, 0.22));
+  filter: drop-shadow(0 3px 8px rgba(172, 147, 208, 0.22));
 }
 
 .mindmap-dot {
-  fill: #8fb4ee;
+  fill: #d3c2ea;
   stroke: #fff;
   stroke-width: 1.5;
 }
 
 .mindmap-node.is-collapsed .mindmap-dot {
-  fill: #2f6bff;
+  fill: #ac93d0;
 }
 
 .mindmap-canvas__empty {
   margin: 0;
   padding: 28px;
   text-align: center;
-  color: #94a3b8;
-  font-size: 13px;
-  border: 1px dashed #dbe4f0;
+  color: #a69fb4;
+  font-size: 14px;
+  border: 1px dashed #efe7f8;
   border-radius: 14px;
 }
 </style>

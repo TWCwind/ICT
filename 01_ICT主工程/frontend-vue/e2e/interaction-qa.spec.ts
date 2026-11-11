@@ -1,3 +1,4 @@
+import { readCaptcha } from './helpers/captcha'
 import { expect, test, type Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -26,7 +27,7 @@ async function enterDemo(page: Page) {
   if (await loginButton.isVisible().catch(() => false)) {
     await page.getByPlaceholder('手机号').fill('10000000000')
     await page.getByPlaceholder('密码').fill('demo123')
-    await page.getByPlaceholder('验证码').fill('2VV3')
+    await page.getByPlaceholder('验证码').fill(await readCaptcha(page))
     await loginButton.click()
   }
   await expect(page.locator('.login-gate')).toBeHidden({ timeout: 15_000 })

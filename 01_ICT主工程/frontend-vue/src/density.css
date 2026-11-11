@@ -13,7 +13,7 @@
   padding: 18px 38px;
   border-left: 0;
   border-right: 0;
-  box-shadow: 0 10px 22px rgba(34, 86, 150, 0.06);
+  box-shadow: 0 10px 22px rgba(126, 99, 168, 0.06);
 }
 
 .portal-main:not(.portal-main-home) .portal-page-head h1 {
@@ -28,7 +28,7 @@
 }
 
 .portal-main:not(.portal-main-home) .eyebrow {
-  font-size: 11px;
+  font-size: 12.5px;
 }
 
 .portal-main:not(.portal-main-home) > .grid,

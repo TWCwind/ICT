@@ -1,0 +1,668 @@
+/* ============================================================
+   马卡龙主题覆盖层（macaron theme overlay · v2）
+   设计原则：
+   1) 每个业务模块一个专属色系，不再全站一个紫：
+        外壳 / 导航  ······ 淡紫 lavender
+        用户画像 ·········· 樱花粉 sakura
+        资源工坊 ·········· 薄荷绿 mint
+        路径推送 ·········· 奶黄 butter
+        练习 / 评估 ······· 天蓝 sky
+        知识中枢 / 多模态 · 蜜桃 peach
+   2) 所有色值取低饱和粉彩，避免生硬的大色块。
+   3) 本文件在 main.ts 中最后引入，登录页在末尾按原值还原。
+   ============================================================ */
+
+:root {
+  --m-lav: #ac93d0;
+  --m-lav-deep: #7e63a8;
+  --m-lav-tint: #efe7f8;
+  --m-lav-faint: #faf7fe;
+
+  --m-mat: #c3d38a;
+  --m-mat-deep: #7d8a4e;
+  --m-mat-tint: #eef4dc;
+  --m-mat-faint: #f9fcf0;
+
+  --m-min: #8acab5;
+  --m-min-deep: #5f9e88;
+  --m-min-tint: #e8f6f2;
+  --m-min-faint: #f7fcfb;
+
+  --m-but: #f0ce8b;
+  --m-but-deep: #b8924f;
+  --m-but-tint: #fdf7e6;
+  --m-but-faint: #fffdf8;
+
+  --m-sky: #a2c7e1;
+  --m-sky-deep: #6a93b8;
+  --m-sky-tint: #ecf4fa;
+  --m-sky-faint: #f8fbfd;
+
+  --m-pea: #f2ac8e;
+  --m-pea-deep: #b87154;
+  --m-pea-tint: #fdf0e8;
+  --m-pea-faint: #fffaf7;
+
+  --m-ink: #3a3149;
+  --m-ink-soft: #6f6780;
+}
+
+/* ---------- 1. 全局底色：奶油白，不偏紫 ---------- */
+body {
+  background: linear-gradient(180deg, #fdfbf7 0%, #faf7f1 100%) !important;
+}
+
+.portal-shell:not(.portal-shell-locked) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(211, 194, 234, 0.16), transparent 40%),
+    radial-gradient(circle at 100% 6%, rgba(194, 229, 218, 0.16), transparent 36%),
+    linear-gradient(180deg, #fdfbf8 0%, #fbf8f3 100%) !important;
+}
+
+/* ---------- 2. 每个模块自己的底色（一眼能区分） ---------- */
+.profile-command-page {
+  background: linear-gradient(155deg, #ffffff 0%, #f9fcf0 58%, #fbfdf4 100%) !important;
+}
+
+.workshop-command-page {
+  background: linear-gradient(155deg, #ffffff 0%, #fafefc 58%, #eaf6f2 100%) !important;
+}
+
+.path-command-page {
+  background: linear-gradient(155deg, #ffffff 0%, #fffdf7 58%, #fdf6e4 100%) !important;
+}
+
+.evaluate-command-page,
+.studio-page.workshop-shell-practice {
+  background: linear-gradient(155deg, #ffffff 0%, #fafcfe 58%, #ecf4fa 100%) !important;
+}
+
+.orchestration-page {
+  background: linear-gradient(155deg, #ffffff 0%, #fdfbff 58%, #efe7f8 100%) !important;
+}
+
+.tutor-video-page {
+  background: linear-gradient(155deg, #ffffff 0%, #fafefc 58%, #e8f6f2 100%) !important;
+}
+
+/* ---------- 3. 大色块 → 各自模块的粉彩渐变 + 深墨字 ---------- */
+.shot-identity,
+.dna-identity-card,
+.profile-command-page .learner-strip {
+  color: var(--m-ink) !important;
+  background:
+    radial-gradient(circle at 66% 16%, rgba(255, 255, 255, 0.8), transparent 34%),
+    linear-gradient(128deg, #f3f7e2 0%, #e2ecc0 52%, #f7faec 100%) !important;
+  border: 1px solid #dde8b8 !important;
+  box-shadow: 0 10px 26px rgba(125, 138, 78, 0.12) !important;
+}
+
+.shot-identity__copy h2,
+.profile-command-page .profile-identity-copy h2 { color: var(--m-ink) !important; }
+.shot-identity__copy h2 small,
+.profile-command-page .profile-identity-copy p,
+.profile-command-page .profile-identity-copy small { color: var(--m-ink-soft) !important; }
+.shot-identity__copy > p { color: var(--m-ink-soft) !important; }
+.shot-identity__copy dl { background: rgba(255, 255, 255, 0.72) !important; }
+.shot-identity__copy dl div { border-left-color: rgba(125, 138, 78, 0.18) !important; }
+.shot-identity__copy dt { color: var(--m-ink-soft) !important; }
+.shot-identity__copy dd { color: var(--m-ink) !important; }
+.shot-identity__copy > strong { color: var(--m-mat-deep) !important; }
+
+.shot-avatar {
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 0 0 4px #dde8b8, 0 11px 25px rgba(125, 138, 78, 0.16) !important;
+}
+
+/* 工坊主视觉：薄荷粉彩 */
+.shot-workshop-hero {
+  color: var(--m-ink) !important;
+  background:
+    radial-gradient(circle at 70% 18%, rgba(255, 255, 255, 0.85), transparent 36%),
+    linear-gradient(128deg, #f1faf7 0%, #ddf2ec 56%, #f8fdfb 100%) !important;
+  border: 1px solid #c2e5da !important;
+}
+
+.shot-workshop-hero :is(h1, h2, h3, p, small, strong, em, span) { color: var(--m-ink) !important; }
+
+/* ---------- 4. 卡片：统一柔化圆角与中性淡阴影 ---------- */
+:is(.shot-timeline, .shot-interview, .shot-matrix, .panel, .result-card, .identity-panel) {
+  border-radius: 16px !important;
+  box-shadow: 0 6px 20px rgba(58, 49, 73, 0.06) !important;
+}
+
+.shot-profile__bottom article,
+.shot-workshop__side > article {
+  border-radius: 16px !important;
+  box-shadow: 0 6px 18px rgba(58, 49, 73, 0.055) !important;
+}
+
+/* ---------- 5. 导航选中态：淡紫药丸（外壳统一色） ---------- */
+.portal-nav a[aria-current="page"],
+.portal-nav a.is-active,
+.portal-nav a.active {
+  color: #6b5b8f !important;
+  background: linear-gradient(135deg, #f3edfa 0%, #eef7f4 100%) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 4px 12px rgba(172, 147, 208, 0.14) !important;
+}
+
+/* ---------- 7. 浅底白字冲突块：改深墨字 ---------- */
+:is(
+  .seg-grid button.active,
+  .relation-toggle.active,
+  .graph-tools button.active,
+  .orbit-core,
+  .path-command-page .path-stage-board article.is-selected .stage-marker,
+  .path-command-page .path-stage-board article.is-warning .stage-marker
+) {
+  color: var(--m-ink) !important;
+}
+
+/* ---------- 8. 禁用态：淡底 + 深字（原来白字几乎看不见） ---------- */
+button:disabled,
+button[disabled] {
+  color: #6b5b8f !important;
+  background: linear-gradient(135deg, #f6f1fb 0%, #f0faf7 100%) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+/* ---------- 8b. 主按钮跟随所在模块的色系 ---------- */
+/* 用户画像 · 青柠抹茶绿 */
+.profile-command-page :is(button.is-primary, .is-primary) {
+  color: #4f5a2a !important;
+  background: linear-gradient(135deg, #eaf2cf 0%, #d5e4a8 100%) !important;
+  box-shadow: 0 6px 16px rgba(125, 138, 78, 0.2) !important;
+}
+
+/* 资源工坊 · 薄荷绿 */
+.workshop-command-page :is(button.is-primary, .is-primary, .studio-btn),
+.shot-workshop :is(button.is-primary, .is-primary, .studio-btn) {
+  color: #33695c !important;
+  background: linear-gradient(135deg, #e7f7f2 0%, #cbeade 100%) !important;
+  box-shadow: 0 6px 16px rgba(111, 182, 159, 0.2) !important;
+}
+
+/* 路径推送 · 奶黄 */
+.path-command-page :is(button.is-primary, .is-primary, .studio-btn),
+.shot-path :is(button.is-primary, .is-primary, .studio-btn) {
+  color: #7a5a1f !important;
+  background: linear-gradient(135deg, #fdf5df 0%, #f8e6bd 100%) !important;
+  box-shadow: 0 6px 16px rgba(232, 192, 118, 0.22) !important;
+}
+
+/* 练习 / 评估 · 天蓝 */
+.evaluate-command-page :is(button.is-primary, .is-primary, .studio-btn),
+.studio-page.workshop-shell-practice :is(button.is-primary, .is-primary, .studio-btn),
+.shot-evaluate :is(button.is-primary, .is-primary, .studio-btn) {
+  color: #32556f !important;
+  background: linear-gradient(135deg, #eef6fc 0%, #d5e8f4 100%) !important;
+  box-shadow: 0 6px 16px rgba(127, 176, 212, 0.2) !important;
+}
+
+/* 外壳 / 编排 · 淡紫 */
+.orchestration-page :is(button.is-primary, .is-primary, .studio-btn) {
+  color: #5f4a80 !important;
+  background: linear-gradient(135deg, #f5edfb 0%, #e3d6f2 100%) !important;
+  box-shadow: 0 6px 16px rgba(172, 147, 208, 0.2) !important;
+}
+
+/* 首页主 CTA：原来是「深墨→紫」的深渐变，改成淡紫糖果色 */
+:is(.apple-primary-btn, .apple-hero .primary-btn) {
+  color: #5f4a80 !important;
+  background: linear-gradient(135deg, #d9cbf0 0%, #c4abdf 100%) !important;
+  box-shadow: 0 10px 24px rgba(172, 147, 208, 0.24) !important;
+}
+
+:is(.apple-primary-btn, .apple-hero .primary-btn):hover {
+  background: linear-gradient(135deg, #e2d6f4 0%, #cdb7e5 100%) !important;
+}
+
+/* 通用兜底：没有模块归属的主按钮也用淡紫柔和色，避免深色块 */
+:is(a, button).is-primary,
+.os-btn-primary {
+  color: #5f4a80 !important;
+  background: linear-gradient(135deg, #c9b3e4 0%, #b39dd9 100%) !important;
+  box-shadow: 0 8px 20px rgba(172, 147, 208, 0.22) !important;
+}
+
+:is(a, button).is-primary:hover,
+.os-btn-primary:hover {
+  background: linear-gradient(135deg, #d3c2ea 0%, #bca8e0 100%) !important;
+}
+
+/* ---------- 9. 登录页原样保留 ---------- */
+.portal-shell-locked,
+.login-gate {
+  background: linear-gradient(135deg, #e2d9f3 0%, #c5d8f8 50%, #e2d9f3 100%) !important;
+  background-size: 200% 200% !important;
+  animation: login-bg-flow 12s ease-in-out infinite;
+}
+
+.portal-shell-locked .login-card {
+  background: #ffffff !important;
+  box-shadow: 0 8px 30px rgba(150, 140, 180, 0.18) !important;
+  border-radius: 16px !important;
+}
+
+.portal-shell-locked .login-title h1 { color: #4a3f6b !important; }
+.portal-shell-locked .login-title p { color: #8b86a8 !important; }
+
+.portal-shell-locked .login-field {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.portal-shell-locked .login-field:focus-within {
+  border-color: #c8b8e8 !important;
+  box-shadow: 0 0 0 3px rgba(200, 184, 232, 0.2) !important;
+}
+
+.portal-shell-locked .login-submit {
+  background: linear-gradient(90deg, #f2b8d8 0%, #a7bff4 100%) !important;
+  box-shadow: 0 4px 14px rgba(167, 191, 244, 0.4) !important;
+}
+
+.portal-shell-locked .login-submit:hover {
+  background: linear-gradient(90deg, #f5c5e0 0%, #b8ccf8 100%) !important;
+  box-shadow: 0 6px 18px rgba(167, 191, 244, 0.5) !important;
+}
+
+.portal-shell-locked .captcha-box {
+  background: #f8f7fc !important;
+  border: 1px solid #e0d8f0 !important;
+}
+
+.portal-shell-locked .captcha-char { color: #7c6bb0 !important; }
+.portal-shell-locked .login-tip { color: #8b86a8 !important; }
+
+/* ================================================================
+   10. 字体：长文本、数字、控件使用清晰的常规字体；快乐体仅用于品牌点缀
+   ================================================================ */
+:root {
+  --font-cute: "ZCOOL KuaiLe", "YouYuan", "幼圆", "Arial Rounded MT Bold", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-plain: Inter, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
+}
+
+/* 保持中文正文、导航和操作控件的阅读一致性。 */
+body,
+.portal-shell,
+.portal-main,
+.profile-command-page,
+.workshop-command-page,
+.path-command-page,
+.evaluate-command-page,
+.orchestration-page,
+.tutor-video-page,
+.knowledge-page,
+.studio-page,
+.shot-profile,
+.shot-workshop,
+.shot-path,
+.shot-evaluate,
+.shot-knowledge,
+.shot-orchestration,
+.shot-tutor,
+button,
+input,
+select,
+textarea,
+label {
+  font-family: var(--font-plain) !important;
+}
+
+.portal-brand-copy strong,
+.os-eyebrow {
+  font-family: var(--font-cute) !important;
+}
+
+/* 标题与解释性文字沿用常规字体。 */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-plain);
+}
+
+/* —— 还原 2：说明 / 解释性文字不换 */
+p,
+blockquote,
+small,
+[class*="desc" i],
+[class*="subtitle" i],
+[class*="hint" i],
+[class*="note" i],
+[class*="help" i],
+[class*="lead" i],
+[class*="caption" i],
+[class*="summary" i],
+[class*="tip" i],
+[class*="explain" i],
+[class*="muted" i] {
+  font-family: var(--font-plain);
+}
+
+/* —— 还原 3：代码 / 等宽内容必须保持等宽，不能变可爱体 */
+code, pre, kbd, samp, var,
+[class*="mono" i],
+[class*="code-block" i],
+.markdown-body code,
+.markdown-body pre {
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+}
+
+/* —— 还原 4：登录页保持原样（字体也不变） */
+.portal-shell-locked,
+.login-gate,
+.portal-shell-locked button,
+.portal-shell-locked input,
+.login-gate button,
+.login-gate input,
+.login-gate label {
+  font-family: var(--font-plain) !important;
+}
+
+/* ================================================================
+   11. 路径推送 · 能力证据雷达图放大（原来被压到 132px 高 + scale(.9)，标签互相盖住）
+   ================================================================ */
+.path-command-page .shot-path-radar,
+.shot-path .shot-path-radar {
+  gap: 6px !important;
+  margin-top: 16px !important;
+  width: 100% !important;
+}
+
+/* 关键：原来容器自带 clip-path: polygon(...)，把超出五边形范围的文字全裁掉了 */
+.path-command-page .shot-path-radar-canvas,
+.shot-path .shot-path-radar-canvas {
+  clip-path: none !important;
+  background: none !important;
+  width: 100% !important;
+  max-width: 264px !important;
+  height: 204px !important;
+  margin: 0 auto !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+/* 五边形底纹改由 ::before 单独绘制（垫在文字下层），既保留雷达外观，又不裁掉标签 */
+.path-command-page .shot-path-radar-canvas::before,
+.shot-path .shot-path-radar-canvas::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 34px 58px 36px 58px !important;
+  z-index: 0 !important;
+  clip-path: polygon(50% 0, 96% 28%, 80% 92%, 20% 92%, 4% 28%) !important;
+  background: repeating-radial-gradient(circle, #f9e4b8 0 1px, transparent 1px 20px), linear-gradient(145deg, rgba(240, 206, 139, 0.47), rgba(98, 176, 148, 0.12)) !important;
+}
+
+/* 图形按 238x156 的比例铺满，不再被拉扁 */
+.path-command-page .shot-path-radar-canvas > svg,
+.shot-path .shot-path-radar-canvas > svg {
+  inset: 34px 58px 36px 58px !important;
+  width: calc(100% - 116px) !important;
+  height: calc(100% - 70px) !important;
+}
+
+/* 五个维度标签：字号提一档，位置拉开，避免叠字 */
+.path-command-page .shot-path-radar-canvas > label,
+.shot-path .shot-path-radar-canvas > label {
+  z-index: 3 !important;
+  width: 64px !important;
+  justify-items: center !important;
+  overflow: visible !important;
+  letter-spacing: 0 !important;
+  text-align: center !important;
+  padding: 0 !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  white-space: nowrap !important;
+  color: #8a6a2c !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.path-command-page .shot-path-radar-canvas > label b,
+.shot-path .shot-path-radar-canvas > label b {
+  font-family: var(--font-plain) !important;
+  font-weight: 800 !important;
+  font-size: 13.5px !important;
+}
+
+.path-command-page .shot-path-radar-canvas .radar-concept,
+.shot-path .shot-path-radar-canvas .radar-concept { top: 0 !important; }
+
+.path-command-page .shot-path-radar-canvas .radar-apply,
+.shot-path .shot-path-radar-canvas .radar-apply { top: 52px !important; right: -10px !important; }
+
+.path-command-page .shot-path-radar-canvas .radar-logic,
+.shot-path .shot-path-radar-canvas .radar-logic { top: 52px !important; left: -10px !important; }
+
+.path-command-page .shot-path-radar-canvas .radar-practice,
+.shot-path .shot-path-radar-canvas .radar-practice { bottom: 0 !important; right: 8px !important; }
+
+.path-command-page .shot-path-radar-canvas .radar-memory,
+.shot-path .shot-path-radar-canvas .radar-memory { bottom: 0 !important; left: 8px !important; }
+
+/* ================================================================
+   13. 画像页"本轮变化"：只有一段文字的条目会被塞进 72px 的图标列，导致断行
+       让这种独占条目横跨整行
+   ================================================================ */
+.shot-change li > span:only-child,
+.shot-change li > p:only-child {
+  grid-column: 1 / -1 !important;
+  justify-self: start !important;
+  white-space: normal !important;
+}
+
+/* 画像页"画像更新时间线"空状态：同样被塞进 11px 的圆点列，压成竖排单字 */
+.shot-timeline li > span:only-child,
+.shot-timeline li > p:only-child {
+  grid-column: 1 / -1 !important;
+  justify-self: start !important;
+  white-space: normal !important;
+}
+
+/* ================================================================
+   14. 路径推送 · 多智能体协同：四张智能体卡片的字号偏小，整体调大一档
+   ================================================================ */
+.shot-agent-chain > header strong {
+  font-size: 15.5px !important;
+}
+
+.shot-agent-chain article strong {
+  font-size: 13.5px !important;
+  letter-spacing: 0 !important;
+}
+
+.shot-agent-chain article small,
+.shot-agent-chain article > span > small,
+.shot-path .shot-agent-chain article small,
+.competition-page.path-command-page .shot-path .shot-agent-chain article > span > small,
+.competition-page.path-command-page .shot-path .shot-agent-chain article > span > small:not(#x) {
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  color: #7d7590 !important;
+}
+
+.shot-agent-chain footer {
+  font-size: 13px !important;
+}
+
+/* 窄屏下保持卡片偏窄，四张能并排看到，不被挤出可视区 */
+@media (max-width: 900px) {
+  .shot-agent-chain article {
+    flex: 0 0 148px !important;
+    min-height: 96px !important;
+    gap: 7px !important;
+    padding: 10px 8px !important;
+  }
+
+  .shot-agent-chain article > i {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .shot-agent-chain > div > b {
+    font-size: 14.5px !important;
+  }
+
+  .shot-agent-chain > div {
+    gap: 6px !important;
+  }
+}
+
+/* ================================================================
+   15. 实时视频辅导 · "AI 辅导老师"卡片：原先混了薄荷/蜜桃/淡紫三套色，
+       统一为本模块的淡紫，仅"声音开启"用薄荷表示音频状态
+   ================================================================ */
+.tutor-video-page .tb-col-title {
+  color: #6b5b8f !important;
+  letter-spacing: 0.6px !important;
+}
+
+.tutor-video-page .tb-avatar-ring {
+  background: linear-gradient(160deg, #f4ecfb 0%, #eee6f8 55%, #e8f6f2 100%) !important;
+  border: 2px solid #ded1f0 !important;
+  box-shadow: 0 10px 24px rgba(126, 99, 168, 0.1) !important;
+}
+
+.tutor-video-page .tb-avatar.is-active .tb-avatar-ring {
+  border-color: #c9b6e8 !important;
+}
+
+.tutor-video-page .tb-avatar-core {
+  color: #5b4a7d !important;
+  background: transparent !important;
+  border: 0 !important;
+  font-size: 30px !important;
+}
+
+.tutor-video-page .tb-stage-hint {
+  color: #7a738c !important;
+}
+
+.tutor-video-page .tb-mic,
+.tutor-video-page .tb-toggle {
+  color: #6b5b8f !important;
+  border: 1px solid #e3d7f4 !important;
+  background: #ffffff !important;
+}
+
+.tutor-video-page .tb-mic {
+  color: #5b4a7d !important;
+  border-color: #d8c9ee !important;
+  background: linear-gradient(135deg, #f3ebfb 0%, #eae0f8 100%) !important;
+}
+
+.tutor-video-page .tb-mic:hover,
+.tutor-video-page .tb-toggle:hover {
+  background: #f6f0fd !important;
+}
+
+.tutor-video-page .tb-mic.is-on {
+  color: #4f7f6f !important;
+  border-color: #c6e6da !important;
+  background: #eaf6f1 !important;
+}
+
+.tutor-video-page .tb-toggle.is-on {
+  color: #5b4a7d !important;
+  border-color: #d8c9ee !important;
+  background: #f6f0fd !important;
+}
+
+.tutor-video-page .tb-actions .tb-toggle.tb-speak.is-on {
+  color: #4f7f6f !important;
+  border-color: #c6e6da !important;
+  background: #eaf6f1 !important;
+}
+
+.tutor-video-page .tb-voice select {
+  color: #4a3f6b !important;
+  border-color: #e3d7f4 !important;
+  background: #ffffff !important;
+}
+
+.tutor-video-page .tb-voice > label {
+  color: #6b5b8f !important;
+}
+
+/* 15b. 同上（补丁：头像圆形与 AI 字块改用实色覆盖，避免简写/渐变在部分优先级下不生效） */
+.competition-page.tutor-video-page .tutor-video-shell .tb-avatar .tb-avatar-ring {
+  background: #f3ebfb !important;
+  border: 2px solid #dfd2f1 !important;
+}
+
+.competition-page.tutor-video-page .tutor-video-shell .tb-avatar .tb-avatar-core {
+  color: #5b4a7d !important;
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  padding: 2px 10px !important;
+}
+
+.competition-page.tutor-video-page .tutor-video-shell .tb-col-title {
+  color: #6b5b8f !important;
+}
+
+/* 15c. 辅导卡三个动作按钮统一成"我的画面·打开摄像头"那种形式：
+       白底 + 淡紫细边 + 14px 圆角 + 深淡紫字，去掉绿色与渐变 */
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions .tb-mic,
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions .tb-toggle {
+  border: 1px solid #e3d7f4 !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #6b5b8f !important;
+  box-shadow: none !important;
+}
+
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions .tb-mic.is-on,
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions .tb-toggle.is-on,
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions .tb-toggle.tb-speak.is-on,
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions .tb-toggle.tb-pause.is-on {
+  border: 1px solid #d8c9ee !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #5b4a7d !important;
+}
+
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions .tb-mic:hover,
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions .tb-toggle:hover {
+  border-color: #cfbbea !important;
+  background: #faf7fe !important;
+}
+
+/* 15d. 按钮内部 span 被源样式染成褐红，统一跟随按钮的淡紫文字色 */
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions button span {
+  color: inherit !important;
+}
+
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions button svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+/* 15e. 按钮文字后面垫的蜜桃色底块去掉，按钮内只留白底 */
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions button span,
+.competition-page.tutor-video-page .tutor-video-shell .tb-actions button svg {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* 15f. AI 辅导老师头像：圆圈内换成真人插画头像，隐藏原来的 "AI" 字牌 */
+.competition-page.tutor-video-page .tutor-video-shell .tb-avatar .tb-avatar-ring {
+  background: #ffffff url("/assets/tutor-avatar-v2.png") center center / cover no-repeat !important;
+  border: 2px solid #dfd2f1 !important;
+  box-shadow: 0 10px 24px rgba(126, 99, 168, 0.16) !important;
+}
+
+.competition-page.tutor-video-page .tutor-video-shell .tb-avatar .tb-avatar-core {
+  display: none !important;
+}
+
+.competition-page.tutor-video-page .tutor-video-shell .tb-avatar.is-active .tb-avatar-ring {
+  border-color: #c9b6e8 !important;
+}

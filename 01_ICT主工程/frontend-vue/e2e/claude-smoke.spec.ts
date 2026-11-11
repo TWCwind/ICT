@@ -1,3 +1,4 @@
+import { readCaptcha } from './helpers/captcha'
 import { test } from '@playwright/test'
 
 // 快速冒烟：验证真实登录、主导航点击、设置面板在当前真实服务(5173+8000)上的行为。
@@ -28,7 +29,7 @@ test('冒烟：真实登录 + 主导航 + 设置面板', async ({ page }) => {
   // 真实登录
   await page.locator('.login-field input[placeholder="手机号"]').fill('13800001234')
   await page.locator('.login-field input[placeholder="密码"]').fill('demo123')
-  await page.locator('.login-field input[placeholder="验证码"]').fill('2VV3')
+  await page.locator('.login-field input[placeholder="验证码"]').fill(await readCaptcha(page))
   await page.locator('.login-submit').click({ timeout: 5000, noWaitAfter: true })
   await page.waitForTimeout(3000)
   const gateAfter = await page.locator('.login-gate').isVisible().catch(() => false)

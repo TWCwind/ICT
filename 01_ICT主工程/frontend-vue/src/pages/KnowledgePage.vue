@@ -1056,7 +1056,7 @@ onUnmounted(() => {
             >
               <defs>
                 <marker id="kg-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-                  <path d="M0,0 L7,3.5 L0,7 Z" fill="#8db5f2" />
+                  <path d="M0,0 L7,3.5 L0,7 Z" fill="#f8d5c1" />
                 </marker>
               </defs>
               <g aria-hidden="true">
