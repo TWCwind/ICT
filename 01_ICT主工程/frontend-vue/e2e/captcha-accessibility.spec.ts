@@ -6,13 +6,16 @@ test('login code supports keyboard refresh, error feedback, and successful login
   await expect(page.locator('.login-gate')).toBeVisible()
 
   const refresh = page.getByRole('button', { name: '刷新验证码' })
-  await refresh.focus()
+  await page.getByPlaceholder('验证码').focus()
+  await page.keyboard.press('Tab')
   await expect(refresh).toBeFocused()
   const initialCode = await readCaptcha(page)
   await refresh.press('Enter')
   await expect(page.getByPlaceholder('验证码')).toBeEmpty()
   const refreshedCode = await readCaptcha(page)
   expect(refreshedCode).not.toBe(initialCode)
+  await refresh.press('Space')
+  expect(await readCaptcha(page)).not.toBe(refreshedCode)
 
   await page.getByPlaceholder('手机号').fill('10000000000')
   await page.getByPlaceholder('密码').fill('demo123')
