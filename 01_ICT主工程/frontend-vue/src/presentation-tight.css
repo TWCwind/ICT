@@ -28,7 +28,7 @@
   min-height: 34px !important;
   border-radius: 9px !important;
   padding: 0 8px !important;
-  font-size: 12px !important;
+  font-size: 13.5px !important;
 }
 
 .portal-status {
@@ -51,7 +51,7 @@
   margin: 0 !important;
   padding: 8px 24px !important;
   border: 0 !important;
-  border-bottom: 1px solid rgba(16, 32, 51, 0.08) !important;
+  border-bottom: 1px solid rgba(58, 49, 73, 0.08) !important;
   background: #ffffff !important;
   box-shadow: none !important;
 }
@@ -125,7 +125,7 @@
 }
 
 .studio-title {
-  font-size: 15px !important;
+  font-size: 15.5px !important;
 }
 
 .studio-textarea {

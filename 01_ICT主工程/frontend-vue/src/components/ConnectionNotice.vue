@@ -67,10 +67,10 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.connection-notice { position: relative; z-index: 2000; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; background: #fff7e6; color: #593b0c; border-bottom: 1px solid #e7c782; }
+.connection-notice { position: relative; z-index: 2000; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; background: #fef9ee; color: #4a3a22; border-bottom: 1px solid #f8dfae; }
 .connection-notice strong { font-size: 16px; }
 .connection-notice p { margin: 4px 0 0; font-size: 14px; line-height: 1.6; }
-.connection-notice button { flex-shrink: 0; min-height: 44px; padding: 8px 16px; border: 1px solid #876021; border-radius: 8px; color: #593b0c; background: white; cursor: pointer; }
-.connection-notice button:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.connection-notice button { flex-shrink: 0; min-height: 44px; padding: 8px 16px; border: 1px solid #c89a4e; border-radius: 8px; color: #4a3a22; background: white; cursor: pointer; }
+.connection-notice button:focus-visible { outline: 3px solid #ac93d0; outline-offset: 3px; }
 @media (max-width: 600px) { .connection-notice { flex-direction: column; align-items: stretch; padding: 12px 16px; gap: 8px; } }
 </style>

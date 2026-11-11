@@ -115,7 +115,7 @@ function toggleDemoStudent() {
           <Sparkles :size="18" />
           <span>AI Learning Agent</span>
         </div>
-        <h1>为每一位学生，生成专属学习路径。</h1>
+        <h1><span class="hero-line">为每一位学生，</span><span class="hero-line">生成专属学习路径。</span></h1>
         <p>
           基于学习画像、多智能体协同与多模态资源生成，帮助学生从知识短板到能力提升，
           获得更精准、更高效的学习体验。
