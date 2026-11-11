@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
 
     <form class="tb-composer" @submit.prevent="sendTyped">
       <input v-model="input" type="text" placeholder="也可以直接打字提问，回车发送…" :disabled="busy" />
-      <button type="submit" :disabled="busy || !input.trim()">
+      <button type="submit" aria-label="发送文字提问" :disabled="busy || !input.trim()">
         <Loader2 v-if="busy" class="spin" :size="16" />
         <Send v-else :size="16" />
       </button>

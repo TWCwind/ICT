@@ -85,8 +85,8 @@ function submitLogin() {
   // 字母不区分大小写
   const codeStr = captchaChars.value.map((c) => c.ch).join('')
   if (captcha.value.trim().toUpperCase() !== codeStr.toUpperCase()) {
-    loginError.value = '验证码不正确'
     refreshCaptcha()
+    loginError.value = '验证码不正确，请输入新验证码'
     return
   }
   isAuthed.value = true
@@ -188,11 +188,11 @@ onMounted(() => {
           </button>
         </label>
 
-        <label class="login-field login-captcha-field">
+        <div class="login-field login-captcha-field">
           <ShieldCheck :size="30" stroke-width="2.15" />
-          <input v-model="captcha" maxlength="4" placeholder="验证码" autocomplete="off" />
-          <span class="captcha-box captcha-clickable" @click="refreshCaptcha" title="看不清？点击切换验证码"><span v-for="(item, i) in captchaChars" :key="i" class="captcha-char" :style="`transform: rotate(${item.rotate}deg) translateY(${item.offsetY}px);`">{{ item.ch }}</span></span>
-        </label>
+          <input v-model="captcha" maxlength="4" placeholder="验证码" aria-label="验证码" autocomplete="off" />
+          <button type="button" class="captcha-box captcha-clickable" aria-label="刷新验证码" title="看不清？点击切换验证码" @click="refreshCaptcha"><span v-for="(item, i) in captchaChars" :key="i" class="captcha-char" :style="`transform: rotate(${item.rotate}deg) translateY(${item.offsetY}px);`">{{ item.ch }}</span></button>
+        </div>
 
         <button class="login-submit" type="submit">登录并进入系统</button>
 

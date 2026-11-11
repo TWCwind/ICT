@@ -1,3 +1,4 @@
+import { readCaptcha } from './helpers/captcha'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test, type Page } from '@playwright/test'
@@ -108,7 +109,7 @@ test('真实登录并逐一点击全部可见按钮，记录可观察结果', as
   }
 
   // --- 2. 真实登录 ---
-  await page.locator('.login-field input[placeholder="验证码"]').fill('2VV3')
+  await page.locator('.login-field input[placeholder="验证码"]').fill(await readCaptcha(page))
   await page.locator('.login-submit').click({ timeout: 5_000, noWaitAfter: true })
   await page.waitForSelector('.login-gate', { state: 'hidden', timeout: 10_000 }).catch(() => undefined)
   const loginGateGone = !(await page.locator('.login-gate').isVisible().catch(() => false))

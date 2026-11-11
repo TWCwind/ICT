@@ -147,24 +147,6 @@ body {
   box-shadow: 0 4px 12px rgba(172, 147, 208, 0.14) !important;
 }
 
-/* ---------- 6. 标签：四种粉彩轮换，颜色更淡 ---------- */
-:is([class*="tag" i], [class*="chip" i], [class*="badge" i]) span:nth-child(4n + 1) {
-  color: #5f9e88 !important;
-  background: var(--m-min-tint) !important;
-}
-:is([class*="tag" i], [class*="chip" i], [class*="badge" i]) span:nth-child(4n + 2) {
-  color: #b87154 !important;
-  background: var(--m-pea-tint) !important;
-}
-:is([class*="tag" i], [class*="chip" i], [class*="badge" i]) span:nth-child(4n + 3) {
-  color: #b8924f !important;
-  background: var(--m-but-tint) !important;
-}
-:is([class*="tag" i], [class*="chip" i], [class*="badge" i]) span:nth-child(4n) {
-  color: #6b5b8f !important;
-  background: var(--m-lav-tint) !important;
-}
-
 /* ---------- 7. 浅底白字冲突块：改深墨字 ---------- */
 :is(
   .seg-grid button.active,
@@ -296,15 +278,14 @@ button[disabled] {
 .portal-shell-locked .login-tip { color: #8b86a8 !important; }
 
 /* ================================================================
-   10. 字体：UI 文字统一换成可爱圆润体
-   —— 标题（h1~h6）和说明解释段落保持原字体，只换"标签/按钮/导航/数值/表格"这类 UI 文字
+   10. 字体：长文本、数字、控件使用清晰的常规字体；快乐体仅用于品牌点缀
    ================================================================ */
 :root {
   --font-cute: "ZCOOL KuaiLe", "YouYuan", "幼圆", "Arial Rounded MT Bold", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-plain: Inter, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
 }
 
-/* 挂载点：整站继承可爱体（标题、段落稍后单独还原） */
+/* 保持中文正文、导航和操作控件的阅读一致性。 */
 body,
 .portal-shell,
 .portal-main,
@@ -328,10 +309,15 @@ input,
 select,
 textarea,
 label {
+  font-family: var(--font-plain) !important;
+}
+
+.portal-brand-copy strong,
+.os-eyebrow {
   font-family: var(--font-cute) !important;
 }
 
-/* —— 还原 1：标题不换（有自己字体声明的大标题本来就不受影响，这里兜住没有声明的层级标题） */
+/* 标题与解释性文字沿用常规字体。 */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-plain);
 }
@@ -456,30 +442,6 @@ code, pre, kbd, samp, var,
 
 .path-command-page .shot-path-radar-canvas .radar-memory,
 .shot-path .shot-path-radar-canvas .radar-memory { bottom: 0 !important; left: 8px !important; }
-
-/* ================================================================
-   12. 首页主标题：按语义断成两行——"为每一位学生，"/"生成专属学习路径。"，
-       并适当缩小字号保证两行都放得下
-   ================================================================ */
-.apple-hero-copy h1,
-.hero-copy h1 {
-  font-size: clamp(30px, 5.4vw, 60px) !important;
-  line-height: 1.32 !important;
-  letter-spacing: -0.01em !important;
-}
-
-.apple-hero-copy h1 .hero-line,
-.hero-copy h1 .hero-line {
-  display: block !important;
-  white-space: nowrap !important;
-}
-
-@media (max-width: 560px) {
-  .apple-hero-copy h1,
-  .hero-copy h1 {
-    font-size: clamp(22px, 8.6vw, 34px) !important;
-  }
-}
 
 /* ================================================================
    13. 画像页"本轮变化"：只有一段文字的条目会被塞进 72px 的图标列，导致断行
