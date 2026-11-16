@@ -18,6 +18,7 @@
     "test:generated-flow": "playwright test e2e/full-flow-generated.spec.ts"
   },
   "dependencies": {
+    "@fontsource/zcool-kuaile": "^5.3.0",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.11",
     "echarts": "^5.6.0",

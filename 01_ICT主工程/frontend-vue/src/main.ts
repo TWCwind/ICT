@@ -17,6 +17,10 @@ import './competition-ui.css'
 import './workspace-v2.css'
 import './reference-screens.css'
 import './final-acceptance.css'
+// 可爱字体：站酷快乐体（@fontsource 自托管，按 unicode-range 分片按需加载）
+import '@fontsource/zcool-kuaile/index.css'
+// 马卡龙主题覆盖层（必须最后引入，登录页在其中原样恢复）
+import './macaron-theme.css'
 import App from './App.vue'
 import router from './router'
 

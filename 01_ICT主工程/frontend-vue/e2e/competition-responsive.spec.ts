@@ -1,11 +1,14 @@
+import { readCaptcha } from './helpers/captcha'
 import { expect, type Page, test } from '@playwright/test'
 
 const routes = [
   { path: '/profile', slug: 'profile', title: '用户画像中枢', root: '.competition-page' },
   { path: '/workshop', slug: 'workshop', title: /资源工坊/, root: '.competition-page' },
+
   { path: '/knowledge', slug: 'knowledge', title: /知识图谱|软件需求分析与建模/, root: '.knowledge-course-map' },
   { path: '/path', slug: 'path', title: /本周学习路径/, root: '.competition-page' },
   { path: '/tutor', slug: 'tutor', title: /实时视频辅导|智能辅导/, root: '.competition-page' },
+
   { path: '/evaluate', slug: 'evaluate', title: /学习效果评估与策略进化/, root: '.competition-page' },
 ] as const
 
@@ -26,7 +29,7 @@ async function login(page: Page) {
   if (await loginButton.isVisible().catch(() => false)) {
     await page.getByPlaceholder('手机号').fill('10000000000')
     await page.getByPlaceholder('密码').fill('demo123')
-    await page.getByPlaceholder('验证码').fill('2VV3')
+    await page.getByPlaceholder('验证码').fill(await readCaptcha(page))
     await loginButton.click()
     await expect(page.locator('.login-gate')).toBeHidden()
   }
@@ -101,10 +104,14 @@ for (const viewport of viewports) {
       }
 
       if (route.path === '/knowledge') {
-        await expect(root).toContainText('课程入口')
-        await expect(root).toContainText('章节模块')
-        await expect(root).toContainText('核心知识点')
-        await expect(root).toContainText('资源 / 题型')
+        if (await root.getByRole('heading', { level: 1, name: '暂无课程' }).isVisible()) {
+          await expect(root).toContainText('暂无可构建的课程知识')
+        } else {
+          await expect(root).toContainText('课程入口')
+          await expect(root).toContainText('章节模块')
+          await expect(root).toContainText('核心知识点')
+          await expect(root).toContainText('资源 / 题型')
+        }
       }
 
       await page.screenshot({

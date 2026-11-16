@@ -39,7 +39,23 @@ const password = ref('')
 const captcha = ref('')
 const showPassword = ref(false)
 const loginError = ref('')
-const captchaCode = '2VV3'
+
+// 4 位随机验证码：去掉易混淆字符 I O 0 1，字母大写；每个字符随机旋转+上下错位
+type CaptchaChar = { ch: string; rotate: number; offsetY: number }
+function genCaptcha(): CaptchaChar[] {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  return Array.from({ length: 4 }, () => ({
+    ch: chars.charAt(Math.floor(Math.random() * chars.length)),
+    rotate: Math.floor(Math.random() * 21) - 10,
+    offsetY: Math.floor(Math.random() * 9) - 4,
+  }))
+}
+const captchaChars = ref<CaptchaChar[]>(genCaptcha())
+function refreshCaptcha() {
+  captchaChars.value = genCaptcha()
+  captcha.value = ''
+  loginError.value = ''
+}
 const settingsOpen = ref(false)
 const settingsMenuRef = ref<HTMLElement | null>(null)
 const settingsTriggerRef = ref<HTMLButtonElement | null>(null)
@@ -70,12 +86,16 @@ function submitLogin() {
     loginError.value = '测试密码为 demo123'
     return
   }
-  if (captcha.value.trim().toUpperCase() !== captchaCode) {
-    loginError.value = '验证码不正确'
+  // 字母不区分大小写
+  const codeStr = captchaChars.value.map((c) => c.ch).join('')
+  if (captcha.value.trim().toUpperCase() !== codeStr.toUpperCase()) {
+    refreshCaptcha()
+    loginError.value = '验证码不正确，请输入新验证码'
     return
   }
   isAuthed.value = true
   sessionStorage.setItem(authStorageKey, '1')
+  refreshCaptcha()
 }
 
 function logout() {
@@ -181,6 +201,14 @@ onBeforeUnmount(() => {
     </main>
 
     <section v-if="!isAuthed" class="login-gate" aria-label="登录注册">
+      <div class="bg-float-item"></div>
+      <div class="bg-float-item"></div>
+      <div class="bg-float-item"></div>
+      <div class="bg-float-item"></div>
+      <div class="bg-float-item"></div>
+      <div class="bg-float-item"></div>
+      <div class="bg-float-item"></div>
+      <div class="bg-float-item"></div>
       <form class="login-card" @submit.prevent="submitLogin">
         <div class="login-title">
           <h1>登录 / 注册</h1>
@@ -206,16 +234,16 @@ onBeforeUnmount(() => {
           </button>
         </label>
 
-        <label class="login-field login-captcha-field">
+        <div class="login-field login-captcha-field">
           <ShieldCheck :size="30" stroke-width="2.15" />
-          <input v-model="captcha" maxlength="4" placeholder="验证码" autocomplete="off" />
-          <span class="captcha-box">{{ captchaCode }}</span>
-        </label>
+          <input v-model="captcha" maxlength="4" placeholder="验证码" aria-label="验证码" autocomplete="off" />
+          <button type="button" class="captcha-box captcha-clickable" aria-label="刷新验证码" title="看不清？点击切换验证码" @click="refreshCaptcha"><span v-for="(item, i) in captchaChars" :key="i" class="captcha-char" :style="`transform: rotate(${item.rotate}deg) translateY(${item.offsetY}px);`">{{ item.ch }}</span></button>
+        </div>
 
         <button class="login-submit" type="submit">登录并进入系统</button>
 
         <div class="login-tip">
-          <span>测试账号：任意 11 位手机号，密码 demo123</span>
+          <span>测试账号：任意 11 位手机号，密码 demo123（验证码点击可刷新，字母不区分大小写）</span>
           <strong v-if="loginError">{{ loginError }}</strong>
         </div>
       </form>

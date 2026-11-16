@@ -1,3 +1,4 @@
+import { readCaptcha } from './helpers/captcha'
 import { expect, test } from '@playwright/test'
 
 test('fresh login and actual navigation work without bypassing the login gate', async ({ page }) => {
@@ -6,7 +7,7 @@ test('fresh login and actual navigation work without bypassing the login gate', 
   await page.goto('/')
   await page.getByPlaceholder('手机号').fill('10000000000')
   await page.getByPlaceholder('密码', { exact: true }).fill('demo123')
-  await page.getByPlaceholder('验证码').fill('2VV3')
+  await page.getByPlaceholder('验证码').fill(await readCaptcha(page))
   await page.getByRole('button', { name: '登录并进入系统' }).click()
   await expect(page.locator('.login-gate')).toBeHidden()
   for (const [label, route] of [['资源工坊', '/workshop'], ['练习诊断', '/exercise'], ['知识中枢', '/knowledge'], ['用户画像', '/profile'], ['路径推送', '/path'], ['多模态实验室', '/multimodal'], ['智能辅导', '/tutor'], ['评估进化', '/evaluate']]) {

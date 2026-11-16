@@ -1,3 +1,4 @@
+import { readCaptcha } from './helpers/captcha'
 import { expect, type Page, test } from '@playwright/test'
 
 const criticalConsole: string[] = []
@@ -8,11 +9,12 @@ async function login(page: Page) {
     window.localStorage.setItem('las_student_id', 'codex-e2e')
   })
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+  await expect(page.locator('.portal-shell')).toBeVisible()
   const loginButton = page.getByRole('button', { name: /登录并进入系统/ })
   if (await loginButton.isVisible().catch(() => false)) {
     await page.getByPlaceholder('手机号').fill('10000000000')
     await page.getByPlaceholder('密码').fill('demo123')
-    await page.getByPlaceholder('验证码').fill('2VV3')
+    await page.getByPlaceholder('验证码').fill(await readCaptcha(page))
     await loginButton.click()
     await expect(page.locator('.login-gate')).toBeHidden({ timeout: 10_000 })
   }
@@ -131,6 +133,7 @@ test('path page shows route nodes and recommendation panel', async ({ page }) =>
   })
 })
 
+
 test('tutor page exposes the configured local voice experience without claiming unavailable services', async ({ page }) => {
   await gotoAuthed(page, '/tutor')
   const browserMode = page.locator('.tutor-video-shell .tb-shell')
@@ -143,6 +146,7 @@ test('tutor page exposes the configured local voice experience without claiming 
   } else {
     await expect(realtimeMode.getByRole('button', { name: '开始通话' })).toBeVisible()
     await expect(realtimeMode.locator('.digital-human-rig')).toBeVisible()
+
   }
   await expect(page.locator('textarea')).toHaveCount(0)
 })

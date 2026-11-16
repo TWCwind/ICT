@@ -535,12 +535,12 @@ onMounted(async () => {
 
 .orchestration-hero p {
   max-width: 780px;
-  color: var(--text-muted, #55637a);
+  color: var(--text-muted, #7a738c);
   line-height: 1.7;
 }
 
 .orchestration-section {
-  border: 1px solid var(--border-soft, rgba(15, 32, 68, 0.12));
+  border: 1px solid var(--border-soft, rgba(58, 49, 73, 0.12));
   border-radius: 18px;
   padding: 18px 20px;
   background: var(--surface, #fff);
@@ -564,8 +564,8 @@ onMounted(async () => {
 }
 
 .orchestration-section-head span {
-  font-size: 12px;
-  color: var(--text-muted, #6b7891);
+  font-size: 13.5px;
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-flow {
@@ -581,13 +581,13 @@ onMounted(async () => {
   gap: 14px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: var(--surface-soft, #f6f8fc);
+  background: var(--surface-soft, #faf7fe);
 }
 
 .orchestration-step {
   flex: 0 0 auto;
   font-weight: 700;
-  color: var(--accent, #1f6feb);
+  color: var(--accent, #ac93d0);
 }
 
 .orchestration-stage-body {
@@ -599,12 +599,12 @@ onMounted(async () => {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--text-muted, #55637a);
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-stage-body code {
-  font-size: 12px;
-  color: var(--text-muted, #6b7891);
+  font-size: 13.5px;
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-tool-grid {
@@ -614,7 +614,7 @@ onMounted(async () => {
 }
 
 .orchestration-tool-grid article {
-  border: 1px solid var(--border-soft, rgba(15, 32, 68, 0.12));
+  border: 1px solid var(--border-soft, rgba(58, 49, 73, 0.12));
   border-radius: 12px;
   padding: 10px 12px;
   display: grid;
@@ -622,19 +622,19 @@ onMounted(async () => {
 }
 
 .orchestration-tool-grid article.is-write {
-  border-color: rgba(31, 111, 235, 0.35);
+  border-color: rgba(172, 147, 208, 0.35);
 }
 
 .orchestration-tool-grid p {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--text-muted, #55637a);
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-tool-grid span {
-  font-size: 11.5px;
-  color: var(--text-muted, #6b7891);
+  font-size: 13px;
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-metrics {
@@ -646,14 +646,14 @@ onMounted(async () => {
 .orchestration-metrics article {
   border-radius: 12px;
   padding: 12px;
-  background: var(--surface-soft, #f6f8fc);
+  background: var(--surface-soft, #faf7fe);
   display: grid;
   gap: 6px;
 }
 
 .orchestration-metrics span {
-  font-size: 12px;
-  color: var(--text-muted, #6b7891);
+  font-size: 13.5px;
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-metrics strong {
@@ -670,8 +670,8 @@ onMounted(async () => {
 .orchestration-evidence div {
   border-radius: 999px;
   padding: 6px 12px;
-  background: var(--surface-soft, #f1f4fa);
-  font-size: 12px;
+  background: var(--surface-soft, #faf7fe);
+  font-size: 13.5px;
   display: inline-flex;
   gap: 6px;
 }
@@ -687,7 +687,7 @@ onMounted(async () => {
 .orchestration-catalog li {
   border-radius: 12px;
   padding: 12px 14px;
-  background: var(--surface-soft, #f6f8fc);
+  background: var(--surface-soft, #faf7fe);
   display: grid;
   gap: 5px;
 }
@@ -700,33 +700,33 @@ onMounted(async () => {
 }
 
 .orchestration-catalog span {
-  font-size: 12px;
-  color: var(--accent, #1f6feb);
+  font-size: 13.5px;
+  color: var(--accent, #ac93d0);
 }
 
 .orchestration-catalog p {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.6;
-  color: var(--text-muted, #55637a);
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-catalog code {
-  font-size: 11.5px;
-  color: var(--text-muted, #6b7891);
+  font-size: 13px;
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-note {
   margin: 12px 0 0;
   font-size: 12.5px;
   line-height: 1.7;
-  color: var(--text-muted, #6b7891);
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-error {
   margin: 0;
-  font-size: 13px;
-  color: #b42318;
+  font-size: 14px;
+  color: #c2586f;
 }
 
 .orchestration-trace {
@@ -743,13 +743,13 @@ onMounted(async () => {
   gap: 12px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid var(--border-subtle, #e6eaf2);
-  background: var(--surface-muted, #f8fafc);
+  border: 1px solid var(--border-subtle, #efe7f8);
+  background: var(--surface-muted, #faf7fe);
 }
 
 .orchestration-trace li.is-failed {
-  border-color: #f3c1bb;
-  background: #fff6f5;
+  border-color: #f6c3d0;
+  background: #fef5f7;
 }
 
 .orchestration-trace-index {
@@ -759,14 +759,14 @@ onMounted(async () => {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
-  background: var(--accent, #3b6ef5);
+  background: var(--accent, #ac93d0);
 }
 
 .orchestration-trace li.is-failed .orchestration-trace-index {
-  background: #b42318;
+  background: #c2586f;
 }
 
 .orchestration-trace div {
@@ -777,15 +777,15 @@ onMounted(async () => {
 }
 
 .orchestration-trace strong {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .orchestration-trace code {
-  font-size: 11.5px;
+  font-size: 13px;
   padding: 2px 6px;
   border-radius: 6px;
-  background: #eef2fb;
-  color: #2f4a80;
+  background: #faf7fe;
+  color: #7e63a8;
 }
 
 .orchestration-trace p {
@@ -793,25 +793,25 @@ onMounted(async () => {
   margin: 0;
   font-size: 12px;
   line-height: 1.6;
-  color: var(--text-muted, #6b7891);
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-note .is-ok {
-  color: #0f7b3f;
+  color: #23403a;
 }
 
 .orchestration-note .is-fail {
-  color: #b42318;
+  color: #c2586f;
 }
 
 .orchestration-run {
   align-self: flex-start;
   padding: 8px 16px;
   border-radius: 999px;
-  border: 1px solid var(--border-strong, #cdd5e3);
+  border: 1px solid var(--border-strong, #d3c2ea);
   background: var(--surface-raised, #fff);
   color: inherit;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -835,19 +835,19 @@ onMounted(async () => {
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--surface-sunken, #f4f6fa);
-  font-size: 12px;
+  background: var(--surface-sunken, #faf7fe);
+  font-size: 13.5px;
 }
 
 .orchestration-workers code {
-  color: var(--text-muted, #6b7891);
+  color: var(--text-muted, #7a738c);
 }
 
 .orchestration-footer {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
-  color: var(--text-muted, #6b7891);
+  font-size: 13.5px;
+  color: var(--text-muted, #7a738c);
 }
 </style>
