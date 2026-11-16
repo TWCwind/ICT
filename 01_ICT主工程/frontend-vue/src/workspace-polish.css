@@ -19,7 +19,6 @@
 .profile-center-page,
 .exercise-dashboard,
 .knowledge-workbench,
-.evaluation-workbench,
 .workshop-workbench-page,
 .path-workbench-page,
 .multimodal-workbench-page,
@@ -203,11 +202,6 @@
 .knowledge-detail-rail {
   max-height: calc(100vh - 76px);
   overflow-y: auto;
-}
-
-.evaluation-workbench {
-  min-height: calc(100vh - 76px);
-  padding: 14px 16px 20px;
 }
 
 .evaluation-command-bar {

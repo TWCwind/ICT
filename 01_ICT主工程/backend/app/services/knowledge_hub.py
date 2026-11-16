@@ -42,7 +42,9 @@ def _material_path(*parts: str) -> Path:
 COURSE_DIR = _material_path("课程资料")
 SAMPLE_DIR = _material_path("生成示例")
 PATH_OUTPUT_DIR = _material_path("第三点_学习路径规划与资源推送", "输出结果")
+
 def _textbook_dir() -> Path:
+    """Resolve uploads from the active runtime data directory, including roadshow copies."""
     return settings.data_path / "uploads" / "textbooks"
 
 
@@ -531,13 +533,6 @@ def _semantic_course_title(raw_title: str, evidence: str = "") -> str:
     return "课程知识结构"
 
 
-def _is_stale_chapter_title(title: str) -> bool:
-    value = str(title or "").strip()
-    return bool(
-        re.search(r"(?:[0-9a-f]{16,32}|book_|textbook_|第\s*1\s*部分|视频推荐|B站|腾讯视频)", value, re.IGNORECASE)
-    )
-
-
 def graph_data(
     student_id: str,
     course: str = "",
@@ -597,7 +592,6 @@ def graph_data(
 
     chapter_count = len([node for node in nodes if node["kind"] == "chapter"])
     concept_count = len([node for node in nodes if node["kind"] == "concept"])
-    resource_count = len([node for node in nodes if node["kind"] == "resource"])
     return {
         "course": selected["title"],
         "selected_course": selected["id"],
@@ -619,7 +613,7 @@ def graph_data(
             "documents": 1,
             "chapters": chapter_count,
             "concepts": concept_count,
-            "resources": resource_count,
+            "resources": len([node for node in nodes if node["kind"] == "resource"]),
             "relations": len(edges),
         },
     }
@@ -1068,6 +1062,8 @@ def _deduplicate_chapters(chapters: list[dict[str, Any]]) -> list[dict[str, Any]
     display_titles: dict[str, tuple[int, str]] = {}
     for chapter in chapters:
         display_title = _chapter_display_title(chapter)
+        if _is_stale_chapter_title(display_title):
+            continue
         title = re.sub(r"\s+", "", display_title).lower()
         if not title:
             continue
@@ -1094,6 +1090,15 @@ def _chapter_display_title(chapter: dict[str, Any]) -> str:
     if re.match(r"第\s*\d+\s*章", first_line) and len(first_line) <= 80:
         return first_line
     return original
+
+
+def _is_stale_chapter_title(title: str) -> bool:
+    normalized = re.sub(r"\s+", "", str(title or "")).lower()
+    return bool(
+        not normalized
+        or re.search(r"(?:book_|textbook_|第1部分|第01部分|视频推荐|b站|腾讯视频)", normalized, re.I)
+        or re.fullmatch(r"[0-9a-f]{16,32}", normalized)
+    )
 
 
 def _clean_keywords(values: list[Any], title: str = "") -> list[str]:
@@ -1281,8 +1286,8 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
     # question banks.  Index the textbook body itself (the original upload when
     # readable, otherwise the parsed chapter keywords) so textbook content is
     # retrievable and outranks derived resources.
-    textbook_dir = _textbook_dir()
     chapter_knowledge_dir = _chapter_knowledge_dir()
+    textbook_dir = _textbook_dir()
     textbook_index = _read_json_file(chapter_knowledge_dir / "index.json")
     if isinstance(textbook_index, dict):
         for textbook_id, metadata in textbook_index.items():

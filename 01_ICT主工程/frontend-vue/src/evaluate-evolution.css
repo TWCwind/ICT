@@ -1,3 +1,4 @@
+
 .evaluation-workbench {
   --ev-border: rgba(106, 147, 184, 0.12);
   --ev-muted: #7a738c;
@@ -6,6 +7,9 @@
   background: #f8fbfd;
   color: #2e4056;
 }
+
+
+
 
 .evaluation-command-bar,
 .evaluation-command-actions,
@@ -978,7 +982,6 @@
 }
 
 @media (max-width: 760px) {
-  .evaluation-workbench { padding: 14px 12px 20px; }
   .evaluation-command-bar { align-items: flex-start; }
   .evaluation-command-bar,
   .evaluation-command-actions { flex-direction: column; }
@@ -1004,6 +1007,7 @@
 }
 
 /* Competition presentation pass: closed-loop evaluation cockpit. */
+
 .evaluation-workbench {
   min-height: calc(100vh - 58px);
   padding: 14px 18px 18px;
@@ -1012,6 +1016,9 @@
     radial-gradient(circle at 92% 4%, rgba(162, 199, 225, 0.06), transparent 32%),
     linear-gradient(180deg, #f8fbfd 0%, #f8fbfd 100%);
 }
+
+
+
 
 .evaluation-command-bar {
   padding: 10px 2px 12px;

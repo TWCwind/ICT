@@ -47,7 +47,7 @@ export type ProfileDimension = {
   label: string
   value: string
   description: string
-  confidence: number
+  confidence: number | null
   status: 'ready' | 'pending'
 }
 

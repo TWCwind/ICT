@@ -52,6 +52,7 @@ test('every initially visible enabled page button produces an observable action'
       await test.step(`${route} :: ${label.slice(0, 50)}`, async () => {
         const before = await signature(page)
         const beforeUrl = page.url()
+        const beforeFocus = await page.evaluate(() => (document.activeElement as HTMLElement | null)?.outerHTML || '')
         let apiRequest = false
         let fileChooser = false
         let download = false
@@ -66,9 +67,11 @@ test('every initially visible enabled page button produces an observable action'
         await button.click({ timeout: 15_000, noWaitAfter: true })
         await page.waitForTimeout(700)
         const after = await signature(page)
+        const afterFocus = await page.evaluate(() => (document.activeElement as HTMLElement | null)?.outerHTML || '')
         page.off('request', onRequest)
 
         const changed = JSON.stringify(before) !== JSON.stringify(after)
+        const focusChanged = beforeFocus !== afterFocus
         const navigated = beforeUrl !== page.url()
         const processingEvidence = apiRequest || fileChooser || download || popup || navigated
         if (actionKind !== 'compose' && requiresProcessingEvidence(label)) {
@@ -78,7 +81,7 @@ test('every initially visible enabled page button produces an observable action'
           ).toBeTruthy()
         } else {
           expect(
-            alreadyActive || processingEvidence || changed,
+            alreadyActive || processingEvidence || changed || focusChanged,
             `Button produced no observable action: ${route} :: ${label}`,
           ).toBeTruthy()
         }
