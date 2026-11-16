@@ -174,7 +174,7 @@ test.describe('中小屏布局回归（第二轮修复）', () => {
     await enterDemo(page, '/evaluate')
     const scoreRow = await measure(page, '.shot-score-row')
     expect(scoreRow.scroll, '评估分数行内容不得超出容器').toBeLessThanOrEqual(scoreRow.client + 1)
-    const capability = await measure(page, '.shot-capability__body')
+    const capability = await measure(page, '.shot-capability-bars')
     expect(capability.scroll, '能力雷达面板内容不得超出容器').toBeLessThanOrEqual(capability.client + 1)
 
     await enterDemo(page, '/knowledge')

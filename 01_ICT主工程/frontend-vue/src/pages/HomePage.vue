@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch, type Component } from 'vue'
+import type { Component } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { switchToDemoStudent, switchToOwnStudent, useStudent } from '@/composables/useStudent'
+import {
+  switchToDemoStudent,
+  switchToOwnStudent,
+  useStudent,
+} from '@/composables/useStudent'
 import {
   ArrowRight,
   BookOpenCheck,
@@ -389,7 +394,6 @@ function toggleDemoStudent() {
 .live-evidence a:focus-visible, .live-evidence button:focus-visible { outline: 3px solid #184ea8; outline-offset: 3px; }
 @media (max-width: 800px) { .live-evidence { padding: 22px 18px; } .live-evidence-heading { flex-direction: column; gap: 12px; } .live-evidence-body { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .live-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .live-evidence-empty { align-items: flex-start; flex-direction: column; } }
-
 button.apple-text-btn {
   background: none;
   border: none;

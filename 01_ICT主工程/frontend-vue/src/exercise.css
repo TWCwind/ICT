@@ -284,6 +284,99 @@
   text-align: center;
 }
 
+.exercise-session-state {
+  min-height: 280px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 28px;
+  border: 1px solid #e2eaf4;
+  border-radius: 16px;
+  color: #61738a;
+  background: #fff;
+  text-align: center;
+}
+
+.exercise-session-state strong {
+  color: #183452;
+  font-size: 18px;
+}
+
+.exercise-session-state strong:focus-visible,
+.exercise-empty strong:focus-visible {
+  border-radius: 4px;
+  outline: 3px solid #3478f6;
+  outline-offset: 4px;
+}
+
+.exercise-session-state > span:last-child {
+  font-size: 14px;
+}
+
+.exercise-session-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #dce8f7;
+  border-top-color: #3478f6;
+  border-radius: 50%;
+  animation: exercise-session-spin 800ms linear infinite;
+}
+
+@keyframes exercise-session-spin {
+  to { transform: rotate(360deg); }
+}
+
+.exercise-load-error {
+  padding: 28px;
+  border-style: solid;
+  border-color: #f0d4d4;
+  background: #fffafa;
+}
+
+.exercise-load-error > span {
+  max-width: 680px;
+  overflow-wrap: anywhere;
+}
+
+.exercise-load-error > p {
+  margin: 0;
+  color: #718097;
+  font-size: 13px;
+}
+
+.exercise-load-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.exercise-empty-secondary {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
+  color: #314d6c;
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.exercise-empty-secondary:hover {
+  border-color: #9bb8df;
+  background: #f7faff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exercise-session-spinner {
+    animation: none;
+    border-top-color: #3478f6;
+  }
+}
+
 .exercise-empty strong {
   color: #102033;
   font-size: 17px;
@@ -1090,6 +1183,12 @@
   line-height: 1.2;
 }
 
+.practice-main-title strong:focus-visible {
+  border-radius: 4px;
+  outline: 3px solid #3478f6;
+  outline-offset: 5px;
+}
+
 .exercise-practice-center .exercise-card-head p {
   max-width: 520px;
   margin-top: 8px;
@@ -1738,12 +1837,109 @@
   display: none;
 }
 
+.workshop-shell-practice .practice-start-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px 28px;
+  align-items: center;
+  min-height: 290px;
+  padding: clamp(22px, 4vw, 44px);
+  border: 1px solid #dce8f7;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(47, 116, 255, .12), transparent 32%),
+    linear-gradient(135deg, #fff, #f5f9ff);
+}
+
+.practice-start-copy {
+  grid-column: 1 / -1;
+}
+
+.practice-start-eyebrow {
+  color: #2f74ff;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+
+.practice-start-copy h2 {
+  margin: 10px 0 8px;
+  color: #132b4b;
+  font-size: clamp(24px, 3vw, 34px);
+}
+
+.practice-start-copy p,
+.practice-start-note {
+  max-width: 760px;
+  margin: 0;
+  color: #63758d;
+  line-height: 1.7;
+}
+
+.practice-start-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.practice-start-details article {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e1eaf6;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .88);
+}
+
+.practice-start-details span {
+  color: #71829a;
+  font-size: 12px;
+}
+
+.practice-start-details strong {
+  overflow-wrap: anywhere;
+  color: #17345d;
+  font-size: 14px;
+}
+
+.practice-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.practice-start-actions .studio-btn {
+  min-height: 46px;
+  padding: 0 24px;
+  font-size: 15px;
+}
+
+.practice-start-note {
+  grid-column: 1 / -1;
+  padding: 10px 13px;
+  border-radius: 10px;
+  color: #765b16;
+  background: #fff8e5;
+  font-size: 13px;
+}
+
 .workshop-shell-practice .exercise-practice-center {
   grid-template-columns: minmax(520px, 1fr) minmax(268px, 320px);
   gap: 16px;
   min-height: 0;
   padding: 0;
   background: transparent;
+}
+
+.workshop-shell-practice .exercise-practice-center.is-empty-session {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workshop-shell-practice .exercise-practice-center.is-empty-session > .exercise-side {
+  display: none;
 }
 
 .workshop-shell-practice .exercise-practice-center > .practice-sidebar {
@@ -2317,6 +2513,24 @@
 }
 
 @media (max-width: 720px) {
+  .workshop-shell-practice .practice-start-panel {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .practice-start-details {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-start-actions {
+    justify-content: stretch;
+  }
+
+  .practice-start-actions .studio-btn {
+    flex: 1 1 100%;
+  }
+
   .workshop-shell-practice .studio-actions,
   .workshop-shell-practice .studio-actions .studio-btn {
     width: 100%;

@@ -133,3 +133,7 @@
 
 MCP 数据一致性规则：MCP 启动时优先使用环境变量 `DATA_DIR`；未指定时按 `roadshow-data`、`roadshow-seed`、`backend/data` 的顺序选择包含 `users/demo/student.json` 的数据目录。因此 MCP 与路演前端在同一启动流程下读取同一份学生画像、学习记录和路径状态。
 
+## 2026-10-29 练习接口现场验证
+
+路演 demo 当前没有已生成的 `question_bank`。真实调用 `GET /api/exercise/session?student_id=demo&limit=10&refresh=0` 返回 HTTP 200、`success=true`、`data.questions=[]`。前端“智能做题”页签先显示开始确认；点击“开始做题”后才调用此接口。空列表显示明确的题库空状态与定制入口，不代表练习题已准备好。先生成题库后再进入实际答题流程。
+
