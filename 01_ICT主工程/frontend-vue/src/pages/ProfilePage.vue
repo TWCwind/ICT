@@ -166,11 +166,12 @@ async function submitProfile() {
     const refreshedProfile = await loadProfile()
     const nextVersion = refreshedProfile?.learner.profile_version || ''
     if (previousVersion && nextVersion && previousVersion !== nextVersion) {
-      statusNotice.value = `本轮分析已确认写入画像，版本由 ${previousVersion} 更新为 ${nextVersion}。`
+      // 画像已就地刷新，不再弹“写入成功/版本号”这句话打扰用户。
+      statusNotice.value = ''
     } else if (refreshedProfile) {
-      statusNotice.value = '本轮分析已完成；当前未检测到画像版本变化，持久化结果请以版本记录与最新证据为准。'
+      statusNotice.value = ''
     } else {
-      statusNotice.value = '本轮分析已返回，但最新画像快照刷新失败；分析内容已保留，可稍后重新加载确认。'
+      statusNotice.value = '本轮分析已返回，但最新画像刷新失败，可稍后重新加载确认。'
     }
   } catch (reason: any) {
     error.value = reason?.message || '本轮画像分析失败'

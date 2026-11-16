@@ -387,6 +387,115 @@ def _json_from_text(text: str) -> dict[str, Any]:
         return json.loads(match.group(0))
 
 
+_SUPERSCRIPT = {
+    "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+    "+": "⁺", "-": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ",
+}
+_SUBSCRIPT = {
+    "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+    "+": "₊", "-": "₋", "=": "₌", "(": "₍", ")": "₎", "a": "ₐ", "e": "ₑ", "h": "ₕ", "i": "ᵢ", "j": "ⱼ",
+    "k": "ₖ", "l": "ₗ", "m": "ₘ", "n": "ₙ", "o": "ₒ", "p": "ₚ", "r": "ᵣ", "s": "ₛ", "t": "ₜ", "u": "ᵤ", "v": "ᵥ", "x": "ₓ",
+}
+_MATH_WORDS = {
+    "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε", "varepsilon": "ε", "zeta": "ζ",
+    "eta": "η", "theta": "θ", "lambda": "λ", "mu": "μ", "nu": "ν", "xi": "ξ", "pi": "π", "rho": "ρ",
+    "sigma": "σ", "tau": "τ", "phi": "φ", "varphi": "φ", "chi": "χ", "psi": "ψ", "omega": "ω",
+    "Gamma": "Γ", "Delta": "Δ", "Theta": "Θ", "Lambda": "Λ", "Xi": "Ξ", "Pi": "Π", "Sigma": "Σ",
+    "Phi": "Φ", "Psi": "Ψ", "Omega": "Ω",
+    "to": "→", "rightarrow": "→", "leftarrow": "←", "Rightarrow": "⇒", "Leftarrow": "⇐",
+    "leftrightarrow": "↔", "Leftrightarrow": "⇔", "leq": "≤", "le": "≤", "geq": "≥", "ge": "≥",
+    "neq": "≠", "ne": "≠", "approx": "≈", "equiv": "≡", "sim": "∼", "propto": "∝",
+    "times": "×", "cdot": "·", "div": "÷", "pm": "±", "mp": "∓", "ast": "∗",
+    "infty": "∞", "sum": "∑", "prod": "∏", "int": "∫", "iint": "∬", "oint": "∮",
+    "partial": "∂", "nabla": "∇", "in": "∈", "notin": "∉", "subset": "⊂", "subseteq": "⊆",
+    "cup": "∪", "cap": "∩", "emptyset": "∅", "forall": "∀", "exists": "∃",
+    "ldots": "…", "cdots": "⋯", "dots": "…", "angle": "∠", "perp": "⊥", "parallel": "∥",
+    "degree": "°", "circ": "∘", "prime": "′",
+}
+_MATH_FUNCS = {
+    "sin", "cos", "tan", "cot", "sec", "csc", "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh",
+    "ln", "log", "lg", "exp", "lim", "max", "min", "sup", "inf", "det", "gcd", "lcm", "mod", "arg",
+    "abs", "deg", "dim", "ker", "Pr",
+}
+
+
+def _map_chars(text: str, table: dict[str, str]) -> str | None:
+    out = []
+    for ch in text:
+        mapped = table.get(ch)
+        if mapped is None:
+            return None
+        out.append(mapped)
+    return "".join(out)
+
+
+def _math_atom(inner: str) -> str:
+    inner = inner.strip()
+    if not inner:
+        return ""
+    if len(inner) == 1 or re.fullmatch(r"[A-Za-z0-9.⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿⁱ₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ]+", inner):
+        return inner
+    return f"({inner})"
+
+
+def _wrap_script(text: str, table: dict[str, str], marker: str) -> str:
+    text = re.sub(r"\\([A-Za-z]+)", lambda m: _MATH_WORDS.get(m.group(1), m.group(1)), text.strip())
+    mapped = _map_chars(text, table)
+    if mapped is not None:
+        return mapped
+    if len(text) == 1:
+        return f"{marker}{text}"
+    return f"{marker}({text})"
+
+
+def latex_to_text(value: str) -> str:
+    """把 LaTeX 片段转成可直接排版的中文/Unicode 数学文本（用于 PPTX 这类富文本受限的场景）。"""
+    text = str(value or "")
+    if not text:
+        return ""
+    if "\\" not in text and "$" not in text and "^" not in text:
+        return text
+
+    text = text.replace("$$", "$").replace("\\(", "$").replace("\\)", "$").replace("\\[", "$").replace("\\]", "$")
+
+    for _ in range(6):
+        updated = re.sub(r"\\frac\s*\{((?:[^{}]|\{[^{}]*\})*)\}\s*\{((?:[^{}]|\{[^{}]*\})*)\}", lambda m: f"{_math_atom(latex_to_text(m.group(1)))}/{_math_atom(latex_to_text(m.group(2)))}", text)
+        if updated == text:
+            break
+        text = updated
+
+    text = re.sub(r"\\sqrt\s*\[([^{}\[\]]*)\]\s*\{([^{}]*)\}", lambda m: f"{_wrap_script(m.group(1), _SUPERSCRIPT, '^')}√({m.group(2).strip()})", text)
+    text = re.sub(r"\\sqrt\s*\{([^{}]*)\}", lambda m: f"√({m.group(1).strip()})", text)
+
+    for _ in range(6):
+        updated = re.sub(r"\^\s*\{([^{}]*)\}", lambda m: _wrap_script(m.group(1), _SUPERSCRIPT, "^"), text)
+        updated = re.sub(r"\^\s*([A-Za-z0-9+\-])", lambda m: _wrap_script(m.group(1), _SUPERSCRIPT, "^"), updated)
+        updated = re.sub(r"_\s*\{([^{}]*)\}", lambda m: _wrap_script(m.group(1), _SUBSCRIPT, "_"), updated)
+        updated = re.sub(r"_\s*([A-Za-z0-9+\-])", lambda m: _wrap_script(m.group(1), _SUBSCRIPT, "_"), updated)
+        if updated == text:
+            break
+        text = updated
+
+    text = re.sub(r"\\(?:text|mathrm|mathbf|mathit|operatorname|mathbb)\s*\{([^{}]*)\}", lambda m: m.group(1), text)
+    text = re.sub(r"\\(?:left|right|big|Big|bigg|Bigg)\s*", "", text)
+    text = re.sub(r"\\[,;:!]", " ", text)
+    text = text.replace("\\quad", " ").replace("\\qquad", "  ").replace("\\\\", " ")
+    text = re.sub(r"\\([A-Za-z]+)", lambda m: _MATH_WORDS.get(m.group(1)) or (m.group(1) if m.group(1) in _MATH_FUNCS else f" {m.group(1)} "), text)
+    text = text.replace("\\", "").replace("$", "")
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+
+def _plainify(value: Any) -> Any:
+    if isinstance(value, str):
+        return latex_to_text(value)
+    if isinstance(value, list):
+        return [_plainify(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _plainify(item) for key, item in value.items()}
+    return value
+
+
 def _clean_outline(data: dict[str, Any], req: PptOutlineRequest) -> dict[str, Any]:
     topic = str(data.get("title") or req.topic or req.requirements).strip()
     subtitle = str(data.get("subtitle") or "").strip()
@@ -421,7 +530,7 @@ def _clean_outline(data: dict[str, Any], req: PptOutlineRequest) -> dict[str, An
         )
     if len(slides) < 2:
         raise ValueError("模型返回的有效幻灯片少于 2 页，本次没有使用固定模板补齐")
-    return {"title": topic, "subtitle": subtitle, "slides": slides, "style": req.style}
+    return _plainify({"title": topic, "subtitle": subtitle, "slides": slides, "style": req.style})
 
 
 async def _generate_outline_with_glm(req: PptOutlineRequest) -> dict[str, Any] | None:
@@ -479,6 +588,40 @@ async def _generate_outline_with_glm(req: PptOutlineRequest) -> dict[str, Any] |
         return None
 
 
+async def _generate_outline_with_llm(req: PptOutlineRequest) -> dict[str, Any] | None:
+    """用项目通用大模型生成大纲：没有智谱 GLM Key 时 PPT 仍然可用。"""
+    if not is_llm_configured("generate"):
+        return None
+    try:
+        llm = get_llm_client_for("generate")
+        generated = await llm.chat_json(
+            system="你是课程设计专家，只输出合法 JSON，不使用 Markdown 代码块，不要输出解释。",
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"为主题「{(req.topic or req.requirements or '课程主题').strip()}」设计"
+                        f" {max(3, min(15, int(req.slide_count or 6)))} 页课程 PPT 大纲。"
+                        f"受众：{req.audience or '学生'}；风格：{req.style or '现代教学'}；"
+                        f"补充要求：{(req.requirements or '无').strip()}。"
+                        "每页包含 title（不超过 18 字）、body（一句话说明）、"
+                        "bullets（3 到 4 条要点，每条不超过 20 字）、takeaway（一句话结论）。"
+                        "全部使用简体中文；数学式子用 LaTeX 行内语法 $...$。"
+                    ),
+                }
+            ],
+            schema_hint='{"title":"...","subtitle":"...","slides":[{"title":"...","body":"...","bullets":["..."],"takeaway":"..."}]}',
+        )
+    except Exception:
+        return None
+    if not isinstance(generated, dict):
+        return None
+    try:
+        return _clean_outline(generated, req)
+    except Exception:
+        return None
+
+
 @router.post("/outline")
 async def ppt_outline(req: PptOutlineRequest) -> dict[str, Any]:
     if _is_java_intro_presentation_request(req):
@@ -493,9 +636,18 @@ async def ppt_outline(req: PptOutlineRequest) -> dict[str, Any]:
             "outline": outline,
             "assistant_reply": "PPT 大纲已生成，可以继续生成课件。",
         }
-    if not _glm_chat_api_key():
-        return {"success": False, "error": "图像/PPT 仅使用智谱 GLM，请先配置 GLM_TEXT_API_KEY 或 GLM_API_KEY"}
-    outline = await _generate_outline_with_glm(req)
+    engine = "glm"
+    outline = None
+    if _glm_chat_api_key():
+        outline = await _generate_outline_with_glm(req)
+    else:
+        engine = "project_llm"
+    if not outline:
+        engine = "project_llm"
+        outline = await _generate_outline_with_llm(req)
+    if not outline:
+        engine = "template"
+        outline = _normalize_outline(req)
     if not outline:
         return {"success": False, "error": "大模型生成 PPT 大纲失败，请检查模型配置或网络连接"}
     return {
@@ -505,6 +657,7 @@ async def ppt_outline(req: PptOutlineRequest) -> dict[str, Any]:
         "subtitle": outline["subtitle"],
         "slides": outline["slides"],
         "style": outline["style"],
+        "generation_engine": engine,
         "outline": outline,
         "assistant_reply": "PPT 大纲已生成，可以继续生成课件。",
     }
@@ -1342,8 +1495,6 @@ async def ppt_generate_from_outline(req: PptGenerateRequest) -> dict[str, Any]:
     except ValueError as exc:
         return {"success": False, "error": str(exc)}
     topic = str(outline.get("title") or req.topic or "课程课件")
-    if not _image_api_key():
-        return {"success": False, "error": "PPT 背景图仅使用智谱 GLM，请先配置 GLM_IMAGE_API_KEY 或 GLM_API_KEY"}
     filename = _safe_filename(topic, "pptx")
     output_dir = settings.files_path / "generated" / "ppt"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1354,8 +1505,13 @@ async def ppt_generate_from_outline(req: PptGenerateRequest) -> dict[str, Any]:
     image_generation_warning = ""
     try:
         outline = _enrich_outline(outline, topic, ["split", "cards", "timeline", "compare", "summary"])
-        outline = await _prepare_ai_ppt_backgrounds(outline, topic, asset_dir, generation_id, req.requirements)
-        image_generation_warning = str(outline.get("_image_generation_warning") or "")
+        outline["_asset_dir_path"] = str(asset_dir)
+        outline["generation_id"] = generation_id
+        if _image_api_key():
+            outline = await _prepare_ai_ppt_backgrounds(outline, topic, asset_dir, generation_id, req.requirements)
+            image_generation_warning = str(outline.get("_image_generation_warning") or "")
+        else:
+            image_generation_warning = "未配置智谱图片模型，本次使用本地版式背景生成课件。"
         _create_designed_pptx(outline, topic, output_path)
     except Exception as exc:
         return {"success": False, "error": f"PPTX 生成失败：{exc}"}
@@ -1377,7 +1533,7 @@ async def ppt_generate_from_outline(req: PptGenerateRequest) -> dict[str, Any]:
         "download_url": url,
         "slides": public_slides,
         "ai_background_count": ai_background_count,
-        "generation_engine": "zhipu_glm_text_and_image",
+        "generation_engine": "structured_native_pptx" if not ai_background_count else "zhipu_glm_text_and_image",
         "generation_id": generation_id,
         "image_generation_warning": image_generation_warning,
         "assistant_reply": "PPTX 已根据大纲生成，可以下载。",
@@ -1392,7 +1548,7 @@ async def ppt_image_generate(req: ImageGenerateRequest, x_glm_api_key: str | Non
 
     api_key = _image_api_key(req.api_key, x_glm_api_key)
     if not api_key:
-        return {"success": False, "error": "图片生成仅使用智谱 GLM，请先配置 GLM_IMAGE_API_KEY 或 GLM_API_KEY"}
+        return await _generate_teaching_visual(req, prompt)
 
     size = (req.size or _env("GLM_IMAGE_SIZE", "1024x1024")).strip()
     model = _env("GLM_IMAGE_MODEL", "glm-image")

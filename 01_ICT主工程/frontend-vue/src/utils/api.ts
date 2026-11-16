@@ -48,28 +48,34 @@ async function parseEnvelope<T>(resp: Response, fallback: string): Promise<ApiRe
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
-  let resp: Response
   try {
-    resp = await fetch(path, {
+    const resp = await fetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
+    return await parseEnvelope<T>(resp, '请求失败')
   } catch {
-    // 后端断开 / 代理不可达：fetch 直接拒绝
     return { request_id: '', success: false, data: null as T, error: { code: 'NETWORK', message: '本地服务未连接，请确认后端已启动后重试' } }
   }
-  return parseEnvelope<T>(resp, '请求失败')
 }
 
 export async function apiGet<T>(path: string): Promise<ApiResponse<T>> {
-  let resp: Response
   try {
-    resp = await fetch(path)
+    const resp = await fetch(path)
+    return await parseEnvelope<T>(resp, '请求失败')
   } catch {
     return { request_id: '', success: false, data: null as T, error: { code: 'NETWORK', message: '本地服务未连接，请确认后端已启动后重试' } }
   }
-  return parseEnvelope<T>(resp, '请求失败')
+}
+
+export async function apiDelete<T>(path: string): Promise<ApiResponse<T>> {
+  try {
+    const resp = await fetch(path, { method: 'DELETE' })
+    return await parseEnvelope<T>(resp, '请求失败')
+  } catch {
+    return { request_id: '', success: false, data: null as T, error: { code: 'NETWORK', message: '本地服务未连接，请确认后端已启动后重试' } }
+  }
 }
 
 export type StreamEvent = {

@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { generatePathStageQuestions, getPathOverview, type PathOverview } from '@/api/learningApi'
 import { useStudent } from '@/composables/useStudent'
+import { apiGet } from '@/utils/api'
 import ExercisePage from '@/pages/ExercisePage.vue'
 // @ts-ignore - local three package is installed without package metadata in this workspace.
 import * as THREE from '../../node_modules/three/build/three.module.js'
@@ -175,6 +176,7 @@ const events = ref<any[]>([])
 const resources = ref<ResourceItem[]>([])
 const selectedQuestionBankIds = ref<string[]>(readActiveQuestionBankIds(studentId.value))
 const error = ref('')
+const localTemplateNotice = ref('')
 const closedLoopStatus = ref('题库生成后会自动进入训练诊断。')
 const questionDifficulty = ref('mixed')
 const activeExerciseQuestionLimit = ref(50)
@@ -190,11 +192,69 @@ const questionTypeCounts = ref<Record<string, number>>({
   matching: 0,
   ordering: 0,
 })
+/** 智能做题前置页：先给出本轮题量、题型，点了「开始做题」才挂载练习组件。 */
+const practiceStarted = ref(false)
+const practiceTypeBreakdown = computed(() =>
+  questionTypeOptions
+    .map((option) => ({ label: option.label, count: normalizedTypeCount(option.value) }))
+    .filter((item) => item.count > 0),
+)
+function startPractice() {
+  practiceStarted.value = true
+}
+
+/** 前置页展示真实可用题量：先按同样参数取一次练习会话，拿到实际返回的题目。 */
+const practicePreview = ref<any[]>([])
+const practicePreviewLoading = ref(false)
+let practicePreviewSeq = 0
+function questionTypeLabel(value: string) {
+  const found = questionTypeOptions.find((option) => option.value === value)
+  return found ? found.label : String(value || '综合')
+}
+const practicePreviewTypeCounts = computed(() => {
+  const map = new Map<string, number>()
+  for (const item of practicePreview.value) {
+    const type = String(item?.type || '').trim()
+    if (!type) continue
+    map.set(type, (map.get(type) || 0) + 1)
+  }
+  return Array.from(map, ([value, count]) => ({ label: questionTypeLabel(value), count }))
+})
+const practiceRealCount = computed(() => practicePreview.value.length)
+const practiceShownTypes = computed(() => (practicePreviewTypeCounts.value.length ? practicePreviewTypeCounts.value : practiceTypeBreakdown.value))
+async function loadPracticePreview() {
+  if (practiceStarted.value) return
+  const sequence = ++practicePreviewSeq
+  practicePreviewLoading.value = true
+  try {
+    const resourceParam = activeQuestionBankIds.value.length
+      ? `&resource_ids=${encodeURIComponent(activeQuestionBankIds.value.join(','))}`
+      : ''
+    const resp = await apiGet<any>(`/api/exercise/session?student_id=${encodeURIComponent(studentId.value)}&limit=${activeExerciseQuestionLimit.value}${resourceParam}&refresh=${exerciseResetSeed.value}`)
+    if (sequence !== practicePreviewSeq) return
+    const questions = resp?.success ? (resp.data?.questions || []) : []
+    practicePreview.value = Array.isArray(questions) ? questions : []
+  } catch {
+    if (sequence === practicePreviewSeq) practicePreview.value = []
+  } finally {
+    if (sequence === practicePreviewSeq) practicePreviewLoading.value = false
+  }
+}
+function exitPractice() {
+  practiceStarted.value = false
+  exerciseResetSeed.value += 1
+}
 const pathOverview = ref<PathOverview | null>(null)
 const currentPathStage = ref<Record<string, any> | null>(null)
 const pathContextLoading = ref(false)
 
 const questionBankResources = computed(() => resources.value.filter((r) => r.type === 'question_bank'))
+const passThreshold = computed(() => {
+  const raw = Number((pathOverview.value as any)?.progress?.pass_threshold)
+  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 80
+})
+// 无大模型时后端会退回本地模板题库，并在 meta.local_template 打标；这里据此显示「本地模板」而不是假装是大模型出的题。
+const localQuestionBankCount = computed(() => questionBankResources.value.filter((bank) => bank.meta?.local_template).length)
 const activeQuestionBankIds = computed(() => selectedQuestionBankIds.value)
 const requestedStageId = computed(() => String(route.query.stage || ''))
 const requestedBankId = computed(() => String(route.query.bank || ''))
@@ -228,7 +288,6 @@ const selectedWrongRecordIds = ref<string[]>([])
 const openCourseFolders = ref<Record<string, boolean>>({})
 const exerciseRadarImpact = ref<Record<string, number>>({})
 const galaxyCanvas = ref<HTMLCanvasElement | null>(null)
-const prefersReducedMotion = ref(false)
 const activeGalaxyTag = ref('')
 const galaxyAngle = ref(0)
 const galaxyZoom = ref(1)
@@ -706,6 +765,9 @@ async function doGenerate(): Promise<boolean> {
         if (resource.type === 'question_bank' && resource.id && !generatedQuestionBankIds.includes(resource.id)) {
           generatedQuestionBankIds.push(resource.id)
         }
+        if (resource.type === 'question_bank' && resource.meta?.local_template) {
+          localTemplateNotice.value = '本次题库由本地模板生成（未调用大模型）：题目、选项、判分与错题入库都是真实逻辑，只是题干来自内置模板。'
+        }
       }
     } catch {
       // 忽略不完整 SSE 片段。
@@ -953,12 +1015,7 @@ function switchDirect(page: WorkshopPageKey) {
 }
 
 function trySwitchPage(page: WorkshopPageKey) {
-  if (page === activePage.value) {
-    if (page === 'builder') {
-      closedLoopStatus.value = '已定位到当前阶段题库定制区，可继续调整难度、数量和题型。'
-    }
-    return
-  }
+  if (page === activePage.value) return
   if (activePage.value === 'diagnosis' && page !== 'diagnosis' && exercisePageRef.value?.hasActiveExam?.()) {
     pendingPage.value = page
     showExamLeaveDialog.value = true
@@ -1978,7 +2035,7 @@ function animateTagGalaxy() {
     line.geometry.attributes.position.needsUpdate = true
   }
   galaxyRenderer.render(galaxyScene, galaxyCamera)
-  if (!prefersReducedMotion.value) galaxyFrame = window.requestAnimationFrame(animateTagGalaxy)
+  galaxyFrame = window.requestAnimationFrame(animateTagGalaxy)
 }
 
 function drawTagGalaxy() {
@@ -2386,44 +2443,6 @@ function onGalaxyWheel(event: WheelEvent) {
   galaxyZoom.value = Math.max(0.62, Math.min(1.9, Number(nextZoom.toFixed(2))))
 }
 
-function onGalaxyKeydown(event: KeyboardEvent) {
-  if (event.key === '+' || event.key === '=') {
-    event.preventDefault()
-    galaxyZoom.value = Math.min(1.9, Number((galaxyZoom.value + 0.08).toFixed(2)))
-    return
-  }
-  if (event.key === '-' || event.key === '_') {
-    event.preventDefault()
-    galaxyZoom.value = Math.max(0.62, Number((galaxyZoom.value - 0.08).toFixed(2)))
-    return
-  }
-  if (event.key === '0') {
-    event.preventDefault()
-    galaxyZoom.value = 1
-    return
-  }
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    activeGalaxyTag.value = ''
-    galaxyMouse.active = false
-    galaxyCanvas.value?.blur()
-    return
-  }
-  const tags = tagGalaxy.value.nodes.map((node: any) => String(node.tag))
-  if (!tags.length) return
-  const currentIndex = Math.max(0, tags.indexOf(activeGalaxyTag.value))
-  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-    event.preventDefault()
-    activeGalaxyTag.value = tags[(currentIndex + 1) % tags.length]
-  } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-    event.preventDefault()
-    activeGalaxyTag.value = tags[(currentIndex - 1 + tags.length) % tags.length]
-  } else if (event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault()
-    activeGalaxyTag.value = tags[currentIndex]
-  }
-}
-
 const activeGalaxyNode = computed(() => {
   return tagGalaxy.value.nodes.find((node: any) => node.tag === activeGalaxyTag.value) || tagGalaxy.value.nodes[0] || null
 })
@@ -2641,7 +2660,12 @@ function radarLabelPoint(index: number, radius = 112) {
   return { x: 120 + Math.cos(angle) * radius, y: 120 + Math.sin(angle) * radius }
 }
 
+watch([activeQuestionBankIds, activeExerciseQuestionLimit, activeExerciseDifficulty, exerciseResetSeed], () => {
+  practiceStarted.value = false
+  void loadPracticePreview()
+})
 watch(activePage, async (page) => {
+  if (page === 'diagnosis' && !practiceStarted.value) void loadPracticePreview()
   if (page === 'wrongBook') await loadWrongBook()
   if (page === 'tagGalaxy') {
     await loadWrongBook()
@@ -2676,7 +2700,6 @@ watch(activeGalaxyTag, () => {
 })
 
 onMounted(async () => {
-  prefersReducedMotion.value = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   loadMasteredGalaxyStars()
   void loadWrongBook()
   await loadPathContext()
@@ -2704,28 +2727,28 @@ onBeforeUnmount(() => {
         <p>智能练习 · 精准诊断 · 个性提升</p>
       </div>
       <nav class="workshop-nav practice-workshop-nav" aria-label="练习诊断导航">
-        <button type="button" :class="{ active: activePage === 'builder' }" :aria-current="activePage === 'builder' ? 'page' : undefined" @click="trySwitchPage('builder')">
+        <button type="button" :class="{ active: activePage === 'builder' }" @click="trySwitchPage('builder')">
           <span class="practice-workshop-icon">▤</span>
           <span class="practice-workshop-copy">
             <strong>题库定制</strong>
             <small>按路径阶段设置难度、数量与题型</small>
           </span>
         </button>
-        <button type="button" :class="{ active: activePage === 'diagnosis' }" :aria-current="activePage === 'diagnosis' ? 'page' : undefined" @click="trySwitchPage('diagnosis')">
+        <button type="button" :class="{ active: activePage === 'diagnosis' }" @click="trySwitchPage('diagnosis')">
           <span class="practice-workshop-icon">✓</span>
           <span class="practice-workshop-copy">
             <strong>智能做题</strong>
             <small>训练、考试与即时诊断</small>
           </span>
         </button>
-        <button type="button" :class="{ active: activePage === 'wrongBook' }" :aria-current="activePage === 'wrongBook' ? 'page' : undefined" @click="trySwitchPage('wrongBook')">
+        <button type="button" :class="{ active: activePage === 'wrongBook' }" @click="trySwitchPage('wrongBook')">
           <span class="practice-workshop-icon">▧</span>
           <span class="practice-workshop-copy">
             <strong>错题本</strong>
             <small>复盘、重做与错因沉淀</small>
           </span>
         </button>
-        <button type="button" :class="{ active: activePage === 'tagGalaxy' }" :aria-current="activePage === 'tagGalaxy' ? 'page' : undefined" @click="trySwitchPage('tagGalaxy')">
+        <button type="button" :class="{ active: activePage === 'tagGalaxy' }" @click="trySwitchPage('tagGalaxy')">
           <span class="practice-workshop-icon">◎</span>
           <span class="practice-workshop-copy">
             <strong>知识点诊断</strong>
@@ -2921,6 +2944,7 @@ onBeforeUnmount(() => {
               <button class="studio-btn ghost" @click="trySwitchPage('wrongBook')">从错题本调整</button>
             </div>
             <div v-if="error" class="text-sm font-bold text-orange-600">{{ error }}</div>
+            <div v-if="localTemplateNotice" data-testid="local-template-notice" class="text-sm text-slate-500">{{ localTemplateNotice }}</div>
           </div>
         </div>
       </section>
@@ -3212,15 +3236,10 @@ onBeforeUnmount(() => {
         </div>
         <div class="tag-galaxy-body">
           <div class="tag-galaxy-stage">
-            <p id="tag-galaxy-keyboard-help" class="sr-only">错题星系。聚焦后使用加号和减号缩放，0 恢复 100%，方向键选择标签，Enter 或空格确认，Escape 清除焦点。</p>
             <canvas
               ref="galaxyCanvas"
-              tabindex="0"
-              role="application"
               aria-label="错题标签星系"
-              aria-describedby="tag-galaxy-keyboard-help"
               @click="onGalaxyClick"
-              @keydown="onGalaxyKeydown"
               @mousemove="onGalaxyPointerMove"
               @mouseleave="onGalaxyPointerLeave"
               @wheel.prevent="onGalaxyWheel"
@@ -3261,7 +3280,7 @@ onBeforeUnmount(() => {
           <div class="diagnosis-overview-strip">
             <article>
               <span>题库来源</span>
-              <strong>{{ questionBankResources.length ? `${questionBankResources.length} 份个性化题库` : '尚未生成题库' }}</strong>
+              <strong>{{ questionBankResources.length ? `${questionBankResources.length} 份个性化题库` : '尚未生成题库' }}<template v-if="localQuestionBankCount"> · 其中 {{ localQuestionBankCount }} 份为本地模板</template></strong>
             </article>
             <article>
               <span>本轮题量</span>
@@ -3282,7 +3301,54 @@ onBeforeUnmount(() => {
           <p class="studio-muted mt-3">{{ closedLoopStatus }}</p>
         </div>
       </div>
+      <div v-if="!practiceStarted" class="practice-start-panel studio-panel">
+        <div class="practice-start-head">
+          <span class="practice-start-eyebrow">Ready to practice</span>
+          <h2>{{ pathStageTitle }} · 本轮练习</h2>
+          <p>{{ pathCourseTitle }} · {{ questionDifficultyLabel }}</p>
+        </div>
+        <div class="practice-start-stats">
+          <article>
+            <span>题目数量</span>
+            <strong>{{ practiceRealCount || activeExerciseQuestionLimit }}<em>题</em></strong>
+            <small v-if="practicePreviewLoading">正在核对题库实际题量…</small>
+            <small v-else-if="practiceRealCount">题库实际可用 {{ practiceRealCount }} 题，进入后与这里一致</small>
+            <small v-else>暂无可抽取题目，先确认题库是否已生成</small>
+          </article>
+          <article>
+            <span>题型</span>
+            <div v-if="practiceShownTypes.length" class="practice-start-types">
+              <b v-for="item in practiceShownTypes" :key="item.label">{{ item.label }}<em>{{ item.count }}</em></b>
+            </div>
+            <strong v-else>综合题型</strong>
+          </article>
+          <article>
+            <span>题库来源</span>
+            <strong>{{ questionBankResources.length ? `${questionBankResources.length} 份个性化题库` : '系统默认题库' }}</strong>
+            <small>提交作答即回写阶段掌握度</small>
+          </article>
+        </div>
+        <div class="practice-start-notes">
+          <article>
+            <span>练习范围</span>
+            <p>{{ pathCourseTitle }} · {{ pathStageTitle }}</p>
+          </article>
+          <article>
+            <span>达标标准</span>
+            <p>本阶段答对 {{ passThreshold }}% 即判定完成，并解锁下一阶段。</p>
+          </article>
+          <article>
+            <span>数据去向</span>
+            <p>逐题提交后回写掌握度、错题本与诊断证据。</p>
+          </article>
+        </div>
+        <div class="practice-start-actions">
+          <button type="button" class="practice-start-btn" @click="startPractice">开始做题</button>
+          <p>开始后计时并逐题记录，答完自动判定是否解锁下一阶段。</p>
+        </div>
+      </div>
       <ExercisePage
+        v-else
         ref="exercisePageRef"
         :active="activePage === 'diagnosis'"
         :question-bank-ids="activeQuestionBankIds"
@@ -3293,6 +3359,7 @@ onBeforeUnmount(() => {
         :question-type-count="selectedQuestionTypes.length"
         :reset-seed="exerciseResetSeed"
         @answered="onExerciseAnswered"
+        @exit="exitPractice"
         @navigate="trySwitchPage($event)"
       />
       </section>

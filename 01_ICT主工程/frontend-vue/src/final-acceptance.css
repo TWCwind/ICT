@@ -50,7 +50,7 @@ select {
   margin-bottom: 16px;
 }
 
-.tutor-video-hero h1 { margin: 7px 0 6px; font-size: clamp(30px, 3vw, 38px); line-height: 1.12; }
+.tutor-video-hero h1 { margin: 7px 0 6px; font-size: clamp(30px, 3vw, 44px); line-height: 1.12; }
 .tutor-video-hero p { max-width: 760px; margin: 0; color: var(--qa-muted); font-size: 14px; }
 .tutor-live-badge { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #ccefe3; border-radius: 999px; background: #f1fcf8; color: #078765; font-size: 13px; font-weight: 800; white-space: nowrap; }
 .tutor-live-badge span { width: 8px; height: 8px; border-radius: 50%; background: #14b889; box-shadow: 0 0 0 5px rgba(20,184,137,.12); }
@@ -211,4 +211,10 @@ select {
   .tutor-video-page { width: min(100% - 24px, 1540px); }
   .tutor-video-hero { align-items: flex-start; flex-direction: column; }
   .tutor-capability-strip { grid-template-columns: 1fr; }
+}
+
+/* 内容短于视口时，页面底部不再露出 learning-os 的米色底（#f3f5f1），统一成蓝色主题底 */
+html,
+body {
+  background: #f4f8ff;
 }

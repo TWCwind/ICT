@@ -72,18 +72,11 @@ function submitLogin() {
   }
   isAuthed.value = true
   sessionStorage.setItem(authStorageKey, '1')
-  // The built-in credentials are the controlled roadshow account.  A fresh
-  // browser still receives a generated learner id until login succeeds, so
-  // ordinary new learners never inherit the demo course automatically.
-  studentId.value = 'demo'
-  sessionStorage.setItem('zx-resource-agent-demo', '1')
 }
 
 function logout() {
   sessionStorage.removeItem(authStorageKey)
-  sessionStorage.removeItem('zx-resource-agent-demo')
   isAuthed.value = false
-  studentId.value = `learner-${Date.now()}`
   settingsOpen.value = false
   void router.replace('/')
 }

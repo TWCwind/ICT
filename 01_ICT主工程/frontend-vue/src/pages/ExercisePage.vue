@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { apiGet, apiPost } from '@/utils/api'
+import { renderInlineMath } from '@/utils/markdownRenderer'
 import { useStudent } from '@/composables/useStudent'
 
 type ExerciseQuestion = {
@@ -43,6 +44,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   answered: [payload: any]
   navigate: [target: 'builder' | 'wrongBook' | 'tagGalaxy' | 'diagnosis']
+  exit: []
 }>()
 const loading = ref(false)
 const answering = ref(false)
@@ -62,6 +64,7 @@ const practiceElapsedSeconds = ref(0)
 const examDurationSeconds = ref(15 * 60)
 const remainingSeconds = ref(examDurationSeconds.value)
 const showExamStartDialog = ref(false)
+const showEndPracticeDialog = ref(false)
 const examCountdown = ref(0)
 const refreshNonce = ref(0)
 let examTimer: number | null = null
@@ -82,6 +85,21 @@ const hasQuestions = computed(() => questions.value.length > 0)
 const progressText = computed(() => (questions.value.length ? `${currentIndex.value + 1} / ${questions.value.length}` : '0 / 0'))
 const currentOptions = computed(() => normalizeDisplayOptions(current.value?.options || []))
 const currentStemParts = computed(() => parseQuestionStem(current.value?.stem || ''))
+const currentStemHtml = computed(() =>
+  currentStemParts.value.map((part) =>
+    part.type === 'text'
+      ? { kind: 'text' as const, html: renderInlineMath(part.content) }
+      : { kind: 'code' as const, language: part.language, code: part.content },
+  ),
+)
+const currentOptionHtml = computed(() =>
+  currentOptions.value.map((option) => ({ ...option, html: renderInlineMath(option.text) })),
+)
+const lastAnalysisHtml = computed(() => renderInlineMath(lastResult.value?.analysis || ''))
+const lastAnswerHtml = computed(() => renderInlineMath(String(lastResult.value?.correct_answer ?? '')))
+const currentAnalysisHtml = computed(() => renderInlineMath(current.value?.last_analysis || ''))
+const currentAnswerTextHtml = computed(() => renderInlineMath(String(current.value?.last_answer ?? '')))
+const currentCorrectAnswerHtml = computed(() => renderInlineMath(String(current.value?.last_correct_answer ?? '')))
 const currentIsMultiple = computed(() => isMultipleQuestion(current.value))
 const answeredCount = computed(() => questions.value.filter((q) => q.answered).length)
 const examAnsweredCount = computed(() => Object.values(answerSheet.value).filter(Boolean).length)
@@ -712,6 +730,23 @@ function toggleSessionPause() {
   saveSessionState()
 }
 
+function requestEndPractice() {
+  if (!sessionPaused.value) return
+  showEndPracticeDialog.value = true
+}
+
+function cancelEndPractice() {
+  showEndPracticeDialog.value = false
+}
+
+function confirmEndPractice() {
+  showEndPracticeDialog.value = false
+  stopPracticeTimer()
+  stopExamTimer()
+  practicePaused.value = false
+  emit('exit')
+}
+
 function stopCountdown() {
   if (countdownTimer !== null) {
     window.clearInterval(countdownTimer)
@@ -948,6 +983,14 @@ watch(() => props.active, (active) => {
           >
             {{ sessionPaused ? '继续' : '暂停' }}
           </button>
+          <button
+            v-if="sessionPaused"
+            type="button"
+            class="practice-end-btn"
+            @click="requestEndPractice"
+          >
+            结束答题
+          </button>
           <div class="exercise-mode-switch">
             <button :class="{ active: hasQuestions && mode === 'training' }" :disabled="!hasQuestions || loading || answering || examInProgress" @click="selectMode('training')">训练模式</button>
             <button :class="{ active: hasQuestions && mode === 'exam' }" :disabled="!hasQuestions || loading || answering || examInProgress" @click="selectMode('exam')">考试模式</button>
@@ -1040,11 +1083,11 @@ watch(() => props.active, (active) => {
             <em>{{ questionStatusText }}</em>
           </div>
           <div class="exercise-stem-content">
-            <template v-for="(part, index) in currentStemParts" :key="`${part.type}-${index}`">
-              <p v-if="part.type === 'text'">{{ part.content }}</p>
+            <template v-for="(part, index) in currentStemHtml" :key="`${part.kind}-${index}`">
+              <div v-if="part.kind === 'text'" class="exercise-stem-text math-text" v-html="part.html"></div>
               <figure v-else class="exercise-code-block">
                 <figcaption>{{ part.language || '代码' }}</figcaption>
-                <pre><code>{{ part.content }}</code></pre>
+                <pre><code>{{ part.code }}</code></pre>
               </figure>
             </template>
           </div>
@@ -1054,7 +1097,7 @@ watch(() => props.active, (active) => {
         </article>
 
         <div v-if="currentOptions.length" class="exercise-options">
-          <label v-for="option in currentOptions" :key="option.key" :class="{ selected: isOptionSelected(option.key), disabled: responseLocked }">
+          <label v-for="option in currentOptionHtml" :key="option.key" :class="{ selected: isOptionSelected(option.key), disabled: responseLocked }">
             <input
               :type="currentIsMultiple ? 'checkbox' : 'radio'"
               :name="current.id"
@@ -1065,7 +1108,7 @@ watch(() => props.active, (active) => {
             />
             <span class="exercise-option-control"></span>
             <span class="exercise-option-key">{{ option.key }}</span>
-            <span class="exercise-option-text">{{ option.text }}</span>
+            <span class="exercise-option-text math-text" v-html="option.html"></span>
           </label>
         </div>
 
@@ -1095,15 +1138,15 @@ watch(() => props.active, (active) => {
 
         <div v-if="lastResult && showImmediateResult" class="exercise-result" :class="lastResult.correct ? 'is-correct' : 'is-wrong'">
           <strong>{{ lastResult.correct ? '回答正确' : '回答错误' }}</strong>
-          <span>正确答案：{{ lastResult.correct_answer || '待核验' }}</span>
-          <p v-if="lastResult.analysis">{{ lastResult.analysis }}</p>
+          <span class="math-text" v-html="`正确答案：${lastAnswerHtml || '待核验'}`"></span>
+          <p v-if="lastResult.analysis" class="math-text" v-html="lastAnalysisHtml"></p>
         </div>
 
         <div v-if="mode === 'exam' && examFinished" class="exercise-result" :class="current.last_correct ? 'is-correct' : 'is-wrong'">
           <strong>{{ current.last_correct ? '本题正确' : '本题错误' }}</strong>
-          <span>你的答案：{{ current.last_answer || '未作答' }}</span>
-          <span>正确答案：{{ current.last_correct_answer || '待核验' }}</span>
-          <p v-if="current.last_analysis">{{ current.last_analysis }}</p>
+          <span class="math-text" v-html="`你的答案：${currentAnswerTextHtml || '未作答'}`"></span>
+          <span class="math-text" v-html="`正确答案：${currentCorrectAnswerHtml || '待核验'}`"></span>
+          <p v-if="current.last_analysis" class="math-text" v-html="currentAnalysisHtml"></p>
           <p v-else>考试已结束，可查看统计和标签表现。</p>
         </div>
 
@@ -1241,6 +1284,19 @@ watch(() => props.active, (active) => {
             <button class="exercise-primary-btn" @click="confirmStartExam">确定进入</button>
           </div>
         </template>
+      </section>
+    </div>
+  <div v-if="showEndPracticeDialog" class="exercise-modal-backdrop">
+      <section class="exercise-modal exercise-card practice-end-dialog" role="dialog" aria-modal="true">
+        <div class="exercise-title">
+          <span></span>
+          <strong>是否退出答题</strong>
+        </div>
+        <p>退出后本次作答进度将结束，返回「开始做题」页面。</p>
+        <div class="exercise-modal-actions">
+          <button class="exercise-primary-btn practice-end-yes" @click="confirmEndPractice">是</button>
+          <button class="exercise-secondary-btn" @click="cancelEndPractice">否</button>
+        </div>
       </section>
     </div>
   </div>

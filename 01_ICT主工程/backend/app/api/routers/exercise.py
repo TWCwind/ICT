@@ -17,6 +17,7 @@ from app.services.exercise_bank import (
     submit_exercise_answer,
     wrong_book_summary,
 )
+from app.services.local_question_bank import build_local_question_bank, llm_ready
 
 
 router = APIRouter(prefix="/api/exercise", tags=["exercise"])
@@ -29,6 +30,10 @@ async def generate_bank(req: GenerateRequest):
 
     This endpoint deliberately constrains orchestration to question_bank so the
     exercise centre never inherits the workshop's multi-resource selection.
+
+    When no LLM is configured the endpoint falls back to a local template bank
+    that carries `meta.local_template: true`, so the page can label it honestly
+    instead of showing a red configuration error.
     """
     request_id = new_id()
     requirement = dict(req.requirement or {})
@@ -40,6 +45,31 @@ async def generate_bank(req: GenerateRequest):
         "source": "exercise_custom_bank",
         "skip_quality_check": True,
     }
+
+    if not llm_ready():
+        item = build_local_question_bank(student_id=req.student_id, requirement=requirement)
+        if req.stream:
+            async def local_event_stream() -> AsyncIterator[str]:
+                def pack(evt: dict) -> str:
+                    return f"event: message\ndata: {json.dumps({'request_id': request_id, 'event': evt}, ensure_ascii=False)}\n\n"
+
+                yield pack({"type": "start", "agents": ["local_question_bank"]})
+                yield pack({"type": "agent_start", "agent": "local_question_bank", "title": "本地模板题库", "index": 0})
+                yield pack({
+                    "type": "agent_chunk",
+                    "agent": "local_question_bank",
+                    "text": "未检测到可用的大模型配置，改用本地模板题库（不调用任何外部模型）。",
+                })
+                yield pack({"type": "agent_done", "agent": "local_question_bank", "resource": item})
+                yield pack({"type": "done"})
+
+            return StreamingResponse(local_event_stream(), media_type="text/event-stream")
+
+        return ApiResponse(
+            request_id=request_id,
+            success=True,
+            data={"resources": [item], "mode": "local_template"},
+        )
 
     if req.stream:
         async def event_stream() -> AsyncIterator[str]:

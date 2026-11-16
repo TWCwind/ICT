@@ -50,19 +50,16 @@ const refreshing = ref(false)
 const evaluating = ref(false)
 const evolving = ref(false)
 const error = ref('')
-const notice = ref('')
+const toast = ref('')
+let toastTimer: ReturnType<typeof setTimeout> | undefined
+function showToast(message: string, duration = 2000) {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = message
+  toastTimer = setTimeout(() => { toast.value = '' }, duration)
+}
 const radarEl = ref<HTMLElement | null>(null)
 const diagnosisEl = ref<HTMLElement | null>(null)
 const activeDiagnosisTab = ref<'conclusion' | 'heat' | 'evidence'>('conclusion')
-
-function selectDiagnosisTab(tab: 'conclusion' | 'heat' | 'evidence') {
-  if (activeDiagnosisTab.value === tab) {
-    // 重复点击当前诊断页签时，把诊断面板带回视野，避免“点了没反应”。
-    diagnosisEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    return
-  }
-  activeDiagnosisTab.value = tab
-}
 let radar: echarts.ECharts | null = null
 
 const score = computed(() => clamp(overview.value?.score))
@@ -113,7 +110,22 @@ const reportFindings = computed(() => toTextList(
   || latestReport.value?.recommendations
   || latestReport.value?.next_actions,
 ))
-const evolutionUpdates = computed(() => Object.entries(evolutionResult.value?.profile_updates || {}).map(([key, value]) => ({ key, value: String(value ?? '') })))
+const PROFILE_KEY_LABELS: Record<string, string> = {
+  knowledge_base_level: '知识基础',
+  mistake_patterns: '易错模式',
+  cognitive_style: '认知风格',
+  pace_preference: '节奏偏好',
+  modality_preference: '模态偏好',
+  weak_points: '薄弱知识点',
+  strengths: '学习优势',
+  goals: '学习目标',
+  major: '专业方向',
+  score: '综合得分',
+}
+function profileKeyLabel(key: string) {
+  return PROFILE_KEY_LABELS[key] || key.replace(/_/g, ' ')
+}
+const evolutionUpdates = computed(() => Object.entries(evolutionResult.value?.profile_updates || {}).map(([key, value]) => ({ key, label: profileKeyLabel(key), value: String(value ?? '') })))
 const evaluationModeLabel = computed(() => latestReport.value?.analysis_mode === 'llm' ? '大模型综合分析' : '本地证据规则分析')
 const diagnosisItems = computed(() => {
   if (activeDiagnosisTab.value === 'heat') {
@@ -160,13 +172,12 @@ async function runEvaluation() {
   if (isBusy.value) return
   evaluating.value = true
   error.value = ''
-  notice.value = ''
   evolutionResult.value = null
   try {
     const result = await generateEvaluation(studentId.value)
     latestReport.value = result?.report || result || null
     await loadEvaluation({ background: true })
-    notice.value = '最新评估报告已由后端生成；评估事件已进入证据时间线。'
+    showToast('已生成新的评估报告：左侧分数、诊断结论与行动计划都已按最新证据更新。', 2000)
   } catch (reason: any) {
     error.value = reason?.message || '评估报告生成失败'
   } finally {
@@ -178,7 +189,6 @@ async function evolveStrategy() {
   if (!overview.value || isBusy.value) return
   evolving.value = true
   error.value = ''
-  notice.value = ''
   try {
     evolutionResult.value = await evolveLearningStrategy(studentId.value, {
       score: score.value,
@@ -187,9 +197,9 @@ async function evolveStrategy() {
       action: score.value < 60 ? 'negative' : 'review',
       evidence: overview.value.evidence || {},
     })
-    notice.value = evolutionResult.value?.evolved
-      ? '后端已写入新的画像快照，后续资源和路径将读取新版本。'
-      : evolutionResult.value?.reason || '当前证据未达到画像进化阈值，系统保持原策略并继续观察。'
+    showToast(evolutionResult.value?.evolved
+      ? '已更新你的学习画像：新的易错点与学习节奏已写入，之后的学习路径与资源推送会按新版本推荐。'
+      : evolutionResult.value?.reason || '本次证据还没达到画像更新门槛，画像保持不变；多完成几次练习与资源反馈后再试即可。', 2000)
     await loadEvaluation({ background: true })
   } catch (reason: any) {
     error.value = reason?.message || '策略进化失败'
@@ -287,7 +297,7 @@ onUnmounted(() => {
   <div class="competition-page evaluate-command-page">
     <section class="shot-evaluate" aria-label="学习效果评估与策略进化">
       <header class="shot-evaluate__head"><div><span><Activity :size="15" /> LEARNING INTELLIGENCE</span><h1>学习效果评估与策略进化</h1><p>融合画像、知识掌握、练习表现与资源反馈，形成可解释、可执行、可追踪的学习优化闭环。</p></div><div class="shot-actions"><em><Check :size="13" />本地证据已同步</em><button type="button" :disabled="isBusy" @click="loadEvaluation({ background: true })"><RefreshCw :size="16" />刷新证据</button><button class="is-primary" type="button" :disabled="isBusy" @click="runEvaluation"><LoaderCircle v-if="evaluating" class="spin" :size="16" /><WandSparkles v-else :size="16" />{{ evaluating ? '评估生成中' : '生成智能评估' }}</button></div></header>
-      <div v-if="error" class="shot-notice is-error"><CircleAlert :size="18" />{{ error }}<button type="button" @click="loadEvaluation()">重新加载</button></div><div v-if="notice" class="shot-notice"><Check :size="18" />{{ notice }}</div>
+      <div v-if="error" class="shot-notice is-error"><CircleAlert :size="18" />{{ error }}<button type="button" @click="loadEvaluation()">重新加载</button></div>
       <div v-if="loading && !overview" class="shot-loading"><span class="os-spinner"></span><p>正在汇总学习证据与能力维度……</p></div>
       <template v-else-if="overview">
         <main class="shot-evaluate-main">
@@ -297,13 +307,27 @@ onUnmounted(() => {
             <article class="shot-evidence-version"><header><strong><ShieldCheck class="shot-panel-icon is-green" :size="17" />评估证据版本</strong><small>所有结论均可追溯</small></header><div v-for="item in evidenceCards.slice(0,3)" :key="item.key"><component :is="item.icon" :size="23" /><span><strong>{{ item.value }}</strong><small>{{ item.label }}</small></span></div><footer><strong>评估可信度：{{ overview.confidence?.label || '暂无证据' }}</strong><small>当前累计 {{ evidenceTotal }} 条可追溯证据。</small></footer></article>
           </section>
 
-          <section class="shot-diagnosis-row"><article ref="diagnosisEl" class="shot-diagnosis"><nav><button type="button" :class="{ active: activeDiagnosisTab === 'conclusion' }" :aria-pressed="activeDiagnosisTab === 'conclusion'" @click="selectDiagnosisTab('conclusion')">诊断结论</button><button type="button" :class="{ active: activeDiagnosisTab === 'heat' }" :aria-pressed="activeDiagnosisTab === 'heat'" @click="selectDiagnosisTab('heat')">薄弱点热区</button><button type="button" :class="{ active: activeDiagnosisTab === 'evidence' }" :aria-pressed="activeDiagnosisTab === 'evidence'" @click="selectDiagnosisTab('evidence')">证据明细</button></nav><h3>{{ activeDiagnosisTab === 'evidence' ? '证据来源' : '关键问题' }}</h3><ol><li v-for="(item,index) in diagnosisItems" :key="`${item.title}-${index}`"><i>{{ index+1 }}</i><span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span><em>{{ item.severity }}</em></li><li v-if="!diagnosisItems.length"><span><strong>暂无可分析内容</strong><small>请先完成练习、知识学习或资源反馈。</small></span></li></ol></article>
+          <section class="shot-diagnosis-row"><article ref="diagnosisEl" class="shot-diagnosis"><nav><button type="button" :class="{ active: activeDiagnosisTab === 'conclusion' }" @click="activeDiagnosisTab = 'conclusion'">诊断结论</button><button type="button" :class="{ active: activeDiagnosisTab === 'heat' }" @click="activeDiagnosisTab = 'heat'">薄弱点热区</button><button type="button" :class="{ active: activeDiagnosisTab === 'evidence' }" @click="activeDiagnosisTab = 'evidence'">证据明细</button></nav><h3>{{ activeDiagnosisTab === 'evidence' ? '证据来源' : '关键问题' }}</h3><ol><li v-for="(item,index) in diagnosisItems" :key="`${item.title}-${index}`"><i>{{ index+1 }}</i><span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span><em>{{ item.severity }}</em></li><li v-if="!diagnosisItems.length"><span><strong>暂无可分析内容</strong><small>请先完成练习、知识学习或资源反馈。</small></span></li></ol></article>
             <article class="shot-action-plan"><header><strong><ClipboardCheck class="shot-panel-icon" :size="17" />闭环行动计划</strong></header><ul><li v-for="(item,index) in overview.suggestions.slice(0,4)" :key="`${item.title}-${index}`"><i>{{ index+1 }}</i><span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span><em>待执行</em></li><li v-if="!overview.suggestions.length"><span>当前证据不足，暂不生成行动计划。</span></li></ul></article></section>
 
           <section class="shot-eval-timeline"><header><strong><History class="shot-panel-icon" :size="17" />闭环进化时间线</strong></header><div><article v-for="(item,index) in overview.timeline.slice(0,5)" :key="item.id || index" :class="{ active: index === 2 }"><i><component :is="[Database,BrainCircuit,Target,Gauge,TrendingUp][index]" :size="22" /></i><strong>{{ ['采集证据','生成评估','定位问题','调整策略','追踪反馈'][index] }}</strong><small>{{ item.detail || item.title }}</small><time>{{ formatTime(item.created_at) }}</time></article></div></section>
         </main>
 
-        <aside class="shot-engine"><header><h2>策略进化引擎</h2><span>ADAPTIVE ENGINE</span><em>证据规则 + 可选 LLM</em></header><ul><li v-for="item in evidenceCards" :key="item.key"><component :is="item.icon" :size="24" /><span><strong>{{ item.label }}</strong><small>{{ item.detail }}：{{ item.value }}</small></span></li></ul><section><h3>关联知识点</h3><div><span v-for="item in overview.weak_points.slice(0,3)" :key="item">{{ item }}</span><span v-if="!overview.weak_points.length">暂无</span></div><h3>后端判定结果</h3><dl v-if="evolutionUpdates.length"><div v-for="item in evolutionUpdates" :key="item.key"><dt>{{ item.key }}</dt><dd>{{ item.value }}</dd></div></dl><p v-else>{{ evolutionResult?.reason || '点击下方按钮后，后端会依据当前证据判定是否需要写入新画像快照。' }}</p></section><button type="button" :disabled="isBusy || !hasEvidence" @click="evolveStrategy"><LoaderCircle v-if="evolving" class="spin" :size="16" /><GitCompareArrows v-else :size="16" />{{ evolving ? '进化判定中' : '提交进化判定' }}</button></aside>
+        <aside class="shot-engine"><header><h2>策略进化引擎</h2><span>ADAPTIVE ENGINE</span><em>证据规则 + 可选 LLM</em></header><ul><li v-for="item in evidenceCards" :key="item.key"><component :is="item.icon" :size="24" /><span><strong>{{ item.label }}</strong><small>{{ item.detail }}：{{ item.value }}</small></span></li></ul><section><h3>关联知识点</h3><div><span v-for="item in overview.weak_points.slice(0,3)" :key="item">{{ item }}</span><span v-if="!overview.weak_points.length">暂无</span></div><h3>后端判定结果</h3><dl v-if="evolutionUpdates.length"><div v-for="item in evolutionUpdates" :key="item.key"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div></dl><p v-else>{{ evolutionResult?.reason || '点击下方按钮后，后端会依据当前证据判定是否需要写入新画像快照。' }}</p></section><button type="button" :disabled="isBusy || !hasEvidence" @click="evolveStrategy"><LoaderCircle v-if="evolving" class="spin" :size="16" /><GitCompareArrows v-else :size="16" />{{ evolving ? '进化判定中' : '提交进化判定' }}</button></aside>
+      <details class="shot-loop-chain">
+        <summary>闭环串联：证据 → 评估 → 策略 → 画像</summary>
+        <LearningLoopContext
+          stage="08"
+          stage-label="效果评估"
+          task="汇总证据并判断下一轮学习策略"
+          input="全流程行为、掌握度、练习与反馈证据"
+          process="评估智能体分析，进化引擎独立判定"
+          :output="overview ? `${score} 分 · ${evidenceTotal} 条证据` : '等待证据汇总'"
+          next-to="/profile"
+          next-label="新一轮画像"
+          status="评估结果回流下一轮学习闭环"
+        />
+      </details>
       </template>
     </section>
 
@@ -334,7 +358,6 @@ onUnmounted(() => {
     />
 
     <div v-if="error" class="os-alert evaluation-alert" role="alert" aria-live="assertive"><CircleAlert :size="18" /><span><strong>当前操作未完成</strong><small>{{ error }}</small></span><button class="os-button" type="button" :disabled="isBusy" @click="loadEvaluation()"><RefreshCw :size="14" />重新加载</button></div>
-    <div v-if="notice" class="evaluation-notice" role="status" aria-live="polite"><Check :size="16" />{{ notice }}</div>
 
     <section v-if="loading && !overview" class="os-card os-loading" role="status" aria-live="polite"><div><span class="os-spinner"></span><p>正在汇总学习证据与能力维度……</p></div></section>
 
@@ -387,7 +410,7 @@ onUnmounted(() => {
 
           <article class="evolution-result" :class="{ 'is-evolved': evolutionResult?.evolved }">
             <header><span><GitCompareArrows :size="17" /></span><div><small>EVOLUTION DECISION</small><h2 v-if="evolutionResult">{{ evolutionResult.evolved ? '已写入新画像策略' : '保持当前画像策略' }}</h2><h2 v-else>等待进化判定</h2></div></header>
-            <template v-if="evolutionResult"><p>{{ evolutionResult.reason || '后端未提供本轮判定理由。' }}</p><div v-if="evolutionResult.recommended_action" class="recommended-action"><Target :size="15" /><span><small>建议动作</small><strong>{{ evolutionResult.recommended_action }}</strong></span></div><dl v-if="evolutionUpdates.length"><div v-for="item in evolutionUpdates" :key="item.key"><dt>{{ item.key }}</dt><dd>{{ item.value }}</dd></div></dl><small class="decision-mode">判定模式：{{ evolutionResult.mode || '未说明' }}</small></template>
+            <template v-if="evolutionResult"><p>{{ evolutionResult.reason || '后端未提供本轮判定理由。' }}</p><div v-if="evolutionResult.recommended_action" class="recommended-action"><Target :size="15" /><span><small>建议动作</small><strong>{{ evolutionResult.recommended_action }}</strong></span></div><dl v-if="evolutionUpdates.length"><div v-for="item in evolutionUpdates" :key="item.key"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div></dl><small class="decision-mode">判定模式：{{ evolutionResult.mode || '未说明' }}</small></template>
             <p v-else>进化引擎会根据证据阈值决定是否写入新画像策略。</p>
           </article>
 
@@ -410,6 +433,9 @@ onUnmounted(() => {
 
     <section v-else class="os-card cp-empty-state"><span><ChartNoAxesCombined :size="25" /></span><h3>评估数据暂不可用</h3><p>请重新加载，或先完成一次诊断练习以积累证据。</p><button class="os-button os-button-primary" type="button" @click="loadEvaluation()"><RefreshCw :size="14" />重新加载</button></section>
     </template>
+    <Teleport to="body">
+      <div v-if="toast" class="shot-toast" role="status" aria-live="polite"><Check :size="16" />{{ toast }}</div>
+    </Teleport>
   </div>
 </template>
 

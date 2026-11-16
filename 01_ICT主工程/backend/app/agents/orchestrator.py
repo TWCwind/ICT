@@ -13,16 +13,188 @@ from typing import Any, AsyncIterator
 from app.core.config import settings
 from app.core.ids import new_id
 from app.llm import get_glm_client, get_llm_client_for, is_glm_configured, is_llm_configured, parse_json_content
-from app.repo import ensure_student, get_latest_profile_snapshot, insert_learning_event, insert_profile_snapshot, insert_resource_item, get_user_events, get_user_usages, list_resources
+from app.repo import ensure_student, get_latest_profile_snapshot, insert_learning_event, insert_profile_snapshot, insert_resource_item, get_user_events, get_user_usages, list_resources, patch_student
 from app.services.exercise_bank import exercise_summary
+from app.services.keyword_extract import extract_keywords
 from app.services.knowledge_hub import format_references, mastery_data, search_index
 
 
 logger = logging.getLogger(__name__)
 
 
+def _wants_quality_check(constraints: dict[str, Any]) -> bool:
+    """质检报告默认不再自动生成。
+
+    只有显式要求时才跑：constraints.quality_check / quality_review 为真，
+    或显式给出 skip_quality_check=False。缺省（不带该键）视为跳过。
+    """
+    if constraints.get("skip_quality_check"):
+        return False
+    if constraints.get("quality_check") or constraints.get("quality_review") or constraints.get("run_quality_check"):
+        return True
+    return constraints.get("skip_quality_check") is False
+
+
 def _safe_text(s: str) -> str:
     return (s or "").strip()
+
+
+_SHORT_TYPE_LABELS = {
+    "专业课程讲解文档": "讲解文档",
+    "知识点思维导图": "思维导图",
+    "个性化题库": "题库",
+    "拓展阅读材料": "拓展阅读",
+    "代码/实操案例": "实操案例",
+    "多模态视频/动画脚本": "视频脚本",
+}
+
+_TOPIC_BREAK = re.compile(r"[，。；;、,/\n\r\t]+")
+
+
+def _short_topic(requirement: dict[str, Any]) -> str:
+    """从需求里抽一个便于辨认的短主题（<=12 字）。"""
+    for key in ("topic", "course"):
+        value = _safe_text(str(requirement.get(key) or ""))
+        if value:
+            return value[:12]
+    raw = _safe_text(str(requirement.get("chapter") or requirement.get("raw") or ""))
+    if raw:
+        first = _TOPIC_BREAK.split(raw)[0].strip() or raw
+        return first[:12]
+    return ""
+
+
+def _resource_title(spec_title: str, requirement: dict[str, Any]) -> str:
+    """档案袋里的显示名：短主题 + 资源类型，便于区分同类文档。"""
+    label = _SHORT_TYPE_LABELS.get(spec_title, spec_title)
+    topic = _short_topic(requirement)
+    if not topic:
+        return label
+    return f"{topic} · {label}"[:26]
+
+
+_TITLE_MD = re.compile(r"[*`#>]+")
+_MINDMAP_ROOT = re.compile(r"root\s*[\(\[]+\s*([^\)\]\n]+?)\s*[\)\]]+")
+_MINDMAP_PLAIN = re.compile(r"mindmap[ \t]*\r?\n[ \t]*([^\r\n]+)")
+_FENCE = re.compile(r"```[A-Za-z]*\s*")
+_JUNK_LATIN = {
+    "choice",
+    "choices",
+    "answer",
+    "answers",
+    "option",
+    "options",
+    "explanation",
+    "correct",
+    "true",
+    "false",
+    "meta",
+    "course",
+    "chapter",
+    "quiz",
+    "question",
+    "questions",
+    "stem",
+    "index",
+    "type",
+    "count",
+    "title",
+    "json",
+    "markdown",
+    "mermaid",
+    "mindmap",
+}
+_GENERIC_TITLES = {
+    "专业课程讲解文档",
+    "知识点思维导图",
+    "个性化题库",
+    "拓展阅读材料",
+    "代码/实操案例",
+    "多模态视频/动画脚本",
+    "课程讲解文档",
+    "讲解文档",
+    "思维导图",
+    "题库",
+    "拓展阅读",
+    "实操案例",
+    "视频脚本",
+}
+
+
+def _clean_title(text: str) -> str:
+    return re.sub(r"\s+", " ", _TITLE_MD.sub("", text or "")).strip()
+
+
+def _clean_node(text: str) -> str:
+    value = _clean_title(text)
+    value = re.sub(r"::icon\([^)]*\)", "", value)
+    value = re.sub(r"^[A-Za-z0-9_-]+\s*(?=[\(\[\{])", "", value)
+    value = re.sub(r"^[\(\[\{]+|[\)\]\}]+$", "", value.strip())
+    return value.strip()
+
+
+def _title_from_content(markdown: str, spec_title: str, requirement: dict[str, Any]) -> str:
+    """档案名要能一眼看出内容：正文一级标题 > 结构化元数据 > 导图根节点 > 正文关键词。"""
+    label = _SHORT_TYPE_LABELS.get(spec_title, spec_title)
+    text = markdown or ""
+    topic = _short_topic(requirement)
+
+    for line in text.splitlines()[:40]:
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            heading = _clean_title(stripped[2:])
+            if heading and heading not in _GENERIC_TITLES:
+                return heading[:26]
+            break
+
+    stripped_text = text.lstrip()
+    if stripped_text.startswith("{"):
+        try:
+            payload = json.loads(stripped_text)
+        except Exception:
+            payload = None
+        if isinstance(payload, dict):
+            meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+            course = _clean_title(str(meta.get("course") or "")) or topic
+            weak = meta.get("weak_points")
+            focus = ""
+            if isinstance(weak, list) and weak:
+                focus = _clean_title(str(weak[0] or ""))
+            elif topic and course and topic != course:
+                focus = topic
+            if course:
+                tail = f"{focus} · {label}" if focus else label
+                return f"{course} · {tail}"[:26]
+
+    root = _MINDMAP_ROOT.search(text)
+    if not root:
+        root = _MINDMAP_PLAIN.search(text)
+    if root:
+        node = _clean_node(root.group(1))
+        if node and node not in _GENERIC_TITLES:
+            if "导图" in node or node.endswith(label):
+                return node[:26]
+            return f"{node} · {label}"[:26]
+
+    try:
+        plain = _FENCE.sub("\n", text)
+        keywords = [
+            word
+            for word in extract_keywords(plain, limit=6)
+            if word not in _GENERIC_TITLES
+            and len(word) >= 2
+            and word.lower() not in _JUNK_LATIN
+        ][:2]
+    except Exception:
+        keywords = []
+    if keywords:
+        core = "·".join(keywords)
+        topic = _short_topic(requirement)
+        if topic and topic not in core:
+            return f"{topic} · {core}"[:26]
+        return f"{core} · {label}"[:26]
+
+    return _resource_title(spec_title, requirement)
 
 
 def _bounded_score(value: Any, fallback: Any = 0) -> float:
@@ -297,6 +469,86 @@ def _guess_cognitive_style(text: str) -> str:
     return "结构化步骤型"
 
 
+_DIM_PLACEHOLDERS = {"", "待评估", "待采集", "未记录"}
+
+
+def _clean_dim_value(value: Any) -> str:
+    """把占位值当成"还没有"，否则首次写入的"待评估/待采集"会永久锁死该维度。"""
+    text = _safe_text(value or "").strip()
+    return "" if text in _DIM_PLACEHOLDERS else text
+
+
+def _infer_preferences(text: str) -> dict[str, str]:
+    """只返回本轮文本里"确实说了"的偏好维度，没说的不碰，避免覆盖用户手动结论。"""
+    inferred: dict[str, str] = {}
+    if any(k in text for k in ["视频", "动画", "演示"]):
+        inferred["modality_preference"] = "视觉优先"
+    elif any(k in text for k in ["图", "图解", "可视化", "画出来", "思维导图"]):
+        inferred["modality_preference"] = "图示优先"
+    elif any(k in text for k in ["动手", "敲一遍", "实操", "上手", "自己写"]):
+        inferred["modality_preference"] = "动手实践型"
+    elif any(k in text for k in ["讲解", "语音", "听", "播客", "朗诵", "念给我"]):
+        inferred["modality_preference"] = "听觉优先"
+    elif any(k in text for k in ["看书", "读文档", "文字", "笔记"]):
+        inferred["modality_preference"] = "文字优先"
+
+    if any(k in text for k in ["慢一点", "慢慢来", "别催", "不着急", "进度慢", "一点点来"]):
+        inferred["pace_preference"] = "慢节奏"
+    elif any(k in text for k in ["快一点", "加速", "节奏快", "速成", "赶进度"]):
+        inferred["pace_preference"] = "快节奏"
+    elif any(k in text for k in ["分步骤", "一步一步", "步骤", "拆开讲"]):
+        inferred["pace_preference"] = "分步骤"
+
+    if any(k in text for k in ["目标", "分数", "绩点", "及格", "上岸", "证书", "拿高分"]):
+        inferred["motivation_style"] = "目标驱动"
+    elif any(k in text for k in ["兴趣", "好奇", "好玩", "喜欢这门", "有意思"]):
+        inferred["motivation_style"] = "兴趣驱动"
+
+    if any(k in text for k in ["为什么", "原理", "推导", "证明", "底层"]):
+        inferred["cognitive_style"] = "原理推导型"
+    elif any(k in text for k in ["例子", "类比", "直观", "打个比方"]):
+        inferred["cognitive_style"] = "例子直观型"
+    return inferred
+
+
+_KEYWORD_BLACKLIST = {"这个", "那个", "我们", "我的", "这门", "课程", "学期", "内容", "方法", "系统学习"}
+_COURSE_WORDS = (
+    "高等数学", "高数", "线性代数", "概率论", "离散数学", "数据结构", "操作系统",
+    "计算机网络", "编译原理", "软件工程", "数据库原理", "机器学习", "深度学习",
+    "人工智能", "软件测试", "面向对象", "需求分析", "统一建模",
+)
+
+
+def _extract_keywords(text: str, limit: int = 5) -> list[str]:
+    """从自述里抽"像课程/技术名词"的词，供右侧画像标签使用。"""
+    found: list[str] = []
+    for word in _COURSE_WORDS:
+        if word in text:
+            found.append(word)
+    for pattern in (
+        r"《([^》]{2,20})》",
+        r"([\u4e00-\u9fa5]{2,10}?(?:原理|工程|测试|设计|开发|建模|算法|数据库|网络|语言|框架|导论|概论|公式|定理))",
+        r"\b([A-Za-z][A-Za-z0-9+#.]{1,15})\b",
+    ):
+        for match in re.finditer(pattern, text):
+            token = match.group(1).strip()
+            if len(token) >= 2 and token not in _KEYWORD_BLACKLIST:
+                found.append(token)
+    ordered: list[str] = []
+    for token in found:
+        for noise in ("我的薄弱点是", "薄弱点是", "薄弱点", "不会的是", "搞不懂的是", "另外", "还有", "我是", "我读", "我学", "我在"):
+            if token.startswith(noise):
+                token = token[len(noise):].strip()
+                break
+        if len(token) < 2:
+            continue
+        if any(token in kept for kept in ordered):
+            continue
+        ordered = [kept for kept in ordered if kept not in token]
+        ordered.append(token)
+    return ordered[:limit]
+
+
 def _extract_weak_points(text: str) -> list[str]:
     patterns = [
         r"(?:薄弱点是|薄弱点：|薄弱点:)([^，。；\n]{2,60})",
@@ -331,6 +583,47 @@ def _extract_weak_points(text: str) -> list[str]:
 def _extract_field(text: str, key: str) -> str:
     m = re.search(rf"{key}\s*[:：]\s*([^，。；\n]{{2,40}})", text)
     return _safe_text(m.group(1)) if m else ""
+
+
+def _extract_basic_info(text: str) -> dict[str, str]:
+    """从自然语言里抽取身份类基本信息（专业/年级/当前课程/学习目标），只返回抽到的字段。"""
+    info: dict[str, str] = {}
+
+    major = ""
+    for pattern in (
+        r"(?:我是|就读于|学的|学习|所在专业是)\s*([\u4e00-\u9fa5]{2,12}?)专业",
+        r"([\u4e00-\u9fa5]{2,12}?)专业",
+    ):
+        m = re.search(pattern, text)
+        if m:
+            major = _safe_text(m.group(1))
+            break
+    if major:
+        info["major"] = major
+
+    m = re.search(r"(博士[一二三四]|硕士[一二三]|研[一二三]|大[一二三四]|高[一二三]|初中|本科[一二三四]|研究生)", text)
+    if m:
+        info["grade"] = _safe_text(m.group(1))
+
+    course = ""
+    for pattern in (
+        r"《([^》]{2,30})》",
+        r"(?:在学|正在学|本学期在学|上课的是)\s*《?([^》，。；\n]{2,30})》?",
+    ):
+        m = re.search(pattern, text)
+        if m:
+            course = _safe_text(m.group(1))
+            break
+    if course:
+        info["current_course"] = course
+
+    m = re.search(r"(?:目标|希望|想要|打算)(?:是|能)?\s*([^。；;\n]{4,60})", text)
+    if m:
+        goal = _safe_text(m.group(1)).strip("，,、 ")
+        if goal:
+            info["goals"] = goal
+
+    return info
 
 
 def _parse_json_maybe(text: str) -> dict[str, Any] | None:
@@ -560,16 +853,71 @@ class AgentSpec:
     title: str
     resource_type: str
     ext: str
+    # P1-1：每个生成智能体必须显式声明它依赖哪些 MCP 工具。
+    # 空 tuple 会被 `validate_agent_tool_binding()` 判为缺陷——不再允许「有标签没工具」。
+    tools: tuple[str, ...] = ()
 
 
 AGENTS: list[AgentSpec] = [
-    AgentSpec(key="lecture", title="专业课程讲解文档", resource_type="lecture_doc", ext="md"),
-    AgentSpec(key="mindmap", title="知识点思维导图", resource_type="mindmap", ext="md"),
-    AgentSpec(key="quiz", title="个性化题库", resource_type="question_bank", ext="json"),
-    AgentSpec(key="reading", title="拓展阅读材料", resource_type="reading", ext="md"),
-    AgentSpec(key="practice", title="代码/实操案例", resource_type="practice_case", ext="md"),
-    AgentSpec(key="video", title="多模态视频/动画脚本", resource_type="video_script", ext="md"),
+    AgentSpec(
+        key="lecture",
+        title="专业课程讲解文档",
+        resource_type="lecture_doc",
+        ext="md",
+        tools=("search_knowledge", "get_student_profile"),
+    ),
+    AgentSpec(
+        key="mindmap",
+        title="知识点思维导图",
+        resource_type="mindmap",
+        ext="md",
+        tools=("search_knowledge",),
+    ),
+    AgentSpec(
+        key="quiz",
+        title="个性化题库",
+        resource_type="question_bank",
+        ext="json",
+        tools=("get_exercise_session", "submit_exercise_answer"),
+    ),
+    AgentSpec(
+        key="reading",
+        title="拓展阅读材料",
+        resource_type="reading",
+        ext="md",
+        tools=("search_knowledge",),
+    ),
+    AgentSpec(
+        key="practice",
+        title="代码/实操案例",
+        resource_type="practice_case",
+        ext="md",
+        tools=("search_knowledge", "get_role_competency"),
+    ),
+    AgentSpec(
+        key="video",
+        title="多模态视频/动画脚本",
+        resource_type="video_script",
+        ext="md",
+        tools=("get_student_profile", "get_learning_evaluation"),
+    ),
 ]
+
+
+def validate_agent_tool_binding() -> list[str]:
+    """返回绑定缺陷列表；空列表表示每个生成智能体都挂了真实工具。
+
+    只做静态检查（不访问网络/数据库），可被测试或启动自检直接调用。
+    """
+    problems: list[str] = []
+    for spec in AGENTS:
+        if not spec.tools:
+            problems.append(f"{spec.key}({spec.resource_type}) 没有绑定任何 MCP 工具")
+            continue
+        duplicated = {tool for tool in spec.tools if spec.tools.count(tool) > 1}
+        if duplicated:
+            problems.append(f"{spec.key} 重复绑定 {sorted(duplicated)}")
+    return problems
 
 
 def _requested_agents(requirement: dict[str, Any]) -> list[AgentSpec]:
@@ -600,6 +948,12 @@ class Orchestrator:
         ensure_student(student_id=student_id, major=major, goals=goals)
         prev = get_latest_profile_snapshot(student_id)
         user_text = "\n".join([m["content"] for m in messages if m["role"] == "user"])[-2000:]
+        # 用户改了口径（例如"我大三，软件工程专业"）时必须以最新一条为准，
+        # 否则拼接全文会让第一轮说过的话永远压住后面的修正。
+        latest_user_text = ""
+        for _item in messages:
+            if _item.get("role") == "user" and str(_item.get("content") or "").strip():
+                latest_user_text = str(_item.get("content"))
         
         # 引入本地历史数据：资源反馈与答疑记录（潜在问题）
         usages = get_user_usages(student_id)
@@ -623,12 +977,14 @@ class Orchestrator:
             "pace_preference": prev.get("pace_preference", "") if prev else "",
             "motivation_style": prev.get("motivation_style", "") if prev else "",
         }
+        basic_info: dict[str, str] = {}
 
         if is_llm_configured("profile"):
             llm = get_llm_client_for("profile")
             schema_hint = (
                 '{"knowledge_base_level": "...", "cognitive_style": "...", "mistake_patterns": "...", '
                 '"modality_preference": "...", "pace_preference": "...", "motivation_style": "...", '
+                '"basic_info": {"major": "...", "grade": "...", "current_course": "...", "goals": "..."}, '
                 '"rationale": "...", "evidence": {"weak_points": ["..."], "keywords": ["..."]}}'
             )
             
@@ -640,25 +996,53 @@ class Orchestrator:
                 
             data = await llm.chat_json(messages=messages, schema_hint=schema_hint, on_chunk=on_chunk)
             profile = {**base_profile, **(data or {})}
+            raw_basic = profile.pop("basic_info", {})
+            if isinstance(raw_basic, dict):
+                basic_info = {
+                    key: _safe_text(raw_basic.get(key) or "")
+                    for key in ("major", "grade", "current_course", "goals")
+                    if _safe_text(raw_basic.get(key) or "")
+                }
             rationale = str(profile.pop("rationale", "") or "")
             evidence = profile.pop("evidence", {}) if isinstance(profile.get("evidence", {}), dict) else {}
         else:
-            weak_points = _extract_weak_points(user_text)
+            focused_text = latest_user_text or user_text
+            weak_points = _extract_weak_points(focused_text)
             if tutor_questions:
                 weak_points.extend(tutor_questions[-2:])
+            keywords = _extract_keywords(focused_text)
+            previous = {
+                key: _clean_dim_value(base_profile.get(key))
+                for key in (
+                    "knowledge_base_level",
+                    "cognitive_style",
+                    "mistake_patterns",
+                    "modality_preference",
+                    "pace_preference",
+                    "motivation_style",
+                )
+            }
+            inferred = _infer_preferences(user_text)
+            stale_patterns = previous["mistake_patterns"]
+            if weak_points:
+                stale_patterns = "; ".join(weak_points)
             profile = {
-                **base_profile,
-                "knowledge_base_level": base_profile["knowledge_base_level"] or "待评估",
-                "cognitive_style": base_profile["cognitive_style"] or _guess_cognitive_style(user_text),
-                "mistake_patterns": base_profile["mistake_patterns"] or ("; ".join(weak_points) if weak_points else "待采集"),
-                "modality_preference": base_profile["modality_preference"] or _guess_modality(user_text),
-                "pace_preference": base_profile["pace_preference"] or _guess_pace(user_text),
-                "motivation_style": base_profile["motivation_style"] or "目标驱动",
+                "knowledge_base_level": previous["knowledge_base_level"] or "待评估",
+                "cognitive_style": inferred.get("cognitive_style") or previous["cognitive_style"] or _guess_cognitive_style(user_text),
+                "mistake_patterns": stale_patterns or "待采集",
+                "modality_preference": inferred.get("modality_preference") or previous["modality_preference"] or _guess_modality(user_text),
+                "pace_preference": inferred.get("pace_preference") or previous["pace_preference"] or _guess_pace(user_text),
+                "motivation_style": inferred.get("motivation_style") or previous["motivation_style"] or "目标驱动",
             }
             rationale = "已基于对话内容及本地历史潜在问题进行启发式画像抽取；配置在线大模型后可获得更精准的维度识别与依据。"
-            evidence = {"weak_points": weak_points, "keywords": []}
+            evidence = {"weak_points": weak_points, "keywords": keywords}
+            basic_info = _extract_basic_info(latest_user_text or user_text)
+            for _key, _value in _extract_basic_info(user_text).items():
+                basic_info.setdefault(_key, _value)
 
         snapshot = insert_profile_snapshot(student_id=student_id, profile=profile, evidence=evidence)
+        if basic_info:
+            patch_student(student_id, basic_info)
         insert_learning_event(student_id, "profile_update", {"snapshot_id": snapshot["id"]})
 
         delta: dict[str, Any] = {}
@@ -674,7 +1058,7 @@ class Orchestrator:
                 if prev.get(k) != snapshot.get(k):
                     delta[k] = {"from": prev.get(k), "to": snapshot.get(k)}
 
-        return {"snapshot": snapshot, "delta": delta, "rationale": rationale}
+        return {"snapshot": snapshot, "delta": delta, "rationale": rationale, "basic_info": basic_info}
 
     async def clarify(
         self,
@@ -735,7 +1119,7 @@ class Orchestrator:
             item = insert_resource_item(
                 student_id=student_id,
                 type=spec.resource_type,
-                title=spec.title,
+                title=_title_from_content(content, spec.title, requirement),
                 tags=(requirement.get("weak_points") or [])[:5],
                 content_uri=content_uri,
                 meta=meta,
@@ -743,12 +1127,14 @@ class Orchestrator:
             resources.append(item)
 
         constraints = requirement.get("constraints") if isinstance(requirement.get("constraints"), dict) else {}
-        qa_item = None if constraints.get("skip_quality_check") else await self._run_quality_check(
-            resources=resources,
-            requirement=requirement,
-            student_id=student_id,
-            on_chunk=on_chunk,
-        )
+        qa_item = None
+        if _wants_quality_check(constraints):
+            qa_item = await self._run_quality_check(
+                resources=resources,
+                requirement=requirement,
+                student_id=student_id,
+                on_chunk=on_chunk,
+            )
         if qa_item:
             resources.append(qa_item)
 
@@ -760,7 +1146,7 @@ class Orchestrator:
     ) -> AsyncIterator[dict[str, Any]]:
         selected_agents = _requested_agents(requirement)
         constraints = requirement.get("constraints") if isinstance(requirement.get("constraints"), dict) else {}
-        run_quality_check = not constraints.get("skip_quality_check")
+        run_quality_check = _wants_quality_check(constraints)
         agent_keys = [a.key for a in selected_agents] + (["quality_check"] if run_quality_check else [])
         yield {"type": "start", "ts": datetime.utcnow().isoformat(), "agents": agent_keys}
         resources: list[dict[str, Any]] = []
@@ -793,7 +1179,7 @@ class Orchestrator:
             item = insert_resource_item(
                 student_id=student_id,
                 type=spec.resource_type,
-                title=spec.title,
+                title=_title_from_content(content, spec.title, requirement),
                 tags=(requirement.get("weak_points") or [])[:5],
                 content_uri=content_uri,
                 meta=meta,
@@ -979,7 +1365,12 @@ class Orchestrator:
         reference_text = format_references(references)
         if is_llm_configured("tutor"):
             llm = get_llm_client_for("tutor")
-            system = "你是耐心的大学课程助教，优先基于知识库参考回答；参考不足时必须标注待核验。输出结构化解答，包含文字步骤、图解建议、以及短视频讲解分镜。"
+            system = (
+                "你是耐心的大学课程助教，优先基于知识库参考回答，用学生听得懂的话讲清概念。"
+                "直接输出解答正文：不要写『说明』『备注』『本次回答主要基于……』这类前言，"
+                "不要提及检索匹配度、知识库命中率、历史反馈统计等元信息；参考不足时同样不要写免责说明段落。"
+                "正文用小标题与步骤组织，必要时给出图解建议与讲解要点。"
+            )
             try:
                 request = llm.chat_text(
                     system=system,
@@ -1240,16 +1631,20 @@ class Orchestrator:
         reference_text = format_references(search_index(student_id=student_id, query=reference_query, limit=4))
         
         constraints = requirement.get("constraints") if isinstance(requirement.get("constraints"), dict) else {}
-        use_glm = spec.key == "quiz" and constraints.get("source") in {
-            "exercise_custom_bank",
-            "multimodal_chat_quiz",
-            "path_stage_quiz",
-        }
+        use_glm = (
+            spec.key == "quiz"
+            and constraints.get("source") in {
+                "exercise_custom_bank",
+                "multimodal_chat_quiz",
+                "path_stage_quiz",
+            }
+            and is_glm_configured()
+        )
         model_configured = is_glm_configured() if use_glm else is_llm_configured("generate")
         if model_configured:
             llm = get_glm_client() if use_glm else get_llm_client_for("generate")
             
-            # 引入 ICT 优质 Prompt 模板
+            # 引入主工程优质Prompt模板
             if spec.key == "lecture":
                 system = (
                     "你是高校课程资源生成智能体，负责生成严谨、结构完整、适合学生自学的中文 Markdown 课程讲解文档。"
@@ -1297,8 +1692,11 @@ class Orchestrator:
 输出要求：
 1. 只输出 Markdown。
 2. 必须先给一个 Mermaid mindmap 代码块，代码块内第一行必须是 mindmap。
-3. Mermaid 使用 2 个空格表示层级，根节点为课程或章节名称；至少包含“核心概念、关键流程、易错点、练习路径、拓展方向”五个一级分支。
-4. Mermaid 后补充“节点学习顺序”和“薄弱点定位说明”。"""
+3. Mermaid 使用 2 个空格表示层级，根节点为课程或章节名称；必须包含“核心概念、关键流程、易错点、练习路径、拓展方向”五个一级分支。
+4. Mermaid 后补充“节点学习顺序”和“薄弱点定位说明”。
+5. 结构严格控制在三层以内：根节点 → 一级分支（5-6 个）→ 二级节点（每个分支 3-5 个）→ 三级节点只在确有具体方法或例子时出现（每个二级节点最多 3 个）。
+6. 每个节点写成名词性短语，不超过 10 个字，禁止整句话、禁止句号逗号等标点；同一父节点下的子节点必须互斥，不许同义重复。
+7. 叶子节点必须是可复习的知识点（概念、步骤、公式、易错点），不要写“介绍”“概述”“相关内容”这类空话。"""
 
             elif spec.key == "quiz":
                 quiz_types, quiz_counts, quiz_total = _quiz_generation_config(requirement)
@@ -1321,7 +1719,8 @@ class Orchestrator:
 }}
 
 本次只能生成以下题型，禁止添加未选择的题型：{quiz_type_text}。
-总题量必须为 {quiz_total} 道。选择题的每个选项必须是数组中的独立元素，只保留一个 A/B/C/D 标号，不得把多个选项拼成一行。代码必须放进题干中的独立代码围栏，并保留换行和缩进。题目必须围绕薄弱点递进。"""
+总题量必须为 {quiz_total} 道。选择题的每个选项必须是数组中的独立元素，只保留一个 A/B/C/D 标号，不得把多个选项拼成一行。代码必须放进题干中的独立代码围栏，并保留换行和缩进。题目必须围绕薄弱点递进。
+数学书写必须符合 LaTeX 规范：行内公式写成 $...$，独立公式写成 $$...$$；分数用 \\frac{{分子}}{{分母}}，乘幂用 ^{{}}、下标用 _{{}}，开方用 \\sqrt{{}}，积分用 \\int_{{下限}}^{{上限}}，求和用 \\sum_{{下限}}^{{上限}}，极限用 \\lim_{{x \\to 0}}，希腊字母用 \\alpha、\\beta、\\theta；禁止用 x^2、1/2、√、Σ、∫、≤、≥ 这类纯文本或 Unicode 符号直接拼公式。"""
 
             elif spec.key == "practice":
                 system = (
@@ -1386,164 +1785,3 @@ class Orchestrator:
             raise RuntimeError("多模态智能出题仅使用智谱 GLM，请先配置 GLM_TEXT_API_KEY 或 GLM_API_KEY")
         raise RuntimeError("内容生成模型尚未配置，本次没有生成模板资源或演示题库")
 
-        wp = [str(x) for x in (requirement.get("weak_points") or [])]
-        course = _safe_text(str(requirement.get("course", ""))) or "课程主题"
-        chapter = _safe_text(str(requirement.get("chapter", ""))) or "当前章节"
-        if spec.resource_type == "question_bank":
-            qb = {
-                "meta": {
-                    "course": course,
-                    "chapter": chapter,
-                    "generated_by": spec.key,
-                    "weak_points": wp,
-                    "note": "未配置在线大模型：当前为结构化示例题库，配置 API 后可生成真实个性化题目。",
-                },
-                "questions": [
-                    {
-                        "type": "single_choice",
-                        "stem": f"关于{chapter}的基础概念，下列说法哪一项最准确？",
-                        "options": ["A. 能直接解释核心定义", "B. 与本章主题无关", "C. 只适用于个别特例", "D. 不需要结合例子理解"],
-                        "answer": "A",
-                        "analysis": "先确认概念定义，再结合题干判断适用范围。",
-                        "difficulty": 1,
-                        "tags": wp[:3],
-                    },
-                    {
-                        "type": "multiple_choice",
-                        "stem": f"学习{chapter}时，哪些做法有助于突破薄弱点？",
-                        "options": ["A. 画出知识结构", "B. 只背结论不做题", "C. 用例子验证定义", "D. 记录错因并复盘"],
-                        "answer": ["A", "C", "D"],
-                        "analysis": "结构化、例证化和错因复盘能同时补概念与应用。",
-                        "difficulty": 2,
-                        "tags": wp[:3],
-                    },
-                    {
-                        "type": "blank",
-                        "stem": f"请写出{chapter}中一个你最容易混淆的关键词，并说明它和相近概念的区别。",
-                        "answer": "填写关键词与区别说明。",
-                        "analysis": "该题用于暴露概念边界不清的问题。",
-                        "difficulty": 2,
-                        "tags": wp[:3],
-                    },
-                    {
-                        "type": "short_answer",
-                        "stem": f"请用 3 个步骤说明如何分析一道{chapter}相关题目。",
-                        "answer": "识别知识点；套用定义/流程；检查边界条件和易错点。",
-                        "analysis": "分步回答能检验是否掌握可迁移的方法。",
-                        "difficulty": 3,
-                        "tags": wp[:3],
-                    },
-                    {
-                        "type": "case_analysis",
-                        "stem": f"给定一个{course}场景，请说明如何把{chapter}知识应用到实际问题中。",
-                        "answer": "先抽取场景要素，再匹配知识点，最后给出判断和改进方案。",
-                        "analysis": "案例题用于检查知识迁移能力。",
-                        "difficulty": 4,
-                        "tags": wp[:3],
-                    }
-                ],
-                "review_plan": [
-                    "先完成基础选择题，确认概念边界。",
-                    "再完成简答和案例题，检查迁移能力。",
-                    "把错题按薄弱点归类，进入下一轮资源推送。",
-                ],
-            }
-            return json.dumps(qb, ensure_ascii=False, indent=2)
-
-        header = f"# {spec.title}\n"
-        body = "\n".join(
-            [
-                "## 需求摘要",
-                f"- 课程：{course}",
-                f"- 章节：{chapter}",
-                f"- 薄弱点：{', '.join(wp) if wp else '待补充'}",
-                "",
-                "## 内容",
-                "未配置在线大模型：这里输出可编辑的资源骨架，填入模型后可一键重新生成。",
-            ]
-        )
-        if reference_text:
-            body += "\n\n## 知识库参考片段\n" + reference_text + "\n"
-        if spec.resource_type == "mindmap":
-            root = chapter if chapter != "当前章节" else course
-            body += f"""\n\n```mermaid
-mindmap
-  root(({root}))
-    核心概念
-      定义
-      适用场景
-      相近概念对比
-    关键流程
-      识别问题
-      选择方法
-      验证结果
-    易错点
-      {wp[0] if wp else "概念边界不清"}
-      {wp[1] if len(wp) > 1 else "步骤遗漏"}
-    练习路径
-      基础题
-      综合题
-      案例题
-    拓展方向
-      工程应用
-      前沿问题
-```
-
-## 节点学习顺序
-1. 先学核心概念，明确定义和边界。
-2. 再看关键流程，把知识转成可执行步骤。
-3. 最后用练习路径检查薄弱点是否真正解决。
-"""
-        if spec.resource_type == "practice_case":
-            body += f"""\n\n## 实操任务 1：概念验证
-- 难度：基础
-- 预计耗时：20 分钟
-- 对应知识点：{chapter}
-- 目标：用最小示例验证核心定义。
-- 验收标准：能解释输入、处理过程和输出结果。
-
-## 实操任务 2：错误排查
-- 难度：中等
-- 预计耗时：30 分钟
-- 对应知识点：{', '.join(wp[:2]) if wp else chapter}
-- 目标：构造一个常见错误，并写出排查步骤。
-- 验收标准：能定位错因并给出修正方案。
-
-## 实操任务 3：小型综合案例
-- 难度：提高
-- 预计耗时：45 分钟
-- 对应知识点：{course}
-- 目标：把本章方法应用到一个真实学习或工程场景。
-- 验收标准：提交结果、过程记录和复盘说明。
-"""
-        if spec.resource_type == "video_script":
-            body += f"""\n\n## 视频定位
-- 目标观众：正在学习 {course} 的学生
-- 总时长：6 到 8 分钟
-- 解决问题：{', '.join(wp) if wp else chapter}
-
-## 分镜表
-| 时间段 | 画面 | 动画/操作 | 口播重点 | 对应知识点 |
-|---|---|---|---|---|
-| 00:00-00:30 | 展示本节问题 | 高亮关键词 | 说明为什么要学 | 学习目标 |
-| 00:30-01:30 | 概念关系图 | 节点逐个出现 | 给出直观解释 | 核心概念 |
-| 01:30-03:00 | 流程拆解 | 步骤推进 | 讲清分析顺序 | 关键流程 |
-| 03:00-04:30 | 例题/案例 | 边做边标注 | 演示应用方法 | 实例迁移 |
-| 04:30-05:30 | 易错对比 | 正误并排 | 解释错因 | 薄弱点 |
-| 05:30-06:30 | 自测题 | 暂停提示 | 引导学生作答 | 学习评估 |
-"""
-        if spec.resource_type == "reading":
-            body += f"""\n\n## 拓展阅读安排
-| 层级 | 读什么 | 解决什么问题 | 阅读产出 |
-|---|---|---|---|
-| 入门阅读 | 教材中与 {chapter} 对应的基础章节 | 建立概念框架 | 5 条概念卡片 |
-| 案例阅读 | 与 {course} 应用场景相关的案例材料 | 理解知识如何落地 | 1 份案例拆解表 |
-| 进阶阅读 | 方法比较、复杂场景或综合题解析 | 提高迁移能力 | 1 张方法对比表 |
-| 前沿方向 | 课程相关的新工具、新技术或工程实践 | 扩展视野 | 3 个可继续探索的问题 |
-
-## 阅读后任务
-- 用自己的话复述本章核心概念。
-- 标出仍然不清楚的 2 个问题，交给智能辅导继续追问。
-- 把阅读产物加入下一轮学习路径规划。
-"""
-        return header + body + "\n"
