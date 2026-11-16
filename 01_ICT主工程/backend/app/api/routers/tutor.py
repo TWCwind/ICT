@@ -97,6 +97,8 @@ def _with_legacy_tutor_fields(result: dict) -> dict:
     references = _answer_references(answer, payload)
     credible_references = _credible_references(references)
     markdown = _strip_meta_preamble(_answer_markdown(answer))
+    if not credible_references:
+        markdown = _append_evidence_notice(markdown)
 
     return {
         **payload,
