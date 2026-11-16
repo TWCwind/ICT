@@ -510,7 +510,7 @@ def _fallback_chapter_titles(text: str) -> list[str]:
     text_lower = (text or "").lower()
     if "需求" in text_lower and "用例" in text_lower:
         return [
-            "业务场景与需求范围",
+            "业务场景与范围",
             "需求获取与表达",
             "用例与行为建模",
             "领域结构建模",

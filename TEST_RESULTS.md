@@ -428,3 +428,22 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 真实 profile API 中 demo 的六个置信度为 `null`，因为 seed 只有快照级关键词/薄弱点，没有维度级来源。独立 generated 样例的接口返回 55%、60%、65%、70%、75%、80%；截图确认六种颜色映射不同且数值与接口一致。首页长篇宣传文件无差异。
 
 截图目录：`C:\Users\xiajun\AppData\Local\Temp\ict-enterprise-ui-audit-20261103-e3dfeb7\after`。已查看桌面/手机页面总览、画像原尺寸五视口、生成样例颜色对照图。MCP 未运行；AgentArts 云端未接入；真实模型未配置，未验证依赖模型的成功生成质量。
+
+## 2026-11-16 PR #2 → PR #3 整合回归
+
+在最新 `main`（已包含 PR #2）上合并 PR #3 分支，使用临时复制的 `roadshow-seed` 作为隔离 `DATA_DIR`。合并冲突覆盖图谱数据服务、路径题库测试、前端依赖锁、首页及交付文档；解决时保留 #3 的画像置信度实现和 #2 的运行时数据目录、图谱资源统计、首页真实证据区及网络错误处理。
+
+| 检查 | 结果 |
+|---|---|
+| `npm ci --no-audit` | 通过 |
+| `npm run check` | 通过 |
+| `npm run audit:ui` | 通过 |
+| `npm run build` | 通过；练习页约 585 kB，另有 Markdown renderer 分包体积提示 |
+| 后端单测 | 46/46 通过 |
+| MCP 单测 | 7/7 通过 |
+| `npm run test:roadshow -- --project=msedge --workers=1` | 19/19 通过，覆盖所有核心页面、响应式、按钮、图谱与断线恢复 |
+| `npm run test:generated-flow -- --project=msedge --workers=1` | 2/2 通过，生成数据在五种视口验证 |
+| `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1` | 13/13 通过 |
+| `git diff --check` | 通过 |
+
+服务运行于本地 5173/8000，后端只读写 `%TEMP%\ict-pr3-roadshow-20261116` 的隔离数据副本。此次未接入 AgentArts 云端，也未验证未配置模型时的外部模型成功生成路径。

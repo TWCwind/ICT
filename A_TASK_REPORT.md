@@ -237,3 +237,9 @@ Claude Code 恢复后实际启动了独立回归任务并留下网络错误处�
 同时修正练习核心流程回归测试：它将多选题硬编码为 `radio`，导致选项已经选中仍因查找不到 radio 而失败；改为检查 radio 或 checkbox。该测试修正不改练习业务逻辑。
 
 最终检查：`npm run check`、`npm run audit:ui`、`npm run build` 通过；路演 E2E 19/19、队友回归 13/13、后端单测 46/46 通过。构建仍报告 ExerciseCenterPage 585.26 kB 的非阻塞 chunk 体积警告。MCP 本轮未运行；AgentArts 云端未接入。
+
+## 2026-11-16 与 PR #2 整合复核
+
+按 #2 → #3 顺序将 PR #3 更新到 PR #2 合并后的 `main`。保留画像维度级证据逻辑，同时整合图谱使用运行时 `DATA_DIR`、语义课程标题清洗、资源统计和统一 API 错误处理。图谱章节名统一为“业务场景与范围”等语义名称。首页宣传原文与结构保持不变。
+
+使用临时复制的 `roadshow-seed` 数据目录运行本地后端和前端；完整路演 E2E 19/19、生成数据流程 2/2、队友缺陷回归 13/13、后端单测 46/46、MCP 单测 7/7 通过。`npm ci`、`npm run check`、`npm run audit:ui`、`npm run build` 与 `git diff --check` 通过。AgentArts 云端未接入。构建仍有练习页大 chunk 提示。
