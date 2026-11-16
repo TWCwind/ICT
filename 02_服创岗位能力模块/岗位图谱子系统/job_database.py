@@ -13,6 +13,10 @@ class JobDatabase:
         if data_path is None:
             import os
             possible_paths = [
+                # 仓库内实际提交的数据文件（51 个岗位画像，53KB）
+                "structured_job_data.json",
+                os.path.join(os.path.dirname(__file__), "structured_job_data.json"),
+                # 旧路径兼容（早期本地目录结构，仓库里并不存在）
                 "结构化岗位画像.json",
                 "../数据文件/结构化岗位画像.json",
                 os.path.join(os.path.dirname(__file__), "../数据文件/结构化岗位画像.json"),
@@ -23,7 +27,10 @@ class JobDatabase:
                     data_path = path
                     break
             if data_path is None:
-                data_path = "结构化岗位画像.json"  # 默认值
+                # 找不到任何数据文件时直接报错，避免"静默加载 0 条岗位"让所有接口返回空列表
+                raise FileNotFoundError(
+                    "岗位数据文件不存在，已尝试：" + "、".join(possible_paths)
+                )
 
         self.data_path = data_path
         self.job_list: List[JobProfile] = []

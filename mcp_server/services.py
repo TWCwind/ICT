@@ -8,45 +8,117 @@ from typing import Any
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-MAIN_PROJECT_ROOT = WORKSPACE_ROOT / "01_ICT主工程"
-BACKEND_ROOT = MAIN_PROJECT_ROOT / "backend"
-ROADSHOW_DATA_ROOT = MAIN_PROJECT_ROOT / "roadshow-data"
-ROADSHOW_SEED_ROOT = MAIN_PROJECT_ROOT / "roadshow-seed"
-BACKEND_DATA_ROOT = BACKEND_ROOT / "data"
-JOB_MODULE_ROOT = WORKSPACE_ROOT / "02_服创岗位能力模块" / "岗位图谱子系统"
-JOB_DATA_PATH = WORKSPACE_ROOT / "02_服创岗位能力模块" / "结构化岗位画像.json"
 
-def _select_data_root() -> Path:
-    """Use the same data lifecycle as the roadshow backend.
 
-    The MCP service used to read the developer's stale backend/data directory,
-    so AgentArts could receive a different learner profile from the UI.  A
-    caller-supplied DATA_DIR remains authoritative; otherwise prefer the
-    disposable roadshow runtime and then the reproducible seed package.
+def _first_existing_dir(candidates: tuple[str, ...], marker: str) -> Path:
+    """按候选目录名找到真实存在的那一个（兼容两套工作区命名）。
+
+    本地工作副本里是 ``01_主工程`` / ``02_岗位能力模块``，仓库克隆里是
+    ``01_ICT主工程`` / ``02_服创岗位能力模块``。之前这里写死前者，导致
+    MCP 服务只认某一种目录布局（换台机器或换克隆就是 ModuleNotFoundError）。
+    这里改成按「标记文件是否存在」探测，两种布局都能跑。
     """
-    configured = os.environ.get("DATA_DIR", "").strip()
-    if configured:
-        return Path(configured).resolve()
-    for candidate in (ROADSHOW_DATA_ROOT, ROADSHOW_SEED_ROOT, BACKEND_DATA_ROOT):
-        if (candidate / "users" / "demo" / "student.json").is_file():
-            return candidate.resolve()
-    return ROADSHOW_SEED_ROOT.resolve()
+
+    for name in candidates:
+        candidate = WORKSPACE_ROOT / name
+        if (candidate / marker).exists():
+            return candidate
+    return WORKSPACE_ROOT / candidates[0]
 
 
-ACTIVE_DATA_ROOT = _select_data_root()
-os.environ.setdefault("DATA_DIR", str(ACTIVE_DATA_ROOT))
+MAIN_PROJECT_ROOT = _first_existing_dir(("01_主工程", "01_ICT主工程"), "backend")
+BACKEND_ROOT = MAIN_PROJECT_ROOT / "backend"
+
+
+def _has_student_data(path: Path) -> bool:
+    """目录里是否真的存在至少一个学生子目录。"""
+
+    users = path / "users"
+    if not users.is_dir():
+        return False
+    return any(child.is_dir() for child in users.iterdir())
+
+
+def _pick_data_root(candidates: tuple[Path, ...]) -> Path:
+    """挑第一个真正有学生数据的目录。
+
+    仓库克隆里 backend/data 被 .gitignore 排除（目录可能存在但为空），
+    可直接用的数据是 roadshow-seed；本地工作副本里两者都在，优先用
+    backend/data（跑过真实流程后更全）。写死 backend/data 会让全新克隆
+    上的 MCP 工具全部报 STUDENT_NOT_FOUND。
+    """
+
+    for candidate in candidates:
+        if _has_student_data(candidate):
+            return candidate
+    for candidate in candidates:
+        if (candidate / "users").is_dir():
+            return candidate
+    return candidates[0]
+
+
+BACKEND_DATA_ROOT = _pick_data_root(
+    (BACKEND_ROOT / "data", MAIN_PROJECT_ROOT / "roadshow-seed")
+)
+
+
+JOB_MODULE_ROOT = _first_existing_dir(
+    ("02_岗位能力模块/岗位图谱子系统", "02_服创岗位能力模块/岗位图谱子系统"),
+    "job_database.py",
+)
+
+
+def _first_existing_file(candidates: tuple[str, ...]) -> Path:
+    """岗位数据文件：优先结构化快照，找不到再退回旧名称。"""
+
+    for name in candidates:
+        candidate = WORKSPACE_ROOT / name
+        if candidate.is_file():
+            return candidate
+    return WORKSPACE_ROOT / candidates[0]
+
+
+JOB_DATA_PATH = _first_existing_file(
+    (
+        "02_岗位能力模块/结构化岗位画像.json",
+        "02_岗位能力模块/岗位图谱子系统/structured_job_data.json",
+        "02_服创岗位能力模块/结构化岗位画像.json",
+        "02_服创岗位能力模块/岗位图谱子系统/structured_job_data.json",
+    )
+)
+
+# The original backend resolves DATA_DIR from the process working directory.
+# Set a stable package-relative default before importing its service layer.
+os.environ.setdefault("DATA_DIR", str(BACKEND_DATA_ROOT))
 for import_root in (BACKEND_ROOT, JOB_MODULE_ROOT):
     import_path = str(import_root)
     if import_path not in sys.path:
         sys.path.insert(0, import_path)
 
-from app.repo import get_user_events  # noqa: E402
-from app.services.exercise_bank import exercise_summary  # noqa: E402
-from app.services.learning_state import activity_feed, path_overview, profile_overview  # noqa: E402
+from app.repo import get_user_events, list_resources  # noqa: E402
+from app.services.exercise_bank import (  # noqa: E402
+    build_exercise_session,
+    exercise_summary,
+    submit_exercise_answer,
+    wrong_book_summary,
+)
+from app.services.knowledge_hub import search_index  # noqa: E402
+from app.services.learning_state import (  # noqa: E402
+    activity_feed,
+    evaluation_overview,
+    path_overview,
+    profile_overview,
+)
+from app.services.path_progress import add_path_branch  # noqa: E402
 from job_database import JobDatabase  # noqa: E402
 
+# backend/.env 里写着 ``DATA_DIR=./data``，config 用 override=True 加载它，
+# 于是数据目录会相对于「进程工作目录」解析——MCP 从别处启动就读到不存在的
+# data/，所有工具都报 STUDENT_NOT_FOUND。这里导入后把解析结果钉死在
+# BACKEND_DATA_ROOT 上，启动目录再怎么变都指向同一份数据。
+from app.core.config import settings as _backend_settings  # noqa: E402
 
-BACKEND_DATA_ROOT = ACTIVE_DATA_ROOT
+_backend_settings.data_dir = str(BACKEND_DATA_ROOT)
 
 
 _SAFE_STUDENT_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -68,14 +140,6 @@ def _failure(code: str, message: str, *, details: dict[str, Any] | None = None) 
         "error": {"code": code, "message": message, "details": details or {}},
         "meta": {},
     }
-
-
-def _data_source_label() -> str:
-    try:
-        relative = ACTIVE_DATA_ROOT.relative_to(MAIN_PROJECT_ROOT)
-        return f"01_ICT主工程/{relative.as_posix()} + app.services"
-    except ValueError:
-        return f"{ACTIVE_DATA_ROOT} + app.services"
 
 
 def get_student_profile_data(student_id: str) -> dict[str, Any]:
@@ -115,7 +179,7 @@ def get_student_profile_data(student_id: str) -> dict[str, Any]:
                     "recent_activity": recent_activity,
                 },
             },
-            source=_data_source_label(),
+            source="01_主工程/backend/data + app.services",
             data_mode="bundled_demo_data" if normalized_id == "demo" else "project_local_data",
         )
     except Exception as exc:
@@ -219,7 +283,7 @@ def get_role_competency_data(role_name: str = "", role_id: str = "") -> dict[str
                     ],
                 },
             },
-            source="02_服创岗位能力模块/结构化岗位画像.json + JobDatabase",
+            source="02_岗位能力模块/结构化岗位画像.json + JobDatabase",
             data_mode="project_structured_data",
         )
     except Exception as exc:
@@ -242,13 +306,360 @@ def get_project_status_data(student_id: str) -> dict[str, Any]:
         path = path_overview(normalized_id)
         return _success(
             {"student_id": normalized_id, "path": path},
-            source=_data_source_label().replace(" + app.services", " + app.services.learning_state.path_overview"),
+            source="01_主工程/backend/data + app.services.learning_state.path_overview",
             data_mode="bundled_demo_data" if normalized_id == "demo" else "project_local_data",
         )
     except Exception as exc:
         return _failure(
             "PROJECT_STATUS_SERVICE_ERROR",
             "读取项目状态时发生服务异常。",
+            details={"type": type(exc).__name__, "message": str(exc)},
+        )
+
+
+# ---------------------------------------------------------------------------
+# 动作型工具（2026-10-16 新增）
+#
+# 上面三个工具只做只读查询，撑不起「画像 → 检索 → 规划 → 诊断 → 路径更新」闭环。
+# 以下六个服务函数复用后端已有的业务服务层，其中两个带写入语义：
+#   submit_exercise_answer_data 会落作答记录、推进路径阶段进度并写学习事件；
+#   add_learning_branch_data    会向当前学习路径写入一条知识补充分支。
+# 写入落在容器内的 DATA_DIR（01_主工程/backend/data）。AgentArts 运行时是
+# 会话级容器（空闲 15 分钟 / 最长 24 小时），写进去的数据在同一会话内有效，
+# 容器回收后释放——这不是持久化存储。
+# ---------------------------------------------------------------------------
+
+
+def _ensure_student(student_id: str) -> dict[str, Any] | None:
+    """Return a failure envelope when the student id is unusable, otherwise None."""
+
+    if not _SAFE_STUDENT_ID.fullmatch(student_id):
+        return _failure(
+            "INVALID_STUDENT_ID",
+            "student_id 只能包含字母、数字、下划线或连字符，长度为 1-64。",
+        )
+    if not (BACKEND_DATA_ROOT / "users" / student_id / "student.json").is_file():
+        return _failure(
+            "STUDENT_NOT_FOUND",
+            f"未找到学生 {student_id} 的项目数据。",
+            details={"student_id": student_id},
+        )
+    return None
+
+
+def _data_mode(student_id: str) -> str:
+    return "bundled_demo_data" if student_id == "demo" else "project_local_data"
+
+
+def _question_bank_resource_ids(student_id: str) -> list[str]:
+    """Mirror exercise_bank's own filter so the session is not empty by accident."""
+
+    accepted = {"exercise_custom_bank", "path_stage_quiz"}
+    resource_ids: list[str] = []
+    for resource in list_resources(student_id):
+        if resource.get("type") != "question_bank":
+            continue
+        requirement = (resource.get("meta") or {}).get("requirement") or {}
+        constraints = requirement.get("constraints") or {}
+        if str(constraints.get("source") or "") not in accepted:
+            continue
+        resource_id = str(resource.get("id") or "")
+        if resource_id:
+            resource_ids.append(resource_id)
+    return resource_ids
+
+
+def search_knowledge_data(student_id: str, query: str, limit: int = 5) -> dict[str, Any]:
+    """检索学生学习资料库，返回带出处的引用片段。"""
+
+    normalized_id = (student_id or "").strip()
+    invalid = _ensure_student(normalized_id)
+    if invalid is not None:
+        return invalid
+
+    normalized_query = (query or "").strip()
+    if not normalized_query:
+        return _failure("MISSING_QUERY", "query 不能为空。")
+    if len(normalized_query) > 200:
+        return _failure("INVALID_QUERY", "query 长度不能超过 200 个字符。")
+
+    try:
+        capped_limit = max(1, min(int(limit or 5), 10))
+    except (TypeError, ValueError):
+        capped_limit = 5
+
+    try:
+        results = search_index(normalized_id, normalized_query, limit=capped_limit)
+        return _success(
+            {
+                "student_id": normalized_id,
+                "query": normalized_query,
+                "result_count": len(results),
+                "results": results,
+            },
+            source="01_主工程/backend/app/services/knowledge_hub.search_index",
+            data_mode=_data_mode(normalized_id),
+        )
+    except Exception as exc:
+        return _failure(
+            "KNOWLEDGE_SEARCH_ERROR",
+            "检索学习资料库时发生服务异常。",
+            details={"type": type(exc).__name__, "message": str(exc)},
+        )
+
+
+def get_exercise_session_data(student_id: str, limit: int = 5) -> dict[str, Any]:
+    """从该学生已有的题库生成一组诊断练习题。"""
+
+    normalized_id = (student_id or "").strip()
+    invalid = _ensure_student(normalized_id)
+    if invalid is not None:
+        return invalid
+
+    try:
+        capped_limit = max(1, min(int(limit or 5), 20))
+    except (TypeError, ValueError):
+        capped_limit = 5
+
+    try:
+        resource_ids = _question_bank_resource_ids(normalized_id)
+        session = build_exercise_session(
+            student_id=normalized_id,
+            limit=capped_limit,
+            resource_ids=resource_ids,
+        )
+        questions = session.get("questions") or []
+        if not questions:
+            return _failure(
+                "NO_QUESTION_BANK",
+                "该学生名下没有可用的题库资源，无法生成诊断练习。",
+                details={
+                    "student_id": normalized_id,
+                    "question_bank_resource_count": len(resource_ids),
+                },
+            )
+        return _success(
+            {
+                "student_id": normalized_id,
+                "source": session.get("source"),
+                "question_count": len(questions),
+                "questions": questions,
+                "stats": session.get("stats"),
+            },
+            source="01_主工程/backend/app/services/exercise_bank.build_exercise_session",
+            data_mode=_data_mode(normalized_id),
+        )
+    except Exception as exc:
+        return _failure(
+            "EXERCISE_SESSION_ERROR",
+            "生成诊断练习时发生服务异常。",
+            details={"type": type(exc).__name__, "message": str(exc)},
+        )
+
+
+_ANSWER_LETTERS_RE = re.compile(r"^[A-Ha-h](?:[,\s]*[A-Ha-h])*$")
+_ANSWER_PREFIX_RE = re.compile(r"^\s*(?:选项|option|answer|正确选项)?\s*[:：]?\s*([A-Ha-h])\b")
+
+
+def _normalise_answer_input(value: Any) -> Any:
+    """把「B」「B. 选项全文」「选项B：xxx」「BC」「B,C」统一成字母串。
+
+    华为云侧实证：模型容易把选项全文（如「B. 参与者与用例之间的交互关系」）
+    当作 answer 传入，而后端判定是严格字符串比较，会把正确作答判成错误。
+    """
+
+    if isinstance(value, (list, tuple)):
+        letters = [
+            normalised
+            for normalised in (_normalise_answer_input(item) for item in value)
+            if isinstance(normalised, str) and normalised
+        ]
+        return ",".join(letters) if letters else ""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+
+    compact = text.replace("，", ",").replace("、", ",").replace("；", ",").replace(" ", "")
+    if _ANSWER_LETTERS_RE.match(compact):
+        return ",".join(re.findall(r"[A-Ha-h]", compact.upper()))
+
+    match = _ANSWER_PREFIX_RE.match(text)
+    if match:
+        return match.group(1).upper()
+    return text
+
+
+def submit_exercise_answer_data(student_id: str, question_id: str, answer: Any) -> dict[str, Any]:
+    """提交一次作答：落记录、推进路径阶段进度、写学习事件。"""
+
+    normalized_id = (student_id or "").strip()
+    invalid = _ensure_student(normalized_id)
+    if invalid is not None:
+        return invalid
+
+    normalized_question_id = str(question_id or "").strip()
+    if not normalized_question_id:
+        return _failure("MISSING_QUESTION_ID", "question_id 不能为空。")
+
+    if isinstance(answer, (list, tuple)):
+        raw_answer: Any = [str(item) for item in answer]
+    else:
+        raw_answer = str(answer or "").strip()
+    if not raw_answer:
+        return _failure("MISSING_ANSWER", "answer 不能为空。")
+
+    normalized_answer = _normalise_answer_input(raw_answer)
+    if not normalized_answer:
+        return _failure("MISSING_ANSWER", "answer 不能为空。")
+
+    try:
+        result = submit_exercise_answer(
+            student_id=normalized_id,
+            question_id=normalized_question_id,
+            answer=normalized_answer,
+        )
+        return _success(
+            {
+                "student_id": normalized_id,
+                "question_id": normalized_question_id,
+                "submitted_answer": raw_answer,
+                "normalised_answer": normalized_answer,
+                "correct": result.get("correct"),
+                "correct_answer": result.get("correct_answer"),
+                "analysis": result.get("analysis"),
+                "path_progress": result.get("path_progress"),
+                "stats": result.get("stats"),
+            },
+            source="01_主工程/backend/app/services/exercise_bank.submit_exercise_answer",
+            data_mode=_data_mode(normalized_id),
+        )
+    except ValueError as exc:
+        if str(exc) == "question_not_found":
+            return _failure(
+                "QUESTION_NOT_FOUND",
+                "未找到该题目，请先用 get_exercise_session 取回有效题目 ID。",
+                details={"question_id": normalized_question_id},
+            )
+        return _failure(
+            "EXERCISE_SUBMIT_REJECTED",
+            str(exc),
+            details={"question_id": normalized_question_id},
+        )
+    except Exception as exc:
+        return _failure(
+            "EXERCISE_SUBMIT_ERROR",
+            "提交作答时发生服务异常。",
+            details={"type": type(exc).__name__, "message": str(exc)},
+        )
+
+
+def get_wrong_book_data(student_id: str) -> dict[str, Any]:
+    """读取该学生的错题本与薄弱标签汇总。"""
+
+    normalized_id = (student_id or "").strip()
+    invalid = _ensure_student(normalized_id)
+    if invalid is not None:
+        return invalid
+
+    try:
+        summary = wrong_book_summary(normalized_id)
+        return _success(
+            {"student_id": normalized_id, **summary},
+            source="01_主工程/backend/app/services/exercise_bank.wrong_book_summary",
+            data_mode=_data_mode(normalized_id),
+        )
+    except Exception as exc:
+        return _failure(
+            "WRONG_BOOK_SERVICE_ERROR",
+            "读取错题本时发生服务异常。",
+            details={"type": type(exc).__name__, "message": str(exc)},
+        )
+
+
+def get_learning_evaluation_data(student_id: str) -> dict[str, Any]:
+    """读取该学生的学习效果评估（指标、证据数与薄弱点建议）。"""
+
+    normalized_id = (student_id or "").strip()
+    invalid = _ensure_student(normalized_id)
+    if invalid is not None:
+        return invalid
+
+    try:
+        evaluation = evaluation_overview(normalized_id)
+        return _success(
+            {"student_id": normalized_id, "evaluation": evaluation},
+            source="01_主工程/backend/app/services/learning_state.evaluation_overview",
+            data_mode=_data_mode(normalized_id),
+        )
+    except Exception as exc:
+        return _failure(
+            "LEARNING_EVALUATION_SERVICE_ERROR",
+            "读取学习效果评估时发生服务异常。",
+            details={"type": type(exc).__name__, "message": str(exc)},
+        )
+
+
+def add_learning_branch_data(
+    student_id: str,
+    knowledge_node_id: str,
+    title: str,
+    description: str = "",
+    mastery: float = 0,
+) -> dict[str, Any]:
+    """向当前学习路径写入一条知识补充分支（写入型操作）。"""
+
+    normalized_id = (student_id or "").strip()
+    invalid = _ensure_student(normalized_id)
+    if invalid is not None:
+        return invalid
+
+    normalized_node_id = str(knowledge_node_id or "").strip()
+    if not normalized_node_id:
+        return _failure(
+            "MISSING_KNOWLEDGE_NODE",
+            "knowledge_node_id 不能为空；可先用 get_project_status 取当前路径节点 ID。",
+        )
+
+    clean_title = str(title or "").strip()
+    if not clean_title:
+        return _failure("MISSING_TITLE", "title 不能为空。")
+    if len(clean_title) > 80:
+        return _failure("INVALID_TITLE", "title 长度不能超过 80 个字符。")
+
+    try:
+        bounded_mastery = max(0.0, min(100.0, float(mastery or 0)))
+    except (TypeError, ValueError):
+        bounded_mastery = 0.0
+
+    try:
+        result = add_path_branch(
+            normalized_id,
+            knowledge_node_id=normalized_node_id,
+            title=clean_title,
+            description=str(description or "").strip(),
+            mastery=bounded_mastery,
+        )
+        return _success(
+            {
+                "student_id": normalized_id,
+                "created": bool(result.get("created")),
+                "branch": result.get("branch"),
+                "parent_stage": result.get("parent_stage"),
+            },
+            source="01_主工程/backend/app/services/path_progress.add_path_branch",
+            data_mode=_data_mode(normalized_id),
+        )
+    except ValueError as exc:
+        return _failure(
+            "PATH_BRANCH_REJECTED",
+            str(exc),
+            details={"knowledge_node_id": normalized_node_id},
+        )
+    except Exception as exc:
+        return _failure(
+            "PATH_BRANCH_ERROR",
+            "新增学习分支时发生服务异常。",
             details={"type": type(exc).__name__, "message": str(exc)},
         )
 
