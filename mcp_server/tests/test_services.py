@@ -10,8 +10,10 @@ class StudentProfileToolTests(unittest.TestCase):
         result = get_student_profile_data("demo")
         self.assertTrue(result["ok"], result)
         self.assertEqual(result["data"]["student_id"], "demo")
+        self.assertEqual(result["data"]["basic_info"]["major"], "软件工程")
         self.assertGreater(len(result["data"]["abilities"]), 0)
         self.assertEqual(result["meta"]["data_mode"], "bundled_demo_data")
+        self.assertIn("roadshow", result["meta"]["source"])
 
     def test_unknown_student_has_explainable_error(self) -> None:
         result = get_student_profile_data("not-present")

@@ -91,6 +91,13 @@ test('all core pages open without blank screen', async ({ page }) => {
   }
 })
 
+test('home page exposes synchronized local learning evidence', async ({ page }) => {
+  await gotoAuthed(page, '/')
+  await expect(page.locator('.live-evidence')).toBeVisible()
+  await expect(page.locator('.live-evidence')).toContainText(/接口已同步|等待建立画像/)
+  await expect(page.locator('.live-evidence')).not.toContainText('undefined')
+})
+
 test('profile page updates learning profile', async ({ page }) => {
   await gotoAuthed(page, '/profile')
   await fillFirstEditable(
