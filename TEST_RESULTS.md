@@ -476,3 +476,7 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 ## 2026-11-17 评测集多工具契约复核
 
 `python 01_ICT主工程/scripts/eval/run_eval.py --json`：50 条用例，9/9 工具名覆盖，未知工具 0，静态校验通过；E01、E02、E03、E11、E17、E42、E50 共 7 条已显式标出多工具序列。50 条语义结果仍未测。本轮没有声称它们已达到预期回答质量。
+
+## 2026-11-17 50 条本地 MCP 执行
+
+`python 01_ICT主工程/scripts/eval/run_local_mcp_eval.py --output 01_ICT主工程/scripts/eval/evidence/local_eval_20261117.jsonl`：50 条用例产生 62 次真实本地工具调用，61 次成功、1 次预期参数校验错误（E30 缺学生 ID），非预期错误 0，成功调用缺参考字段 0。逐例轨迹见 JSONL 与 `LOCAL_EVAL_REPORT.md`。50 条语义正确性仍未测；AgentArts 云端未执行。
