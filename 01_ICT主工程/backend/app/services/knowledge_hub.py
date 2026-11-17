@@ -336,6 +336,9 @@ def search_index(student_id: str, query: str, limit: int = 5) -> list[dict[str, 
                 "score": round(final_score, 4),
                 "excerpt": _excerpt(doc["text"], q_tokens),
                 "path": doc.get("path", ""),
+                # 章节锚点：教材按章切分后带上，便于引用落到「第几章」。
+                "chapter": doc.get("chapter", ""),
+                "chapter_index": doc.get("chapter_index", 0),
                 "tags": doc.get("tags", []),
             }
         )
@@ -349,7 +352,9 @@ def format_references(results: list[dict[str, Any]]) -> str:
         return ""
     parts = ["[知识库检索参考]"]
     for idx, item in enumerate(results[:5], 1):
-        parts.append(f"{idx}. 来源：{item['title']}；匹配度：{item['score']}")
+        chapter = str(item.get("chapter") or "").strip()
+        where = f"；章节：第{item.get('chapter_index')}章 {chapter}" if chapter else ""
+        parts.append(f"{idx}. 来源：{item['title']}{where}；匹配度：{item['score']}")
         parts.append(item["excerpt"][:520])
     return "\n".join(parts)
 
@@ -1298,15 +1303,15 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
             stored = textbook_dir / f"{textbook_id}{Path(filename).suffix.lower()}"
             text = _read_text(stored)
             doc_path = stored
+            payload = _read_json_file(chapter_knowledge_dir / f"book_{textbook_id}.json")
             if not text:
-                payload = _read_json_file(chapter_knowledge_dir / f"book_{textbook_id}.json")
                 if not isinstance(payload, dict):
                     continue
                 parts: list[str] = []
                 for chapter in payload.get("chapters") or []:
                     if not isinstance(chapter, dict):
                         continue
-                    for key in ("title", "name", "summary", "description"):
+                    for key in ("chapter_title", "title", "name", "summary", "description"):
                         value = str(chapter.get(key) or "").strip()
                         if value:
                             parts.append(value)
@@ -1316,6 +1321,18 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
             if not text:
                 continue
             title = Path(filename).stem
+            # 按章切分后再入库：这样每条检索结果都带 `chapter` 锚点，
+            # 引用能落到「第几章」而不只是一个文件路径。
+            chapter_docs = _chapter_documents(
+                textbook_id=textbook_id,
+                book_title=title,
+                text=text,
+                payload=payload,
+                doc_path=doc_path,
+            )
+            if chapter_docs:
+                docs.extend(chapter_docs)
+                continue
             docs.append(
                 {
                     "id": f"textbook:{textbook_id}",
@@ -1324,6 +1341,8 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
                     "resource_type": "",
                     "path": str(doc_path),
                     "text": text,
+                    "chapter": "",
+                    "chapter_index": 0,
                     "tags": _guess_tags(title + "\n" + text),
                     "tokens": _tokenize(title + "\n" + text),
                 }
@@ -1360,6 +1379,65 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
         )
 
     return docs
+
+
+def _chapter_documents(
+    textbook_id: str,
+    book_title: str,
+    text: str,
+    payload: Any,
+    doc_path: Path,
+) -> list[dict[str, Any]]:
+    """把教材正文按章切开，每章一个文档，带 `chapter` 锚点。
+
+    只有能在正文里逐一定位到每一章标题时才切分；只要有一章标题定位不到，
+    就退回「整本一条文档」，避免切出错误的章节归属。切分后每条结果的
+    `path` 仍指向原文件，`chapter`/`chapter_index` 说明这句话出自第几章。
+    """
+
+    if not isinstance(payload, dict):
+        return []
+    chapters = payload.get("chapters") or []
+    located: list[dict[str, Any]] = []
+    for index, chapter in enumerate(chapters):
+        if not isinstance(chapter, dict):
+            return []
+        title = str(
+            chapter.get("chapter_title") or chapter.get("title") or chapter.get("name") or ""
+        ).strip()
+        if not title:
+            return []
+        position = text.find(title)
+        if position < 0:
+            return []
+        keywords = [str(k).strip() for k in chapter.get("keywords") or [] if str(k).strip()]
+        located.append({"index": index, "title": title, "pos": position, "keywords": keywords})
+    if len(located) < 2:
+        return []
+
+    located.sort(key=lambda item: item["pos"])
+    documents: list[dict[str, Any]] = []
+    for offset, item in enumerate(located):
+        start = item["pos"]
+        end = located[offset + 1]["pos"] if offset + 1 < len(located) else len(text)
+        body = text[start:end].strip()
+        if not body:
+            continue
+        documents.append(
+            {
+                "id": f"textbook:{textbook_id}#{item['index']}",
+                "title": f"{book_title} · {item['title']}",
+                "source_type": "uploaded_textbook",
+                "resource_type": "",
+                "path": str(doc_path),
+                "text": body,
+                "chapter": item["title"],
+                "chapter_index": item["index"] + 1,
+                "tags": item["keywords"] or _guess_tags(body),
+                "tokens": _tokenize(f"{item['title']}\n{body}"),
+            }
+        )
+    return documents if len(documents) >= 2 else []
 
 
 def _doc_item(path: Path, text: str, source_type: str) -> dict[str, Any]:

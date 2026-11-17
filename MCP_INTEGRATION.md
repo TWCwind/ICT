@@ -20,7 +20,7 @@
 | `get_student_profile` | 学生画像与基本信息 |
 | `get_role_competency` | 岗位能力模型（默认取岗位图谱第一个岗位） |
 | `get_project_status` | 学习路径与项目进度 |
-| `search_knowledge` | 课程知识库检索 |
+| `search_knowledge` | 课程知识库检索（教材命中带 `chapter`/`chapter_index`，可作引用锚点） |
 | `get_exercise_session` | 取一次练习会话题目 |
 | `submit_exercise_answer` | 提交答案并回写记录 |
 | `get_wrong_book` | 错题本 |
