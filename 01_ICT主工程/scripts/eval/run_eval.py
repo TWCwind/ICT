@@ -4,7 +4,7 @@
 - 静态模式（默认）只读源码与评测集，交叉校验「评测集引用的工具是否真实存在」，
   这一步是真实交叉验证，不是自查自证。
 - live 模式不在本脚本内实现，留在报告里说明（需要云端 IAM 凭据），
-  因此「引用正确率」「工具调用成功率」在此只报告基线，不假装测过。
+  因此「引用正确率」「工具调用成功率」在此明确标为未测。
 
 用法：
     python scripts/eval/run_eval.py
@@ -19,18 +19,10 @@ import pathlib
 import re
 import sys
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]          # 01_主工程
+ROOT = pathlib.Path(__file__).resolve().parents[2]          # 01_ICT主工程
 EVAL_SET = pathlib.Path(__file__).with_name("agentarts_eval_set.jsonl")
 SERVER_PY = ROOT / "backend" / ".." / ".." / "mcp_server" / "server.py"
 PATH_STAGES = {"stage-1", "stage-2", "stage-3"}
-
-# 2026-10-17 云端实测基线（9/9 工具端到端调通），不是本脚本测出来的
-BASELINE = {
-    "measured_at": "2026-10-17",
-    "tool_success": "9/9",
-    "source": "TEST_RESULTS.md「云端 9 工具端到端实测（v8）」",
-}
-
 
 def load_tools(server: pathlib.Path) -> set[str]:
     """从 server.py 真实解析 @mcp.tool() 装饰的函数名。"""
@@ -89,10 +81,12 @@ def main() -> int:
         "bad_path_stage_refs": bad_stage,
         "tool_coverage": f"{len(used & tools)}/{len(tools)}",
         "static_pass": not unknown_tool and not bad_stage,
+        "semantic_cases_unmeasured": len(cases),
         "unmeasured": {
-            "citation_correctness": "需 live 模式；基线见 2026-10-17 实测",
-            "path_executable_rate": "需 live 模式；本地容器 7/7 已验",
-            "tool_success_rate": f"{BASELINE['tool_success']}（{BASELINE['measured_at']} 云端实测）",
+            "citation_correctness": "未测：需带参考出处的运行结果与人工核验",
+            "path_executable_rate": "未测：需实际执行评测集中的学习路径任务",
+            "tool_success_rate": "未测：本脚本只验证源码契约，不调用工具；本地 MCP 调用另见 test_mcp.ps1",
+            "agentarts_cloud": "未测：需 AgentArts 工作流运行记录和实际调用轨迹",
         },
     }
 

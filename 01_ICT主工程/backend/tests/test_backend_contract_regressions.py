@@ -150,6 +150,8 @@ class BackendContractRegressionTest(unittest.TestCase):
         self.assertEqual(path["stage_count"], 0)
         self.assertEqual(evaluation["evidence"]["total"], 0)
         self.assertEqual(evaluation["score"], 0)
+        self.assertIn("规则加权值", evaluation["methodology"]["score"])
+        self.assertIn("代理值", evaluation["methodology"]["transfer_application"])
         self.assertTrue(all(item["value"] == 0 for item in evaluation["dimensions"]))
         self.assertEqual(build_exercise_session(student_id)["questions"], [])
         self.assertEqual(build_exercise_session(student_id)["source"], "no_generated_question_bank")

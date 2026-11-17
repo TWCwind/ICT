@@ -460,3 +460,15 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 | MCP 加固启动失败 | 自动化测试确认加固初始化失败不会调用原生 `mcp.run()`；非 loopback 必须有 API Key 和正数限流；direct 排障模式仅允许 loopback |
 
 本轮未运行前端构建、Playwright 全站流程或 AgentArts 云端调用；未声称这些项目通过或已接入。
+
+## 2026-11-17 国奖证据口径复核
+
+| 实际执行 | 结果 |
+| --- | --- |
+| `python 01_ICT主工程/scripts/eval/run_eval.py --json` | 50 条用例，9/9 工具名称覆盖，非法工具引用 0，静态校验通过；50 条语义答案均未测 |
+| `python -m unittest discover -s tests -p test_backend_contract_regressions.py -k test_new_learner_overviews -v` | 1/1 通过；空证据场景的评估口径字段存在 |
+| `npm ci` | 成功安装 328 个包；npm 报告 24 个依赖漏洞（13 moderate、10 high、1 critical），本轮未擅自升级依赖 |
+| `npm run check` | 通过 |
+| `npm run build` | 通过；练习页 chunk 585.39 kB 警告仍在 |
+
+本轮未执行 50 条真实 Agent 答案评分、课程前后测、教师盲评或 AgentArts 云端部署。首页宣传文件未修改。
