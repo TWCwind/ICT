@@ -1,6 +1,6 @@
-{"id":"E01","scene":"岗位","prompt":"demo 现在离目标岗位还差哪些能力？","tool":"get_role_competency","expect":"返回岗位能力矩阵与差距项"}
-{"id":"E02","scene":"岗位","prompt":"把 demo 的岗位达标度按能力维度列出来，不要总结。","tool":"get_role_competency","expect":"逐维度给出达标度"}
-{"id":"E03","scene":"岗位","prompt":"我目标是后端开发，先看岗位要求还是先看我的画像？","tool":"get_role_competency","expect":"先给岗位能力要求再对照画像"}
+{"id":"E01","scene":"岗位","prompt":"demo 现在离目标岗位还差哪些能力？","tool":"get_role_competency","expect":"返回岗位能力矩阵与差距项","required_tools":["get_role_competency","get_student_profile"]}
+{"id":"E02","scene":"岗位","prompt":"把 demo 的岗位达标度按能力维度列出来，不要总结。","tool":"get_role_competency","expect":"逐维度给出达标度","required_tools":["get_role_competency","get_student_profile"]}
+{"id":"E03","scene":"岗位","prompt":"我目标是后端开发，先看岗位要求还是先看我的画像？","tool":"get_role_competency","expect":"先给岗位能力要求再对照画像","required_tools":["get_role_competency","get_student_profile"]}
 {"id":"E04","scene":"岗位","prompt":"demo 的学习路径现在走到第几阶段了？","tool":"get_project_status","expect":"返回三阶段 status 与 mastery","path_stage":"stage-1"}
 {"id":"E05","scene":"岗位","prompt":"把 demo 每个路径阶段的 status 和掌握度原样列出来。","tool":"get_project_status","expect":"不总结，逐阶段列字段","path_stage":"stage-1"}
 {"id":"E06","scene":"岗位","prompt":"demo 第一个阶段通关了吗？还差几道题？","tool":"get_project_status","expect":"给出目标题数与已答题数","path_stage":"stage-1"}
@@ -8,13 +8,13 @@
 {"id":"E08","scene":"岗位","prompt":"在 demo 当前阶段下面加一条知识补充分支，主题是用例关系。","tool":"add_learning_branch","expect":"返回 branch_id 与 parent_stage_id","path_stage":"stage-1"}
 {"id":"E09","scene":"岗位","prompt":"demo 的练习诊断太薄弱，帮我挂一个补充分支。","tool":"add_learning_branch","expect":"新增分支并说明挂载位置","path_stage":"stage-1"}
 {"id":"E10","scene":"岗位","prompt":"demo 整体学习投入够不够支撑晋级判断？","tool":"get_learning_evaluation","expect":"给出投入分与证据数"}
-{"id":"E11","scene":"岗位","prompt":"按岗位要求，demo 最该先补哪一项能力？","tool":"get_role_competency","expect":"基于能力差距给优先级"}
+{"id":"E11","scene":"岗位","prompt":"按岗位要求，demo 最该先补哪一项能力？","tool":"get_role_competency","expect":"基于能力差距给优先级","required_tools":["get_role_competency","get_student_profile"]}
 {"id":"E12","scene":"岗位","prompt":"demo 的能力雷达在错题本口径下是什么样？","tool":"get_wrong_book","expect":"返回错题本口径的能力雷达"}
 {"id":"E13","scene":"岗位","prompt":"demo 的薄弱标签有几个，分别是什么？","tool":"get_wrong_book","expect":"返回薄弱标签及错误次数"}
 {"id":"E14","scene":"岗位","prompt":"demo 路径第三阶段要做什么？","tool":"get_project_status","expect":"返回阶段标题与任务","path_stage":"stage-3"}
 {"id":"E15","scene":"岗位","prompt":"demo 现在能晋级到 stage-2 吗？","tool":"get_project_status","expect":"给出是否达标与原因","path_stage":"stage-1"}
 {"id":"E16","scene":"岗位","prompt":"帮 demo 查一下和学习路径相关的项目状态。","tool":"get_project_status","expect":"只读状态，不改数据","path_stage":"stage-1"}
-{"id":"E17","scene":"岗位","prompt":"demo 的岗位能力里哪些已经达标？","tool":"get_role_competency","expect":"列出达标项"}
+{"id":"E17","scene":"岗位","prompt":"demo 的岗位能力里哪些已经达标？","tool":"get_role_competency","expect":"列出达标项","required_tools":["get_role_competency","get_student_profile"]}
 {"id":"E18","scene":"岗位","prompt":"如果 demo 加一条补充分支，会挂在哪一级？","tool":"add_learning_branch","expect":"说明 parent 取 current_stage_id","path_stage":"stage-1"}
 {"id":"E19","scene":"岗位","prompt":"demo 的阶段目标题数和通过阈值是多少？","tool":"get_project_status","expect":"返回 target_count 与阈值","path_stage":"stage-1"}
 {"id":"E20","scene":"岗位","prompt":"用 demo 的数据说明路径推进的判定规则。","tool":"get_project_status","expect":"引用真实字段解释规则","path_stage":"stage-1"}
@@ -39,7 +39,7 @@
 {"id":"E39","scene":"学习","prompt":"把 demo 的五维表现列出来。","tool":"get_learning_evaluation","expect":"返回 dimensions"}
 {"id":"E40","scene":"学习","prompt":"demo 的薄弱点在学习评估里是怎么算的？","tool":"get_learning_evaluation","expect":"引用 weak_points"}
 {"id":"E41","scene":"学习","prompt":"demo 这周学习事件有多少条？","tool":"get_learning_evaluation","expect":"返回 learning_events 计数"}
-{"id":"E42","scene":"学习","prompt":"demo 的画像和目标岗位对得上吗？","tool":"get_student_profile","expect":"读取画像后再回答"}
+{"id":"E42","scene":"学习","prompt":"demo 的画像和目标岗位对得上吗？","tool":"get_student_profile","expect":"读取画像后再回答","required_tools":["get_student_profile","get_role_competency"]}
 {"id":"E43","scene":"学习","prompt":"先出题再把我答的题判一下。","tool":"get_exercise_session","expect":"先出题，不跳步"}
 {"id":"E44","scene":"学习","prompt":"题库里有没有关于 include 关系的题？","tool":"get_exercise_session","expect":"按题库内容出题"}
 {"id":"E45","scene":"学习","prompt":"demo 答完题之后路径进度变了吗？","tool":"submit_exercise_answer","expect":"返回更新后的 path_progress","path_stage":"stage-1"}
@@ -47,4 +47,4 @@
 {"id":"E47","scene":"学习","prompt":"demo 的错题里有重复出错的题目吗？","tool":"get_wrong_book","expect":"指出同题重复作答"}
 {"id":"E48","scene":"学习","prompt":"基于 demo 的错题，下一轮该练什么？","tool":"get_wrong_book","expect":"依据薄弱标签给建议"}
 {"id":"E49","scene":"学习","prompt":"demo 的掌握度是 0 还是没数据？说清楚。","tool":"get_learning_evaluation","expect":"区分 0 分与缺证据"}
-{"id":"E50","scene":"学习","prompt":"把 demo 从画像到评估的链路走一遍，每步都调工具。","tool":"get_student_profile","expect":"多步链路，每步有工具返回"}
+{"id":"E50","scene":"学习","prompt":"把 demo 从画像到评估的链路走一遍，每步都调工具。","tool":"get_student_profile","expect":"多步链路，每步有工具返回","required_tools":["get_student_profile","get_role_competency","get_project_status","search_knowledge","get_exercise_session","get_wrong_book","get_learning_evaluation"]}

@@ -45,6 +45,11 @@ def load_cases(path: pathlib.Path) -> list[dict]:
                 raise SystemExit(f"评测集第 {lineno} 行缺少字段 {key}")
         if case["id"] in seen:
             raise SystemExit(f"评测集出现重复 id：{case['id']}")
+        required = case.get("required_tools", [case["tool"]])
+        if not isinstance(required, list) or not required or not all(isinstance(name, str) and name for name in required):
+            raise SystemExit(f"评测集第 {lineno} 行 required_tools 必须是非空工具名列表")
+        if required[0] != case["tool"]:
+            raise SystemExit(f"评测集第 {lineno} 行首个 required_tools 必须等于 tool")
         seen.add(case["id"])
         cases.append(case)
     return cases
@@ -60,13 +65,16 @@ def main() -> int:
     tools = load_tools(SERVER_PY)
     cases = load_cases(EVAL_SET)
 
-    unknown_tool = [c["id"] for c in cases if c["tool"] not in tools]
+    unknown_tool = [c["id"] for c in cases if any(
+        name not in tools for name in c.get("required_tools", [c["tool"]])
+    )]
     bad_stage = [
         c["id"]
         for c in cases
         if c.get("path_stage") and c["path_stage"] not in PATH_STAGES
     ]
-    used = {c["tool"] for c in cases}
+    used = {name for c in cases for name in c.get("required_tools", [c["tool"]])}
+    multi_tool_cases = [c["id"] for c in cases if len(c.get("required_tools", [c["tool"]])) > 1]
     scenes: dict[str, int] = {}
     for case in cases:
         scenes[case["scene"]] = scenes.get(case["scene"], 0) + 1
@@ -82,6 +90,7 @@ def main() -> int:
         "tool_coverage": f"{len(used & tools)}/{len(tools)}",
         "static_pass": not unknown_tool and not bad_stage,
         "semantic_cases_unmeasured": len(cases),
+        "multi_tool_cases": multi_tool_cases,
         "unmeasured": {
             "citation_correctness": "未测：需带参考出处的运行结果与人工核验",
             "path_executable_rate": "未测：需实际执行评测集中的学习路径任务",
