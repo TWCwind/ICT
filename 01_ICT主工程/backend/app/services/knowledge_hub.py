@@ -1304,6 +1304,15 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
             text = _read_text(stored)
             doc_path = stored
             payload = _read_json_file(chapter_knowledge_dir / f"book_{textbook_id}.json")
+            # Roadshow/imported metadata may point to a readable original in
+            # the data root even when the upload copy is absent. Prefer that
+            # original over synthetic keyword text so excerpts are checkable.
+            if not text and isinstance(payload, dict) and payload.get("source_document"):
+                candidate = (settings.data_path / str(payload["source_document"])).resolve()
+                if candidate.is_relative_to(settings.data_path.resolve()):
+                    original = _read_text(candidate)
+                    if original:
+                        text, doc_path = original, candidate
             if not text:
                 if not isinstance(payload, dict):
                     continue
@@ -1327,7 +1336,7 @@ def _collect_documents(student_id: str) -> list[dict[str, Any]]:
                 textbook_id=textbook_id,
                 book_title=title,
                 text=text,
-                payload=payload,
+                payload=payload if doc_path.suffix.lower() != ".json" else None,
                 doc_path=doc_path,
             )
             if chapter_docs:
@@ -1399,6 +1408,18 @@ def _chapter_documents(
         return []
     chapters = payload.get("chapters") or []
     located: list[dict[str, Any]] = []
+    # Only standalone headings can delimit a chapter. A title mentioned in a
+    # table of contents or ordinary prose is not a chapter boundary.
+    chapter_titles = {str(c.get("chapter_title") or c.get("title") or c.get("name") or "").strip() for c in chapters if isinstance(c, dict)}
+    heading_lines = []
+    cursor = 0
+    for line in text.splitlines(keepends=True):
+        clean = line.strip()
+        heading = re.sub(r"^#{1,6}\s+", "", clean).strip()
+        if heading in chapter_titles and (clean.startswith("#") or clean == heading):
+            heading_lines.append((cursor, heading, clean.startswith("#")))
+        cursor += len(line)
+    previous = -1
     for index, chapter in enumerate(chapters):
         if not isinstance(chapter, dict):
             return []
@@ -1407,22 +1428,35 @@ def _chapter_documents(
         ).strip()
         if not title:
             return []
-        position = text.find(title)
-        if position < 0:
+        candidates = [(pos, marked) for pos, heading, marked in heading_lines if heading == title and pos > previous]
+        # A real chapter has substantive body text before the next heading;
+        # TOC entries grouped together do not.
+        valid = []
+        for candidate, marked in candidates:
+            next_heading = min((pos for pos, _, _ in heading_lines if pos > candidate), default=len(text))
+            body_start = text.find("\n", candidate) + 1
+            if body_start and len(text[body_start:next_heading].strip()) >= 30:
+                valid.append((candidate, marked))
+        marked = [pos for pos, is_markdown in valid if is_markdown]
+        plain = [pos for pos, is_markdown in valid if not is_markdown]
+        # Ambiguous duplicate headings must not silently assign a false chapter.
+        chosen = marked if marked else plain
+        if len(chosen) != 1:
             return []
+        position = chosen[0]
+        previous = position
         keywords = [str(k).strip() for k in chapter.get("keywords") or [] if str(k).strip()]
         located.append({"index": index, "title": title, "pos": position, "keywords": keywords})
     if len(located) < 2:
         return []
 
-    located.sort(key=lambda item: item["pos"])
     documents: list[dict[str, Any]] = []
     for offset, item in enumerate(located):
         start = item["pos"]
         end = located[offset + 1]["pos"] if offset + 1 < len(located) else len(text)
         body = text[start:end].strip()
-        if not body:
-            continue
+        if len(body) < 30:
+            return []
         documents.append(
             {
                 "id": f"textbook:{textbook_id}#{item['index']}",
@@ -1433,6 +1467,8 @@ def _chapter_documents(
                 "text": body,
                 "chapter": item["title"],
                 "chapter_index": item["index"] + 1,
+                "source_start": start,
+                "source_end": end,
                 "tags": item["keywords"] or _guess_tags(body),
                 "tokens": _tokenize(f"{item['title']}\n{body}"),
             }

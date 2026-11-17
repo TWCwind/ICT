@@ -26,7 +26,7 @@ OpenAI 兼容模型（默认读 `backend/.env` 的 LLM_* 配置），拿到它�
 from __future__ import annotations
 
 import argparse
-import ast
+import hashlib
 import asyncio
 import json
 import os
@@ -63,7 +63,7 @@ def load_llm() -> tuple[str, dict[str, str], str]:
 
 
 def parse_tools() -> list[dict]:
-    """优先用 FastMCP 自己的 tools/list（与线上一致），失败再退回 ast 解析。"""
+    """Require the actual FastMCP tool schema; never substitute guessed parameters."""
     try:
         for p in (str(REPO), str(MAIN)):
             if p not in sys.path:
@@ -82,31 +82,15 @@ def parse_tools() -> list[dict]:
             }
             for t in listed
         ]
-        if tools:
-            return tools
+        if not tools:
+            raise RuntimeError("FastMCP returned no tools")
+        return tools
     except Exception as exc:  # noqa: BLE001
-        print(f"[提示] FastMCP 不可用（{type(exc).__name__}），改用源码解析工具名与参数")
+        raise RuntimeError(f"真实 FastMCP tools/list 不可用：{type(exc).__name__}") from exc
 
-    tree = ast.parse(MCP_SERVER.read_text(encoding="utf-8"))
-    tools = []
-    for node in tree.body:
-        if not isinstance(node, ast.FunctionDef):
-            continue
-        if not any("mcp.tool" in ast.unparse(d) for d in node.decorator_list):
-            continue
-        doc = (ast.get_docstring(node) or "").strip().split("\n\n")[0]
-        props = {a.arg: {"type": "string"} for a in node.args.args if a.arg not in ("self", "cls")}
-        tools.append(
-            {
-                "type": "function",
-                "function": {
-                    "name": node.name,
-                    "description": doc[:800],
-                    "parameters": {"type": "object", "properties": props, "required": list(props)},
-                },
-            }
-        )
-    return tools
+
+def fingerprint(value: object) -> str:
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
 
 
 SYSTEM = "你是工具路由器。根据用户问题，从给定工具里选择唯一最合适的一个并调用它。只能调用一个工具；不要输出解释文字。"
@@ -138,10 +122,6 @@ def pick_tool(client, url, headers, model, tools, case) -> dict:
     if calls:
         fn = calls[0].get("function") or {}
         return {"chosen": fn.get("name"), "args": fn.get("arguments"), "ms": ms}
-    text = msg.get("content") or ""
-    for t in tools:
-        if t["function"]["name"] in text:
-            return {"chosen": t["function"]["name"], "ms": ms, "raw": text[:200]}
     return {"chosen": None, "ms": ms, "error": "no_tool_call"}
 
 
@@ -177,11 +157,13 @@ def main() -> None:
 
     import httpx  # noqa: PLC0415
 
-    url, headers, model = load_llm()
     tools = parse_tools()
+    url, headers, model = load_llm()
     cases = [json.loads(l) for l in EVAL_SET.read_text(encoding="utf-8").splitlines() if l.strip()]
     if args.limit:
         cases = cases[: args.limit]
+    schema_hash = fingerprint(tools)
+    dataset_hash = hashlib.sha256(EVAL_SET.read_bytes()).hexdigest()
 
     out_dir = pathlib.Path(args.out)
     if not out_dir.is_absolute():
@@ -196,11 +178,13 @@ def main() -> None:
             try:
                 res = pick_tool(client, url, headers, model, tools, case)
             except Exception as exc:  # noqa: BLE001
-                res = {"chosen": None, "ms": 0, "error": f"{type(exc).__name__}: {exc}"[:200]}
+                res = {"chosen": None, "ms": 0, "error": type(exc).__name__}
+            plan_error = None
             try:
                 plan = plan_tools(client, url, headers, model, tools, case)
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 plan = []
+                plan_error = type(exc).__name__
             required = case.get("required_tools") or [case["tool"]]
             row = {
                 "id": case["id"],
@@ -218,7 +202,11 @@ def main() -> None:
                 "req_hit": all(t in plan for t in required),
                 "ms": res.get("ms"),
                 "error": res.get("error"),
+                "plan_error": plan_error,
                 "args": res.get("args"),
+                "tool_schema_sha256": schema_hash,
+                "eval_set_sha256": dataset_hash,
+                "model": model,
             }
             rows.append(row)
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -246,13 +234,15 @@ def main() -> None:
         "top1_accuracy": round(hit / total, 4) if total else 0,
         "plan_hit": plan_hit,
         "plan_accuracy": round(plan_hit / total, 4) if total else 0,
-        "errors": sum(1 for r in rows if r["error"]),
+        "errors": sum(1 for r in rows if r["error"] or r["plan_error"]),
         "avg_ms": int(sum(r["ms"] or 0 for r in rows) / total) if total else 0,
         "multi_tool_cases": len(multi),
         "multi_tool_plan_hit": req_hit,
         "multi_tool_plan_accuracy": round(req_hit / len(multi), 4) if multi else 0,
         "by_tool": by_tool,
         "model": model,
+        "tool_schema_sha256": schema_hash,
+        "eval_set_sha256": dataset_hash,
         "measured_at": time.strftime("%Y-%m-%d %H:%M"),
     }
     (out_dir / f"route_eval_{stamp}.summary.json").write_text(
@@ -262,7 +252,7 @@ def main() -> None:
     lines = [
         "# 50 条评测集 · 工具路由判分（真实模型，temperature=0）",
         "",
-        f"- 测于 {summary['measured_at']}，模型 `{model}`，工具集为 FastMCP `tools/list` 导出的 {len(tools)} 个工具",
+        f"- 测于 {summary['measured_at']}，模型 `{model}`，工具集为 FastMCP `tools/list` 导出的 {len(tools)} 个工具；schema SHA256 `{schema_hash}`；评测集 SHA256 `{dataset_hash}`",
         f"- 单步 Top-1 **{hit}/{total}（{summary['top1_accuracy'] * 100:.1f}%）**；"
         f"执行计划覆盖 **{plan_hit}/{total}（{summary['plan_accuracy'] * 100:.1f}%）**；"
         f"多工具用例（`required_tools` >1）的计划全覆盖 **{req_hit}/{len(multi)}**；"
