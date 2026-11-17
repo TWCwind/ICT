@@ -17,7 +17,7 @@ OpenAI 兼容模型（默认读 `backend/.env` 的 LLM_* 配置），拿到它�
 用法：
     python scripts/eval/route_eval.py                 # 全量 50 条
     python scripts/eval/route_eval.py --limit 5       # 抽查
-    python scripts/eval/route_eval.py --out results   # 指定输出目录（相对 01_主工程）
+    python scripts/eval/route_eval.py --out C:/temp/ict-route-eval   # 指定仓库外输出目录
 
 输出：<out>/route_eval_<日期>.jsonl（逐条明细）、`.summary.json`、`.md`（汇总表）。
 脚本不打印任何密钥；只读 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / LLM_CHAT_PATH 等公开配置项。
@@ -33,6 +33,7 @@ import os
 import pathlib
 import re
 import sys
+import tempfile
 import time
 
 MAIN = pathlib.Path(__file__).resolve().parents[2]  # 01_主工程
@@ -138,7 +139,7 @@ def plan_tools(client, url, headers, model, tools, case) -> list[str]:
     }
     resp = client.post(url, headers=headers, json=body)
     if resp.status_code != 200:
-        return []
+        raise RuntimeError(f"plan_http_{resp.status_code}")
     text = ((resp.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
     found = re.search(r"\[[^\]]*\]", text)
     if not found:
@@ -152,7 +153,7 @@ def plan_tools(client, url, headers, model, tools, case) -> list[str]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0)
-    ap.add_argument("--out", default="eval-results", help="输出目录（相对 01_主工程）")
+    ap.add_argument("--out", default=str(pathlib.Path(tempfile.gettempdir()) / "ict-route-eval"), help="仓库外的输出目录")
     args = ap.parse_args()
 
     import httpx  # noqa: PLC0415
@@ -165,9 +166,9 @@ def main() -> None:
     schema_hash = fingerprint(tools)
     dataset_hash = hashlib.sha256(EVAL_SET.read_bytes()).hexdigest()
 
-    out_dir = pathlib.Path(args.out)
-    if not out_dir.is_absolute():
-        out_dir = MAIN / out_dir
+    out_dir = pathlib.Path(args.out).resolve()
+    if out_dir.is_relative_to(REPO.resolve()):
+        ap.error("--out must be outside the repository")
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime("%Y%m%d")
     detail = out_dir / f"route_eval_{stamp}.jsonl"

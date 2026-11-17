@@ -21,13 +21,13 @@
 | `get_role_competency` | 岗位能力模型（默认取岗位图谱第一个岗位） |
 | `get_project_status` | 学习路径与项目进度 |
 | `search_knowledge` | 课程知识库检索；只有正文标题能够依序可靠定位时教材命中才带 `chapter`/`chapter_index`，否则退回整书且章节为空。锚点是待核对的来源声明，不能单独证明引用正确。 |
-
-引用验证：`python 01_ICT主工程/scripts/eval/cite_check.py --out <仓库外目录>` 将元数据完整与原文片段、章节范围核对分开统计。源文件缺失、非文本或不可读取时标记未验证；生成资源按独立文件核对，不伪造教材章节。该命令需要先安装项目 MCP 依赖，本轮在仓库外独立 Python 环境安装后实际调用：5 个检索用例、13 个引用均可在源文件找到，其中 7 个教材章节锚点均通过正文范围核对；输出位于 `%TEMP%/ict-pr5-cite-result`。
 | `get_exercise_session` | 取一次练习会话题目 |
 | `submit_exercise_answer` | 提交答案并回写记录 |
 | `get_wrong_book` | 错题本 |
 | `get_learning_evaluation` | 学习评估与证据 |
 | `add_learning_branch` | 新增学习分支 |
+
+引用验证：`python 01_ICT主工程/scripts/eval/cite_check.py --out <仓库外目录>` 将元数据完整与原文片段、章节范围核对分开统计。源文件缺失、非文本或不可读取时标记未验证；生成资源按独立文件核对，不伪造教材章节。该命令需要先安装项目 MCP 依赖，本轮在仓库外独立 Python 环境安装后实际调用：5 个检索用例、13 个引用均可在源文件找到，其中 7 个教材章节锚点均通过正文范围核对；输出位于 `%TEMP%/ict-pr5-cite-result`。
 
 ## 2. 安装
 

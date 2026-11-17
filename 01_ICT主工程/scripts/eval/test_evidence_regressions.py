@@ -4,14 +4,14 @@ import pathlib
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 MAIN = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(MAIN / "backend"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from app.services.knowledge_hub import _chapter_documents, _read_text
 from cite_check import check_citation
-from route_eval import parse_tools
+from route_eval import parse_tools, plan_tools
 
 
 class EvidenceTests(unittest.TestCase):
@@ -50,7 +50,10 @@ class EvidenceTests(unittest.TestCase):
             item = {"id": "textbook:x#1", "title": "讲义", "path": str(source), "chapter": "需求获取与表达", "chapter_index": 2, "excerpt": "访谈正文内容。"}
             self.assertTrue(check_citation(item, _read_text, [root], root)["source_verified"])
             item["excerpt"] = "范围正文内容。"
-            self.assertEqual(check_citation(item, _read_text, [root], root)["reason"], "excerpt_not_in_claimed_chapter")
+            wrong_chapter = check_citation(item, _read_text, [root], root)
+            self.assertEqual(wrong_chapter["reason"], "excerpt_not_in_claimed_chapter")
+            self.assertTrue(wrong_chapter["source_verified"])
+            self.assertFalse(wrong_chapter["chapter_verified"])
             item["excerpt"] = "伪造片段"
             self.assertEqual(check_citation(item, _read_text, [root], root)["reason"], "excerpt_not_in_source")
 
@@ -67,6 +70,13 @@ class EvidenceTests(unittest.TestCase):
         with patch.dict(sys.modules, {"mcp_server.server": None}):
             with self.assertRaisesRegex(RuntimeError, "FastMCP"):
                 parse_tools()
+
+    def test_plan_http_failure_is_recordable(self):
+        client = Mock()
+        client.post.return_value.status_code = 503
+        tools = [{"function": {"name": "search_knowledge"}}]
+        with self.assertRaisesRegex(RuntimeError, "plan_http_503"):
+            plan_tools(client, "https://example.invalid", {}, "test-model", tools, {"prompt": "test"})
 
 
 if __name__ == "__main__":

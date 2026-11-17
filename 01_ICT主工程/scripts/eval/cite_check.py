@@ -40,6 +40,7 @@ def check_citation(item: dict, read_text, roots: list[pathlib.Path], metadata_di
     if normalize(quoted) not in normalize(body):
         result["reason"] = "excerpt_not_in_source"
         return result
+    result["source_verified"] = True
     if chapter:
         from app.services.knowledge_hub import _chapter_documents
         textbook_id = str(item.get("id", "")).split(":", 1)[-1].split("#", 1)[0]
@@ -58,7 +59,6 @@ def check_citation(item: dict, read_text, roots: list[pathlib.Path], metadata_di
             result["reason"] = "excerpt_not_in_claimed_chapter"
             return result
         result["chapter_verified"] = True
-    result["source_verified"] = True
     result["reason"] = "verified"
     return result
 
