@@ -6,6 +6,7 @@ import logging
 import os
 import unittest
 from typing import Any, Dict, List
+from unittest.mock import patch
 
 from mcp_server import hardening
 
@@ -61,7 +62,13 @@ def _call(app, path: str, method: str = "GET", headers: Dict[str, str] | None = 
 class _EnvMixin:
     """在用例前后保存/恢复 hardening 相关的环境变量。"""
 
-    KEYS = ("MCP_API_KEY", "MCP_RATE_LIMIT_PER_MIN", "MCP_HEALTH_PATH", "MCP_LOG_REQUESTS")
+    KEYS = (
+        "MCP_API_KEY",
+        "MCP_RATE_LIMIT_PER_MIN",
+        "MCP_HEALTH_PATH",
+        "MCP_LOG_REQUESTS",
+        "MCP_TRANSPORT_DIRECT",
+    )
 
     def setUp(self) -> None:  # noqa: D401 - unittest 钩子
         self._saved = {k: os.environ.get(k) for k in self.KEYS}
@@ -241,6 +248,56 @@ class EnvParsingTests(_EnvMixin, unittest.TestCase):
         os.environ["MCP_RATE_LIMIT_PER_MIN"] = "not-a-number"
         app = hardening.HardeningMiddleware(_DummyApp())
         self.assertEqual(app.limiter.per_minute, 240)
+
+
+class ServeFailClosedTests(_EnvMixin, unittest.TestCase):
+    class _FakeMcp:
+        def __init__(self) -> None:
+            self.run_calls: List[Dict[str, Any]] = []
+
+        def run(self, **kwargs: Any) -> None:
+            self.run_calls.append(kwargs)
+
+
+    def test_hardening_initialization_failure_never_falls_back(self) -> None:
+        mcp = self._FakeMcp()
+        env = {"MCP_API_KEY": "local-test-key", "MCP_RATE_LIMIT_PER_MIN": "60", "MCP_TRANSPORT_DIRECT": "0"}
+        with patch.dict(os.environ, env), patch.object(hardening, "_install_logging"), patch.object(
+            hardening, "build_app", side_effect=ValueError("broken middleware")
+        ):
+            with self.assertRaisesRegex(RuntimeError, "refusing to start without protection"):
+                hardening.serve(mcp, "127.0.0.1", 8010)
+        self.assertEqual(mcp.run_calls, [])
+
+    def test_direct_mode_is_allowed_only_for_explicit_loopback_diagnostics(self) -> None:
+        mcp = self._FakeMcp()
+        env = {"MCP_API_KEY": "local-test-key", "MCP_RATE_LIMIT_PER_MIN": "60", "MCP_TRANSPORT_DIRECT": "1"}
+        with patch.dict(os.environ, env), patch.object(hardening, "_install_logging"):
+            hardening.serve(mcp, "localhost", 8010)
+        self.assertEqual(mcp.run_calls, [{"transport": "streamable-http"}])
+
+    def test_direct_mode_is_rejected_for_non_loopback_listener(self) -> None:
+        mcp = self._FakeMcp()
+        env = {"MCP_API_KEY": "local-test-key", "MCP_RATE_LIMIT_PER_MIN": "60", "MCP_TRANSPORT_DIRECT": "1"}
+        with patch.dict(os.environ, env), patch.object(hardening, "_install_logging"):
+            with self.assertRaisesRegex(RuntimeError, "only allowed on a loopback"):
+                hardening.serve(mcp, "0.0.0.0", 8010)
+        self.assertEqual(mcp.run_calls, [])
+
+    def test_non_loopback_listener_requires_api_key_and_rate_limit(self) -> None:
+        mcp = self._FakeMcp()
+        with patch.dict(os.environ, {"MCP_API_KEY": "", "MCP_RATE_LIMIT_PER_MIN": "60"}), patch.object(
+            hardening, "_install_logging"
+        ):
+            with self.assertRaisesRegex(RuntimeError, "MCP_API_KEY is required"):
+                hardening.serve(mcp, "0.0.0.0", 8010)
+
+        with patch.dict(os.environ, {"MCP_API_KEY": "external-test-key", "MCP_RATE_LIMIT_PER_MIN": "0"}), patch.object(
+            hardening, "_install_logging"
+        ):
+            with self.assertRaisesRegex(RuntimeError, "MCP_RATE_LIMIT_PER_MIN must be greater than zero"):
+                hardening.serve(mcp, "0.0.0.0", 8010)
+        self.assertEqual(mcp.run_calls, [])
 
 
 if __name__ == "__main__":

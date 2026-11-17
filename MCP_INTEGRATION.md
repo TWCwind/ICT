@@ -1,7 +1,7 @@
 # MCP 服务：启动、加固、测试与 AgentArts 接入
 
-最近验证：**2026-11-16**。工具数 **9** 个；鉴权、限流、日志脱敏已实现并有 25 项自动化测试；
-本机与公网隧道均实测可用。**没有**完成 AgentArts 云端网关注册（缺固定公网域名 + TLS + 团队空间）。
+最近验证：**2026-11-17**。当前 MCP 自动化测试 **30/30 通过**，隔离临时数据上的 Streamable HTTP smoke **9/9 工具调用通过**。
+**没有**完成 AgentArts 云端网关注册（缺固定公网域名 + TLS + 团队空间）。
 
 ## 1. 实现概况
 
@@ -49,9 +49,10 @@ Set-ExecutionPolicy -Scope Process Bypass
 | `MCP_HOST` / `MCP_PORT` | `127.0.0.1` / `8010` | 监听地址；对公网必须经网关或 TLS 终结，不要直接开 `0.0.0.0` |
 | `MCP_API_KEY` | 无 | 对外暴露时必填；支持 `X-API-Key` 或 `Authorization: Bearer <key>` |
 | `MCP_RATE_LIMIT_PER_MIN` | `240` | 每客户端每分钟请求上限，`0` 关闭限流 |
+| `MCP_DATA_DIR` | 自动探测项目数据 | 显式指定 MCP 读写的数据目录；集成测试使用临时 `test/generated` 副本 |
 | `MCP_HEALTH_PATH` | `/healthz` | 健康检查路径 |
 | `MCP_LOG_REQUESTS` / `MCP_LOG_LEVEL` | 开 / `INFO` | 访问日志开关与级别 |
-| `MCP_TRANSPORT_DIRECT` | 无 | 设为 `1` 时绕过加固直接 `mcp.run()`，**仅限排障** |
+| `MCP_TRANSPORT_DIRECT` | 无 | 只有显式设为 `1` 且监听地址是 loopback 时，才允许本地排障绕过加固 |
 
 ## 4. 加固行为（`hardening.py`）
 
@@ -62,23 +63,20 @@ Set-ExecutionPolicy -Scope Process Bypass
    key 明文一次都不会出现。
 4. **健康检查**：`/healthz` 不需要 key（否则网关无从探活），且不占用限流配额。
 5. 只拦截 `/mcp` 路径，其他路径原样放行，方便与反代共存。
+6. **Fail closed**：非 loopback 监听必须配置 API Key 和正数限流；加固层初始化失败时服务停止，
+   不会退回无保护的原生 MCP。`MCP_TRANSPORT_DIRECT=1` 在非 loopback 地址上会被拒绝。
 
-## 5. 验证记录（2026-11-16）
+## 5. 验证记录（2026-11-17）
 
 | 验证项 | 结果 |
 | --- | --- |
-| 自动化测试 | `python -m unittest discover -s mcp_server/tests -t .` → **25 passed**（工作副本与仓库树各跑一遍） |
-| 健康检查 | `/healthz` → `200 {"ok": true, "auth": "api_key", "rate_limit_per_min": 240}` |
-| 未带 key | `POST /mcp` → `401` |
-| 带 key 初始化 | `initialize` → `200` + SSE 响应 |
-| 工具清单 | `tools/list` → **9 个工具** |
-| 业务调用 | `get_student_profile(demo)` 返回真实画像；`get_role_competency(前端开发工程师)` 返回岗位能力 |
-| 限流 | 65 次突发请求 → 7 次 `429` |
-| 日志脱敏 | 服务日志中 key 明文出现 **0** 次 |
-| 公网隧道 | Cloudflare 快速隧道下 `/healthz` `200`、无 key `401`、带 key 真实数据调用成功 |
-| 全新克隆 | 仅用 `roadshow-seed` 数据启动，9 个工具与画像调用均正常 |
+| 自动化测试 | `powershell -NoProfile -ExecutionPolicy Bypass -File .\test_mcp.ps1` → **30 tests OK** |
+| 隔离 HTTP smoke | 脚本自行启动本机服务，`tools/list` 发现 **9 个工具**，业务调用 **9/9 通过** |
+| 写操作隔离 | 题库、作答和学习分支只写入临时 `test/generated` 数据副本，脚本退出后清理 |
+| 启动失败安全 | 单测覆盖加固初始化失败不降级、direct 模式仅 loopback、非 loopback 必须有 key 和限流 |
+| 本轮未重测 | 公网隧道与 AgentArts 网关注册未在本轮验证；没有声称已接入 AgentArts 云端 |
 
-未验证：AgentArts 网关注册、TLS 证书签发、团队空间鉴权、并发压测。
+未验证：AgentArts 网关注册、TLS 证书签发、团队空间鉴权、公网部署与并发压测。
 
 ## 6. 客户端直连示例
 

@@ -57,9 +57,23 @@ def _pick_data_root(candidates: tuple[Path, ...]) -> Path:
     return candidates[0]
 
 
-BACKEND_DATA_ROOT = _pick_data_root(
+_DEFAULT_BACKEND_DATA_ROOT = _pick_data_root(
     (BACKEND_ROOT / "data", MAIN_PROJECT_ROOT / "roadshow-seed")
 )
+
+
+def _active_data_root() -> Path:
+    """Use an explicit MCP data directory when supplied, otherwise project data."""
+    configured = os.environ.get("MCP_DATA_DIR", "").strip()
+    if not configured:
+        return _DEFAULT_BACKEND_DATA_ROOT
+    candidate = Path(configured).expanduser()
+    if not candidate.is_absolute():
+        candidate = WORKSPACE_ROOT / candidate
+    return candidate.resolve()
+
+
+BACKEND_DATA_ROOT = _active_data_root()
 
 
 JOB_MODULE_ROOT = _first_existing_dir(

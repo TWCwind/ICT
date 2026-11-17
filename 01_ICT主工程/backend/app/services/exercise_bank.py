@@ -14,7 +14,10 @@ from app.services.resource_structure import extract_questions_json
 def build_exercise_session(student_id: str, limit: int = 12, resource_ids: list[str] | None = None, refresh_seed: int = 0) -> dict[str, Any]:
     records = _read_records(student_id)
     answered = {r.get("question_id"): r for r in records}
-    generated_questions = _load_generated_questions(student_id, resource_ids=resource_ids) if resource_ids else []
+    # An omitted resource filter means “use every generated bank for this learner”.
+    # Keep this call unconditional so the generated-bank flow also works when the
+    # session endpoint is opened without an explicit resource_ids query parameter.
+    generated_questions = _load_generated_questions(student_id, resource_ids=resource_ids)
     questions = generated_questions
     source_note = "generated_question_bank" if generated_questions else "no_generated_question_bank"
 

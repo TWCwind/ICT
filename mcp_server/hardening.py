@@ -4,9 +4,8 @@
 
 设计原则
 --------
-1. **全部默认非阻断**。没配 ``MCP_API_KEY`` 就不鉴权；限流阈值默认很宽；
-   健康检查与正常请求互不干扰。这样在 AgentArts 运行时（走 IAM 签名、
-   不带 API Key）里不会打断已有链路。
+1. **按监听范围保护**。loopback 本地开发允许不配 ``MCP_API_KEY``；
+   非 loopback 监听必须配置 API Key 并启用限流。健康检查不占用限流配额。
 2. **纯 ASGI 中间件**，不依赖 Starlette / FastAPI 的具体版本，也不改动
    FastMCP 内部实现。
 3. **日志不记请求头和请求体**。只记「方法 + 路径 + 客户端 + 状态码 + 耗时」，
@@ -14,17 +13,18 @@
 
 环境变量
 --------
-- ``MCP_API_KEY``            设置后启用 API Key 鉴权；不设则不鉴权。
+- ``MCP_API_KEY``            API Key；非 loopback 监听时必填。
 - ``MCP_RATE_LIMIT_PER_MIN`` 每分钟每客户端允许的请求数，默认 240；``0`` 表示不限。
 - ``MCP_HEALTH_PATH``        健康检查路径，默认 ``/healthz``。
 - ``MCP_LOG_REQUESTS``       设为 ``0`` 关闭访问日志，默认开启。
-- ``MCP_TRANSPORT_DIRECT``   设为 ``1`` 退回到 FastMCP 原生 ``mcp.run()``（应急开关）。
+- ``MCP_TRANSPORT_DIRECT``   设为 ``1`` 时仅允许在 loopback 地址排障，跳过加固。
 """
 
 from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -52,6 +52,27 @@ def _env_int(name: str, default: int) -> int:
     except ValueError:
         logger.warning("环境变量 %s=%r 不是整数，回退为默认值 %d", name, raw, default)
         return default
+
+
+def _is_loopback_host(host: str) -> bool:
+    normalized = str(host or "").strip().strip("[]").casefold()
+    if normalized == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _validate_listener_security(host: str) -> bool:
+    """Require authentication and rate limiting on non-loopback listeners."""
+    loopback = _is_loopback_host(host)
+    if not loopback:
+        if not os.environ.get("MCP_API_KEY", "").strip():
+            raise RuntimeError("MCP_API_KEY is required when MCP_HOST is reachable beyond loopback.")
+        if _env_int("MCP_RATE_LIMIT_PER_MIN", 240) <= 0:
+            raise RuntimeError("MCP_RATE_LIMIT_PER_MIN must be greater than zero on a non-loopback listener.")
+    return loopback
 
 
 def _key_fingerprint(value: str) -> str:
@@ -253,22 +274,24 @@ def build_app(mcp) -> Any:
 def serve(mcp, host: str, port: int) -> None:
     """对外启动入口。
 
-    应急开关：``MCP_TRANSPORT_DIRECT=1`` 时退回 FastMCP 原生启动方式，
-    跳过全部加固逻辑（用于加固层本身出问题时快速恢复）。
+    加固层不可用时 fail closed。仅显式设置 ``MCP_TRANSPORT_DIRECT=1`` 且
+    绑定 loopback 地址时，才允许本地排障绕过加固层。
     """
     _install_logging()
+    loopback = _validate_listener_security(host)
 
     if os.environ.get("MCP_TRANSPORT_DIRECT", "").strip() == "1":
+        if not loopback:
+            raise RuntimeError("MCP_TRANSPORT_DIRECT is only allowed on a loopback listener.")
         logger.warning("MCP_TRANSPORT_DIRECT=1，跳过加固层，使用 FastMCP 原生启动")
         mcp.run(transport="streamable-http")
         return
 
     try:
         app = build_app(mcp)
-    except Exception as exc:  # 加固层不可用时宁可降级也不要让服务起不来
-        logger.error("加固层初始化失败，降级为原生启动：%s: %s", type(exc).__name__, exc)
-        mcp.run(transport="streamable-http")
-        return
+    except Exception as exc:
+        logger.error("加固层初始化失败（%s），拒绝以未加固模式启动", type(exc).__name__)
+        raise RuntimeError("MCP hardening initialization failed; refusing to start without protection.") from None
 
     import uvicorn
 

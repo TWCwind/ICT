@@ -447,3 +447,16 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 | `git diff --check` | 通过 |
 
 服务运行于本地 5173/8000，后端只读写 `%TEMP%\ict-pr3-roadshow-20261116` 的隔离数据副本。此次未接入 AgentArts 云端，也未验证未配置模型时的外部模型成功生成路径。
+
+## 2026-11-17 PR #5 三项问题修复验证
+
+测试在独立 worktree `C:\Users\xiajun\AppData\Local\Temp\ict-pr5-logic-fixes` 执行；MCP 与后端依赖安装在该 worktree 的忽略虚拟环境 `.venv-mcp`。原桌面工作区的未提交前端修改未触碰。
+
+| 命令/流程 | 结果 |
+|---|---|
+| `powershell -NoProfile -ExecutionPolicy Bypass -File .\test_mcp.ps1` | 30 个 MCP 单元测试通过；隔离服务健康检查通过；`tools/list` 发现 9 个工具；9/9 业务工具 HTTP 调用通过 |
+| `python -m unittest discover -s tests -p test_backend_contract_regressions.py -v`（在 `01_ICT主工程/backend`） | 24/24 通过，包含生成题库无 resource filter 时仍可开练的真实临时数据回归 |
+| 写操作数据隔离 | Smoke 脚本复制 `roadshow-seed` 到临时 `test/generated`，注入专用练习题和学习路径；答题和分支写入只影响该副本，运行结束后自动清理 |
+| MCP 加固启动失败 | 自动化测试确认加固初始化失败不会调用原生 `mcp.run()`；非 loopback 必须有 API Key 和正数限流；direct 排障模式仅允许 loopback |
+
+本轮未运行前端构建、Playwright 全站流程或 AgentArts 云端调用；未声称这些项目通过或已接入。

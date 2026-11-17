@@ -166,12 +166,9 @@ def add_learning_branch(
     )
 
 
-# 说明（2026-10-17，P0-3 加固）：入口从 FastMCP 原生 mcp.run() 换成
-# mcp_server.hardening.serve()，在同一个端口上叠加 API Key 鉴权、限流、
-# 访问日志脱敏与 /healthz 健康检查。加固层全部默认非阻断（未配
-# MCP_API_KEY 就不鉴权、限流阈值很宽），不会影响 AgentArts 运行时里
-# 走 IAM 签名的现有链路。应急开关：环境变量 MCP_TRANSPORT_DIRECT=1
-# 可退回原生 mcp.run()，见 mcp_server/hardening.py 的模块说明。
+# MCP 通过加固入口启动。非 loopback 监听要求 API Key 和正数限流；加固
+# 初始化失败时拒绝启动。MCP_TRANSPORT_DIRECT=1 仅允许 loopback 本地排障，
+# 不得用于公网或其他可被远程访问的监听地址。
 if __name__ == "__main__":
     from mcp_server.hardening import serve
 

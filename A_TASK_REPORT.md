@@ -243,3 +243,11 @@ Claude Code 恢复后实际启动了独立回归任务并留下网络错误处�
 按 #2 → #3 顺序将 PR #3 更新到 PR #2 合并后的 `main`。保留画像维度级证据逻辑，同时整合图谱使用运行时 `DATA_DIR`、语义课程标题清洗、资源统计和统一 API 错误处理。图谱章节名统一为“业务场景与范围”等语义名称。首页宣传原文与结构保持不变。
 
 使用临时复制的 `roadshow-seed` 数据目录运行本地后端和前端；完整路演 E2E 19/19、生成数据流程 2/2、队友缺陷回归 13/13、后端单测 46/46、MCP 单测 7/7 通过。`npm ci`、`npm run check`、`npm run audit:ui`、`npm run build` 与 `git diff --check` 通过。AgentArts 云端未接入。构建仍有练习页大 chunk 提示。
+
+## 2026-11-17 PR #5 评审问题修复
+
+- **生成题库无法直接练习**：`build_exercise_session()` 现在即使未传 `resource_ids` 也会读取该学生所有符合来源条件的生成题库。新增真实临时资源文件回归，确保省略筛选 ID 仍返回题目。
+- **MCP 加固初始化失败时降级**：删除自动退回 `mcp.run()` 的路径。初始化异常会停止启动；显式 `MCP_TRANSPORT_DIRECT=1` 仅限 loopback。非 loopback 监听要求 API Key 和正数限流。
+- **九个工具缺少可复现调用**：`test_mcp.ps1` 运行 30 个 MCP 单元测试，并启动独立本地 HTTP 服务；通过 `tools/list` 验证 9 个工具，再顺序真实调用全部 9 个工具。题库、作答、路径和分支数据均在临时 `test/generated` 副本中，测试结束自动清理。
+- **验证**：MCP 测试 30/30；真实 MCP Streamable HTTP 工具调用 9/9；后端契约回归 24/24。详情见 `TEST_RESULTS.md` 和 `MCP_INTEGRATION.md`。
+- **限制**：本轮未运行前端构建、Playwright 全站流程、公网隧道或 AgentArts 云端调用；不据此宣称这些项目通过或已接入。
