@@ -46,12 +46,12 @@
 2. **数据层 JSON → SQLite**：`backend/app/repo.py` 现在按学号建目录写 JSON，没有事务、没有并发控制。这是结构性改动，会牵动所有接口与 e2e 的数据准备，属于「一天起步」的量级。
 3. **拆 God File**：`orchestrator.py` 1786 行、`knowledge_hub.py` 1613 行、`ExerciseCenterPage.vue` 3353 行、`profile-center.css` 4231 行。纯重构，收益是可维护性，风险是回归面大。
 4. **`reference-screens.css` 重复主题块**：`/* Workshop */`（114/116/134/137/355 行）、`/* Evaluation */`（248/263/268 行）存在重复定义，我修 bug 时只删了两组重复的选择器，整块合并没做。
-5. **两条首屏密度体验债**（已用 `test.fail(true, …)` 标注在 `final-density.spec.ts`）：课程总览首屏覆盖率 0.596（要求 ≥0.78）、空题态进度栏高度 1px。要改版面布局，超出「低成本修复」的范围。
+5. **大屏留白体验债**：旧 `final-density.spec.ts` 的固定课程/练习容器已不存在，现已迁移为当前题库表单、开始做题、空错题本与知识节点的 4 项真实行为检查（4/4 通过）。2048×1152 的短表单下方仍有较大空白；如要再提高大屏信息密度，应重新设计内容布局，不能用假数据填满。
 6. **`search_knowledge` 的章节/页码锚点**：现在返回 `title / excerpt / path`，能回溯到文件但回溯不到章节页码；要补需要索引侧记录偏移量。
 
 ## 四、可由任意一方执行、但需要环境
 
-1. **e2e 62 条**：Windows + 本机 Edge 才能跑（`channel: 'msedge'`）。命令：
+1. **旧全量 E2E 与手动工作流**：本轮路演 19/19、扩展 36/36 已在 Windows + 本机 Edge 上通过；包含历史 45 分钟按钮探针的旧全量运行未完成，GitHub 手动 E2E 工作流也未触发。命令：
    `cd 01_ICT主工程/frontend-vue && PLAYWRIGHT_BASE_URL=http://127.0.0.1:5173 npx playwright test --reporter=line --workers=1`
    前提：后端 8000 + dev server 5173 都在跑（`start-dev.ps1`）。
 2. **CI 首次运行**：仓库之前没有任何 workflow，push 后第一次跑可能出现环境差异（例如 macOS/Linux 下固定时区、字体、`TMP` 目录行为）。出现红项请把日志贴给我，我按日志改，不要直接放宽断言。

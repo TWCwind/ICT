@@ -688,11 +688,11 @@
     overflow: hidden;
   }
   .shot-create > header strong { font-size: 14.5px; }
-  .shot-create > header small { font-size: 10px !important; }
+  .shot-create > header small { font-size: 12px !important; }
   .shot-type-grid { gap: 10px; margin: 15px 0; }
   .shot-type-grid button { min-height: 140px; padding: 13px 8px; }
   .shot-type-grid button strong { font-size: 13.5px; }
-  .shot-type-grid button small { white-space: normal; line-height: 1.45; text-align: center; font-size: 10px !important; }
+  .shot-type-grid button small { white-space: normal; line-height: 1.45; text-align: center; font-size: 12px !important; }
   .shot-brief-fields { display: none; }
   .shot-create > textarea { height: 159px; min-height: 159px; padding: 13px 14px 58px; resize: none; font-size: 12.5px; line-height: 1.55; }
   .shot-char-count { position: absolute; right: 39px; bottom: 83px; z-index: 2; color: #a69fb4; font-size: 11px !important; }
@@ -709,11 +709,11 @@
   .shot-progress { height: auto; padding: 20px 22px; }
   .shot-progress header { min-height: 48px; }
   .shot-progress header strong { font-size: 14.5px; }
-  .shot-progress header small { font-size: 10px !important; }
+  .shot-progress header small { font-size: 12px !important; }
   .shot-progress ol { margin-top: 6px; }
   .shot-progress li { min-height: 61px; }
   .shot-progress li strong { font-size: 12.5px; }
-  .shot-progress li small,.shot-progress li em { font-size: 10px !important; }
+  .shot-progress li small,.shot-progress li em { font-size: 12px !important; }
 
 
   .shot-preview { box-sizing: border-box; overflow: hidden; }
@@ -1253,8 +1253,8 @@
   .shot-evaluate-main { gap: 18px; }
   .shot-score-row {
     grid-template-columns: 337px minmax(0, 1fr) 299px;
-    min-height: 420px;
-    height: 420px;
+    min-height: 0;
+    height: auto;
     border-radius: 16px;
   }
   .shot-score-row > article { padding: 25px; }
