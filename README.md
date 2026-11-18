@@ -59,7 +59,7 @@ e2e 依赖 Edge（`channel: 'msedge'`）与本地数据，因此放在手动工�
 3. **实时语音 / 数字人处于禁用状态**：未配置实时语音通道时会回退到浏览器语音，并在页面上如实提示。
 4. **超大单文件仍在**：`backend/app/agents/orchestrator.py`、`backend/app/services/knowledge_hub.py`、
    `frontend-vue/src/profile-center.css`、`frontend-vue/src/pages/ExerciseCenterPage.vue` 等尚未拆分。
-5. **前端已做两轮分包**：①`three` 改成「历史星系」页签按需加载，`vue`/`markdown`/`three`/字体各自独立 chunk；②练习页 `ExercisePage`（1346 行）改为异步，专业目录与 localStorage 帮助函数抽成模块。练习中心首屏 chunk 585KB → **70KB**，新增按需块 `ExercisePage` 32KB；仍剩 `vendor-three` 705KB 与 `vendor-markdown` 381KB 两个懒加载大块，继续压缩需把 `ExerciseCenterPage`（3247 行）里的星系渲染（约 900 行）也搬出去。
+5. **前端已做三轮分包**：①`three` 改成「历史星系」页签按需加载，`vue`/`markdown`/`three`/字体各自独立 chunk；②练习页 `ExercisePage`（1346 行）改异步，专业目录与 localStorage 帮助函数抽成模块；③星系 3D 渲染（约 1400 行）搬进 `src/composables/useTagGalaxyScene.ts` 并改为打开页签时才 `import()`。练习中心首屏 chunk 585KB → 102KB → 70KB → **43.6KB**，页面文件 3361 → **1923 行**；仍剩 `vendor-three` 705KB 与 `vendor-markdown` 381KB 两个懒加载大块。
 
 ## 仓库约定
 
