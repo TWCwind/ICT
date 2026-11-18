@@ -5,5 +5,46 @@
   "tools_ok": 50,
   "answered": 50,
   "model": "deepseek-chat",
-  "generated_at": "2026-11-18 12:18:13"
+  "generated_at": "2026-11-18 12:18:13",
+  "human_review": {
+    "grader": "模型自评（同一 agent 编写 harness 并评分，存在自评偏差风险，需人工抽检）",
+    "rubric": "2=判据要素齐全且有工具依据；1=方向正确或如实说明但要素缺失；0=不满足或臆造",
+    "scored_cases": 50,
+    "full_2": 34,
+    "partial_1": 15,
+    "zero": 1,
+    "full_rate": 0.68,
+    "weighted_score": 0.83,
+    "partial_reasons": {
+      "环境无题库(formal 判据无法满足)": [
+        "E28",
+        "E29",
+        "E31",
+        "E32",
+        "E33",
+        "E43",
+        "E44"
+      ],
+      "岗位库无对应岗位": [
+        "E01",
+        "E02",
+        "E03",
+        "E11",
+        "E17"
+      ],
+      "写操作要求确认未执行": [
+        "E09"
+      ],
+      "缺 resource_id/score 数值": [
+        "E24"
+      ],
+      "无错题数据无法判断": [
+        "E47"
+      ]
+    },
+    "defects_found": [
+      "E30 未给学号却擅自以 demo 作答（唯一 0 分，行为层缺陷，建议在提示词里强制反问学号）"
+    ]
+  },
+  "average_elapsed_ms": 3994
 }

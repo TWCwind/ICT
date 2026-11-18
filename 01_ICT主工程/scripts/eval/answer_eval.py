@@ -250,8 +250,24 @@ def summarize(results: list[dict]) -> str:
     lines = [
         "# 50 条评测集：答案级自动判分",
         "",
-        "判分口径见 `scripts/eval/answer_eval.py` 顶部说明；`human_score` 全部留空，",
-        "「判断是否正确」需要人工逐条填写，本文不给出该结论。",
+    ]
+    scored = [r for r in results if r.get("human_score") is not None]
+    if scored:
+        full = sum(1 for r in scored if r["human_score"] == 2)
+        partial = sum(1 for r in scored if r["human_score"] == 1)
+        zero = sum(1 for r in scored if r["human_score"] == 0)
+        lines += [
+            "人工评分口径：2=判据要素齐全且有工具依据；1=方向正确或如实说明但要素缺失；0=不满足或臆造。",
+            f"人工评分（{len(scored)}/{total} 条已评）：完全满足 {full}、部分 {partial}、不满足 {zero}；"
+            f"加权得分 {sum(r['human_score'] for r in scored) / (2 * len(scored)):.3f}。",
+            "评分者：模型自评（同一 agent 编写 harness 并评分，存在自评偏差，需人工抽检复核）。",
+        ]
+    else:
+        lines += [
+            "判分口径见 `scripts/eval/answer_eval.py` 顶部说明；`human_score` 全部留空，",
+            "「判断是否正确」需要人工逐条填写，本文不给出该结论。",
+        ]
+    lines += [
         "",
         f"- 用例数：{total}",
         f"- 首步路由命中：{route}/{total}（最严口径：第一步就要选对）",
@@ -263,13 +279,16 @@ def summarize(results: list[dict]) -> str:
         f"- 疑似编造 id：{fabricated}",
         f"- 平均耗时：{avg_ms} ms/条",
         "",
-        "| 用例 | 场景 | 期望工具 | 首步 | 首步命中 | 工具被调用 | 必需工具 | 引用可回溯 | 人工评分 |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| 用例 | 场景 | 期望工具 | 首步 | 首步命中 | 工具被调用 | 必需工具 | 引用可回溯 | 人工评分 | 评分说明 |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in results:
         ratio = "—" if r["grounded_ratio"] is None else f"{r['grounded_quotes']}/{r['quotes']}"
+        score = r.get("human_score")
+        score_cell = {2: "2 完全满足", 1: "1 部分", 0: "0 不满足"}.get(score, "—")
+        note = (r.get("human_note") or "").replace("|", "｜")
         lines.append(
-            "| {id} | {scene} | {tool} | {first} | {route} | {req} | {ratio} |  |".format(
+            "| {id} | {scene} | {tool} | {first} | {route} | {called} | {req} | {ratio} | {score} | {note} |".format(
                 id=r["id"],
                 scene=r.get("scene") or "",
                 tool=r["expected_tool"],
@@ -278,6 +297,8 @@ def summarize(results: list[dict]) -> str:
                 called="✓" if r.get("expected_called") else "✗",
                 req="✓" if r["required_ok"] else "✗",
                 ratio=ratio,
+                score=score_cell,
+                note=note,
             )
         )
     return "\n".join(lines) + "\n"
