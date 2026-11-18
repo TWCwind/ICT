@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readCaptcha } from './helpers/captcha'
 
 const routes = [
   ['总控首页', '/'],
@@ -18,7 +19,7 @@ async function login(page: Page) {
   if (await loginGate.isVisible().catch(() => false)) {
     await page.getByPlaceholder('手机号').fill('10000000000')
     await page.getByPlaceholder('密码', { exact: true }).fill('demo123')
-    await page.getByPlaceholder('验证码').fill('2VV3')
+    await page.getByPlaceholder('验证码').fill(await readCaptcha(page))
     await page.getByRole('button', { name: '登录并进入系统' }).click()
     await expect(loginGate).toBeHidden()
   }

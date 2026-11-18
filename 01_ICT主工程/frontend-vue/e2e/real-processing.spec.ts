@@ -95,6 +95,13 @@ test('resource, exercise and multimodal buttons persist their real outputs', asy
     sessionStorage.setItem('zx-resource-agent-authed', '1')
     localStorage.setItem('las_student_id', id)
   }, resourceStudentId)
+  await page.goto('/path', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+  await page.locator('#path-real-goal').fill(`test/generated：为 ${resourceStudentId} 练习链表尾插边界条件`)
+  const [planResponse] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/api/path/plan') && response.request().method() === 'POST', { timeout: 90_000 }),
+    page.getByRole('button', { name: /生成路径|重新规划/ }).first().click(),
+  ])
+  await successfulApi(planResponse)
   await page.goto('/workshop', { waitUntil: 'domcontentloaded', timeout: 30_000 })
   await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => undefined)
 

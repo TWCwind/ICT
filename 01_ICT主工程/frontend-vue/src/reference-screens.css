@@ -620,7 +620,7 @@
   }
 
   .shot-workshop__side {
-    grid-template-rows: 408px 318px 185px;
+    grid-template-rows: auto;
     gap: 14px;
   }
 
@@ -706,7 +706,7 @@
   .shot-record-grid > button { min-height: 105px; }
 
   .shot-progress,.shot-preview,.shot-smart-recommend { box-sizing: border-box; overflow: hidden; }
-  .shot-progress { height: 408px; padding: 20px 22px; }
+  .shot-progress { height: auto; padding: 20px 22px; }
   .shot-progress header { min-height: 48px; }
   .shot-progress header strong { font-size: 14.5px; }
   .shot-progress header small { font-size: 10px !important; }
@@ -719,7 +719,7 @@
   .shot-preview { box-sizing: border-box; overflow: hidden; }
 
 
-  .shot-preview { height: 318px; padding: 18px 22px; }
+  .shot-preview { height: auto; padding: 18px 22px; }
   .shot-preview > header strong { font-size: 14.5px; }
   .shot-preview > header button { min-width: 52px; min-height: 26px; padding: 0 11px; border: 1px solid #d3c2ea; border-radius: 99px; background: #fff; }
   .shot-preview-paper { box-sizing: border-box; min-height: 220px; height: 220px; margin-top: 12px; padding: 13px 14px; }
@@ -728,7 +728,7 @@
   .shot-dots { margin-top: 8px; }
 
 
-  .shot-smart-recommend { height: 185px; padding: 20px 22px; }
+  .shot-smart-recommend { height: auto; padding: 20px 22px; }
   .shot-smart-recommend > header { display: grid; justify-content: stretch; gap: 5px; }
   .shot-smart-recommend > header strong { font-size: 14.5px; }
   .shot-smart-recommend > header small { font-size: 10px !important; }
@@ -770,7 +770,7 @@
 .shot-avatar-photo { display: block; width: 100%; height: 100%; border-radius: 50%; background-image: url('/assets/profile-reference-source.png'); background-repeat: no-repeat; background-position: -51px -128px; background-size: 1446px 854px; }
 
 .shot-avatar > i { display: block; right: 0; bottom: 8px; width: 13px; height: 13px; border: 3px solid #fff; background: #3e8b78; }
-.shot-timeline { min-height: 190px; padding: 18px 22px; }
+.shot-timeline { min-height: 0; padding: 18px 22px; }
 
 
 .shot-avatar > i { display: block; right: 0; bottom: 8px; width: 13px; height: 13px; border: 3px solid #fff; background: #16bd7e; }

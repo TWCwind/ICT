@@ -200,7 +200,10 @@ test.describe('中小屏布局回归（第二轮修复）', () => {
         inside: buttons.filter((button) => button.getBoundingClientRect().right <= trackRight + 1).length,
       }
     })
-    expect(visible.total).toBeGreaterThanOrEqual(6)
+    const response = await page.request.get('/api/path/overview?student_id=demo')
+    expect(response.ok()).toBe(true)
+    const payload = await response.json()
+    expect(visible.total).toBe(payload.data.nodes.length)
     expect(visible.inside, '时间线所有节点必须完整落在容器内').toBe(visible.total)
 
     const radar = await page.locator('.shot-path-radar-canvas').evaluate((el) => {

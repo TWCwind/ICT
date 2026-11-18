@@ -26,4 +26,15 @@
 - `python scripts/eval/test_role_pipeline.py` -- 17/17 pass (nine-step role pipeline: ordering, cross-step value passing, abort-on-tool-failure, explicit errors for missing tool/weakness).
 - `python scripts/eval/run_eval.py` -- static cross-check still passes: 20 job / 30 learning conditions, 9/9 tool coverage, no illegal tool or path-stage references.
 
-These numbers are routing-layer only. Answer quality remains covered by the AgentArts platform evaluation (8/8, mean 0.76) and is not claimed to be human-scored.
+These numbers are routing-layer only. The historical AgentArts platform evaluation (8/8, mean 0.76) is not independently reproducible for the current version and must not be presented as current answer-quality evidence.
+
+## PR #5 local acceptance, 2026-11-18
+
+- Isolated worktree; backend and frontend started from this commit with a temporary copy of `roadshow-seed`. `/api/health` and `/` returned HTTP 200.
+- Backend unit tests: 47/47 passed. MCP unit tests: 30/30 passed. Frontend `npm run check`, `npm run audit:ui`, `npm run build`: passed; the lazy Three.js chunk still triggers the >500 kB warning.
+- `npm run test:roadshow -- --project=msedge --workers=1`: 19/19 passed against the real local services.
+- Broader E2E attempt: the unbounded all-suite run was stopped while a historical 45-minute button probe was executing. A separate 36-test non-duplicate run had 13 passed and 23 failed before fixes. Failures included a hard-coded CAPTCHA, obsolete DOM selectors and personal-data assumptions, a missing path-plan prerequisite, and real workshop/profile layout regressions. **Do not report the full suite as passed.**
+- Targeted fixes verified: evaluation tabs and multimodal mode buttons 2/2; workshop generation feedback 1/1; path timeline checked against the live API 1/1; resource/exercise persistence after creating a path 1/1. After fixing CAPTCHA handling and the two layout regressions, `npx playwright test e2e/teammate-bug-regression.spec.ts --project=msedge --workers=1 --reporter=line` passed **13/13**. The full 36-test set has not been rerun after all fixes.
+- After the frontend changes, `npm run check`, `npm run audit:ui`, `npm run build`, and `git diff --check` passed. `scripts/eval/test_evidence_regressions.py` passed 7/7; `scripts/eval/test_role_pipeline.py` passed 17/17; `scripts/eval/run_eval.py` passed static tool coverage 9/9. The static check does not assess answer quality.
+- Unresolved historical suites: `final-density` targets a removed exercise container; `final-functional` assumes preexisting per-user data; `reference-layout` contains stale geometry and demo-data assumptions. Their assertions require migration to the current UI and isolated fixtures before they can serve as a release gate. The manually triggered E2E GitHub workflow was not run here.
+- No current AgentArts deployment, independent teacher scoring, or model-based semantic rerun was performed in this local acceptance.
