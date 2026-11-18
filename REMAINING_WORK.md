@@ -12,7 +12,7 @@
 | 答案级自动判分（真跑工具、落盘 trace、可核验项打分、`human_score` 留白） | `01_ICT主工程/scripts/eval/answer_eval.py` | `python scripts/eval/answer_eval.py --list-tools`（不调模型，CI 用的就是这条） |
 | 答案级判分结果（50 条，含每条答案与工具调用 trace） | `01_ICT主工程/scripts/eval/evidence/answer_eval_2026*.{jsonl,md,summary.json}` | 直接打开 md；jsonl 里每条 `trace` 是完整证据链 |
 | 50 条模型自评（非独立人工评分） | 同上 jsonl 的 `model_self_score` / `model_self_note`；`human_score` / `human_note` 保持空白 | 看 md 表格；口径：2=判据要素齐全且有工具依据，1=方向正确或如实说明但要素缺失，0=不满足或臆造 |
-| 前端分包第一轮（three 按需加载 + vendor 拆块） | `01_ICT主工程/frontend-vue/src/pages/ExerciseCenterPage.vue`、`vite.config.ts` | `node node_modules/vite/bin/vite.js build` 后看 chunk 体积：练习页 585KB → 102KB |
+| 前端分包两轮（three 按需 + vendor 拆块 + 练习页异步 + 目录/存储模块化） | `frontend-vue/src/pages/ExerciseCenterPage.vue`、`vite.config.ts`、`src/data/practiceCatalogs.ts`、`src/utils/practiceStorage.ts` | `node node_modules/vite/bin/vite.js build` 后看 chunk 体积：练习中心首屏 585KB → 70KB，另有 32KB 的 `ExercisePage` 按需块 |
 
 判分口径：**自动判分只覆盖路由、必需工具、工具业务错误、引用片段能否在工具返回中找到及疑似编造 id；诊断正确性尚无独立人工评分**。18 次工具返回业务错误，涉及 15/50 条；35/50 条没有工具异常或业务错误。
 
@@ -42,7 +42,7 @@
 
 ## 三、工程债（我能做但没做，需要你点头）
 
-1. **前端分包（第一轮已完成，剩第二轮）**：已把 `three` 从练习页首屏改为「历史星系」页签按需加载（练习页 chunk 585kB → **102kB**），并把 `vue` / `markdown`(含 katex+dompurify) / `three` / 字体拆成独立 chunk（`vite.config.ts` 的 `manualChunks`）。仍未解决的是 `vendor-three` 705kB 与 `vendor-markdown` 381kB 这两个**懒加载**大块——它们不影响首屏，但要继续降体积只能拆 `ExerciseCenterPage.vue`（3353 行）本身或换更轻的 3D/公式方案。
+1. **前端分包（两轮已完成，剩星系渲染）**：第一轮把 `three` 改成「历史星系」页签按需加载并把 `vue`/`markdown`/`three`/字体拆成独立 chunk；第二轮把 `ExercisePage`（1346 行）改成 `defineAsyncComponent`、把专业目录与 localStorage 帮助函数抽成 `src/data/practiceCatalogs.ts` 与 `src/utils/practiceStorage.ts`。练习中心首屏 chunk 585kB → **70kB**（另有 32kB 的按需块），页面文件 3361 → 3247 行。仍未搬走的是页面里约 900 行的星系 3D 渲染（`ensureTagGalaxyRenderer`/`rebuildTagGalaxyScene`/`animateTagGalaxy` 等），以及 `vendor-three` 705kB、`vendor-markdown` 381kB 两个懒加载大块。
 2. **数据层 JSON → SQLite**：`backend/app/repo.py` 现在按学号建目录写 JSON，没有事务、没有并发控制。这是结构性改动，会牵动所有接口与 e2e 的数据准备，属于「一天起步」的量级。
 3. **拆 God File**：`orchestrator.py` 1786 行、`knowledge_hub.py` 1613 行、`ExerciseCenterPage.vue` 3353 行、`profile-center.css` 4231 行。纯重构，收益是可维护性，风险是回归面大。
 4. **`reference-screens.css` 重复主题块**：`/* Workshop */`（114/116/134/137/355 行）、`/* Evaluation */`（248/263/268 行）存在重复定义，我修 bug 时只删了两组重复的选择器，整块合并没做。
