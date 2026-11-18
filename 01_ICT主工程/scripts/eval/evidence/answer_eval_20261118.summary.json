@@ -2,12 +2,15 @@
   "cases": 50,
   "route_ok": 34,
   "required_ok": 42,
-  "tools_ok": 50,
+  "tools_ok": 35,
   "answered": 50,
   "model": "deepseek-chat",
   "generated_at": "2026-11-18 12:18:13",
-  "human_review": {
-    "grader": "模型自评（同一 agent 编写 harness 并评分，存在自评偏差风险，需人工抽检）",
+  "average_elapsed_ms": 3994,
+  "business_error_calls": 18,
+  "business_error_cases": 15,
+  "model_self_review": {
+    "grader": "同一模型自评；未经独立人工评分",
     "rubric": "2=判据要素齐全且有工具依据；1=方向正确或如实说明但要素缺失；0=不满足或臆造",
     "scored_cases": 50,
     "full_2": 34,
@@ -46,5 +49,5 @@
       "E30 未给学号却擅自以 demo 作答（唯一 0 分，行为层缺陷，建议在提示词里强制反问学号）"
     ]
   },
-  "average_elapsed_ms": 3994
+  "correction_note": "按工具返回体 ok:false 重算；模型自评分与人工评分分离，历史模型调用未重跑"
 }

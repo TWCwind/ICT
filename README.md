@@ -42,7 +42,7 @@ cd 01_ICT主工程
 | 前端生产构建（`vue-tsc -b` + `vite build`） | 通过 |
 | Playwright e2e 全量 | 62 个用例通过（含 2 条已知体验债，以 `test.fail` 标注） |
 | 50 条评测集：工具路由 | 首步命中 36/50，计划覆盖 42/50（`scripts/eval/route_eval.py`） |
-| 50 条评测集：答案级可核验项 | 见 `scripts/eval/evidence/answer_eval_2026*.md`；人工评分 50/50 条：完全满足 34、部分 15、不满足 1，加权 0.83（模型自评，需人工抽检） |
+| 50 条评测集：答案级可核验项 | 见 `scripts/eval/evidence/answer_eval_2026*.md`；工具无业务错误 35/50；模型自评 50/50 条：完全满足 34、部分 15、不满足 1，加权 0.83。尚无独立人工评分。 |
 | CI | `.github/workflows/ci.yml`：后端单测、MCP 测试、评测静态校验、前端类型检查+构建 |
 
 复现方式见 `01_ICT主工程/README_TESTING.md`；线上/内网部署前请先读 `MCP_INTEGRATION.md` 的云端限制。

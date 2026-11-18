@@ -117,7 +117,7 @@ def call_tool(name: str, arguments: dict) -> dict:
         return {"ok": False, "error": f"未注册的工具：{name}"}
     try:
         result = fn(**arguments)
-        return {"ok": True, "result": result}
+        return {"ok": not (isinstance(result, dict) and result.get("ok") is False), "result": result}
     except Exception as exc:  # noqa: BLE001 - 工具异常要落盘而不是中断整轮
         return {
             "ok": False,
@@ -172,8 +172,10 @@ def judge(case: dict, trace: list[dict], answer: str) -> dict:
         "fabricated_ids": [i for i in ids if i not in tool_outputs],
         "answer_chars": len(answer or ""),
         "answered": bool((answer or "").strip()),
-        "human_score": None,
-        "human_note": "",
+    "model_self_score": None,
+    "model_self_note": "",
+    "human_score": None,
+    "human_note": "",
     }
 
 
@@ -208,7 +210,7 @@ def run_case(client, url, headers, model, tools, case) -> dict:
                     "name": fn.get("name", ""),
                     "arguments": args,
                     "ok": outcome["ok"],
-                    "output": outcome.get("result") if outcome["ok"] else outcome.get("error"),
+                    "output": outcome.get("result", outcome.get("error")),
                     "step": step + 1,
                 }
             )
@@ -251,15 +253,15 @@ def summarize(results: list[dict]) -> str:
         "# 50 条评测集：答案级自动判分",
         "",
     ]
-    scored = [r for r in results if r.get("human_score") is not None]
+    scored = [r for r in results if r.get("model_self_score") is not None]
     if scored:
-        full = sum(1 for r in scored if r["human_score"] == 2)
-        partial = sum(1 for r in scored if r["human_score"] == 1)
-        zero = sum(1 for r in scored if r["human_score"] == 0)
+        full = sum(1 for r in scored if r["model_self_score"] == 2)
+        partial = sum(1 for r in scored if r["model_self_score"] == 1)
+        zero = sum(1 for r in scored if r["model_self_score"] == 0)
         lines += [
-            "人工评分口径：2=判据要素齐全且有工具依据；1=方向正确或如实说明但要素缺失；0=不满足或臆造。",
-            f"人工评分（{len(scored)}/{total} 条已评）：完全满足 {full}、部分 {partial}、不满足 {zero}；"
-            f"加权得分 {sum(r['human_score'] for r in scored) / (2 * len(scored)):.3f}。",
+            "评分口径：2=判据要素齐全且有工具依据；1=方向正确或如实说明但要素缺失；0=不满足或臆造。",
+            f"模型自评（{len(scored)}/{total} 条，非独立人工评分）：完全满足 {full}、部分 {partial}、不满足 {zero}；"
+            f"加权得分 {sum(r['model_self_score'] for r in scored) / (2 * len(scored)):.3f}。",
             "评分者：模型自评（同一 agent 编写 harness 并评分，存在自评偏差，需人工抽检复核）。",
         ]
     else:
@@ -273,20 +275,20 @@ def summarize(results: list[dict]) -> str:
         f"- 首步路由命中：{route}/{total}（最严口径：第一步就要选对）",
         f"- 期望工具被调用到：{called}/{total}（放宽口径：允许先读再做）",
         f"- 必需工具全部调用：{required}/{total}",
-        f"- 工具调用无异常：{tools_ok}/{total}",
+        f"- 工具调用均无异常或业务错误：{tools_ok}/{total}",
         f"- 给出最终回答：{answered}/{total}",
         f"- 引用片段可逐字回溯：{grounded}/{quotes}（涉及 {len(cited)} 条用例）",
         f"- 疑似编造 id：{fabricated}",
         f"- 平均耗时：{avg_ms} ms/条",
         "",
-        "| 用例 | 场景 | 期望工具 | 首步 | 首步命中 | 工具被调用 | 必需工具 | 引用可回溯 | 人工评分 | 评分说明 |",
+        "| 用例 | 场景 | 期望工具 | 首步 | 首步命中 | 工具被调用 | 必需工具 | 引用可回溯 | 模型自评分 | 评分说明 |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in results:
         ratio = "—" if r["grounded_ratio"] is None else f"{r['grounded_quotes']}/{r['quotes']}"
-        score = r.get("human_score")
+        score = r.get("model_self_score")
         score_cell = {2: "2 完全满足", 1: "1 部分", 0: "0 不满足"}.get(score, "—")
-        note = (r.get("human_note") or "").replace("|", "｜")
+        note = (r.get("model_self_note") or "").replace("|", "｜")
         lines.append(
             "| {id} | {scene} | {tool} | {first} | {route} | {called} | {req} | {ratio} | {score} | {note} |".format(
                 id=r["id"],
