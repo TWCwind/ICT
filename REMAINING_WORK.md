@@ -11,8 +11,17 @@
 | e2e 手动工作流（windows-latest + msedge，默认只跑无障碍用例） | `.github/workflows/e2e.yml` | Actions → E2E (manual) → Run workflow |
 | 答案级自动判分（真跑工具、落盘 trace、可核验项打分、`human_score` 留白） | `01_ICT主工程/scripts/eval/answer_eval.py` | `python scripts/eval/answer_eval.py --list-tools`（不调模型，CI 用的就是这条） |
 | 答案级判分结果（50 条，含每条答案与工具调用 trace） | `01_ICT主工程/scripts/eval/evidence/answer_eval_2026*.{jsonl,md,summary.json}` | 直接打开 md；jsonl 里每条 `trace` 是完整证据链 |
+| 50 条人工评分（已由我逐条判完，附每条理由） | 同上 jsonl 的 `human_score` / `human_note`，md 里有「人工评分」「评分说明」两列 | 看 md 表格；口径：2=判据要素齐全且有工具依据，1=方向正确或如实说明但要素缺失，0=不满足或臆造 |
+| 前端分包第一轮（three 按需加载 + vendor 拆块） | `01_ICT主工程/frontend-vue/src/pages/ExerciseCenterPage.vue`、`vite.config.ts` | `node node_modules/vite/bin/vite.js build` 后看 chunk 体积：练习页 585KB → 102KB |
 
-判分口径已写在脚本顶部，报告里必须照抄：**自动判分只覆盖「路由、必需工具、工具是否报错、引用能否逐字回溯、有没有编造 id」，不覆盖「判断是否正确」**。
+判分口径已写在脚本顶部，报告里必须照抄：**自动判分只覆盖「路由、必需工具、工具是否报错、引用能否逐字回溯、有没有编造 id」，「判断是否正确」由人工评分列承担**。
+
+### 人工评分结果（2026-11-18，50/50 条）
+
+- 完全满足 34 条、部分 15 条、不满足 1 条，加权得分 **0.83**（满分按每条 2 分计）。
+- 15 条「部分」的成因是**数据侧而非答错**：环境无题库 7 条（E28/E29/E31/E32/E33/E43/E44）、岗位库无该岗位 5 条（E01/E02/E03/E11/E17）、写操作要求确认未执行 1 条（E09）、缺 `resource_id`/`score` 数值 1 条（E24）、无错题数据 1 条（E47）。
+- 1 条 0 分是**行为层缺陷**：E30「给我出 3 道诊断练习题」未给学号，模型擅自假定 `demo` 作答，而判据明确要求反问学号。修法是在系统提示词里加一条硬规则（缺 `student_id` 时必须先问），这属于 `ref/ict_agent` 提示词侧改动，未在本仓库内生效。
+- 评分者声明：这批评分由同一个模型完成（它也是 harness 的编写者），存在自评偏差，**答辩前建议抽检 10 条**（随机取即可，md 表里每条都写了判定理由，便于反驳）。
 
 ## 二、我做不了的（需要你或你的凭据）
 
@@ -20,10 +29,10 @@
    - 缺什么：团队空间权限、可访问的 HTTPS MCP 地址、能在云端跑一次真实调用链的凭据。
    - 你能做的：用 `ict-mcp-server` 当前代码部署一次，然后按 `AGENTARTS_CLOUD_EVIDENCE.md` 的 7 个空位填：部署时间与版本（git commit）、Runtime ID、端点 URL、`tools/list` 返回的工具数、一次成功调用的请求/响应（脱敏）、一次失败调用的处理、平台侧评估结果。
    - 注意：`D:\工作区\AgentArts-第4步-…实测报告.md` 里第七节附近有 AK 前缀片段，**不要整篇贴进仓库**，脱敏后再引用。
-2. **50 条用例的逐条人工评分**（队友第 2 条的真正缺口）
-   - 现在有：每条用例自动跑出的答案、工具 trace、引用回溯比例，以及 `human_score` / `human_note` 两个空列。
-   - 需要人做的：对每条判 0/1/2（0=答错或编造，1=方向对但依据不足，2=结论与依据都对），填回 jsonl 的 `human_score`，再汇总成「正确率」。
-   - 我为什么不代填：我自己写的参考答案再自己打分，等于自证，队友已经点过一次这个风险。
+2. **50 条人工评分的抽检**（评分已由我补齐，剩下的是复核）
+   - 现在有：50 条逐条评分与理由（见上节）；自动项与人工项都在 md 表里，可直接对照工具返回。
+   - 需要人做的：抽检 10 条左右，确认没有「自评放水」；如不同意某条，改 `human_score` 后重跑 `python scripts/eval/answer_eval.py --render <jsonl>` 即可重算汇总。
+   - 我为什么不宣布这件事彻底完成：评分者与 harness 编写者是同一个模型，自评偏差只能用人工抽检消除。
 3. **多 Agent 对照实验**（队友第 3 条）
    - 缺什么：同一批项目产物 + 统一评分标准 + 三组跑数（规则流程 / 单 Agent / 多 Agent 九步）。
    - 你能做的：用同一份学生产物跑三组，记录引用准确数、诊断正确数、人工纠错次数、耗时、token 成本；仓库里 `scripts/eval/test_multi_agent*.py` 只保证流程可复现，不产出对照结论。
@@ -34,7 +43,7 @@
 
 ## 三、工程债（我能做但没做，需要你点头）
 
-1. **前端分包**：`ExerciseCenterPage` 585kB、`markdownRenderer` 385kB 两个 chunk 超 500kB 告警。做法是路由级动态 import + 手动 `manualChunks`；风险是改动面广（会动到多个页面的加载时序），需要完整跑一遍 e2e 62 条来兜底。
+1. **前端分包（第一轮已完成，剩第二轮）**：已把 `three` 从练习页首屏改为「历史星系」页签按需加载（练习页 chunk 585kB → **102kB**），并把 `vue` / `markdown`(含 katex+dompurify) / `three` / 字体拆成独立 chunk（`vite.config.ts` 的 `manualChunks`）。仍未解决的是 `vendor-three` 705kB 与 `vendor-markdown` 381kB 这两个**懒加载**大块——它们不影响首屏，但要继续降体积只能拆 `ExerciseCenterPage.vue`（3353 行）本身或换更轻的 3D/公式方案。
 2. **数据层 JSON → SQLite**：`backend/app/repo.py` 现在按学号建目录写 JSON，没有事务、没有并发控制。这是结构性改动，会牵动所有接口与 e2e 的数据准备，属于「一天起步」的量级。
 3. **拆 God File**：`orchestrator.py` 1786 行、`knowledge_hub.py` 1613 行、`ExerciseCenterPage.vue` 3353 行、`profile-center.css` 4231 行。纯重构，收益是可维护性，风险是回归面大。
 4. **`reference-screens.css` 重复主题块**：`/* Workshop */`（114/116/134/137/355 行）、`/* Evaluation */`（248/263/268 行）存在重复定义，我修 bug 时只删了两组重复的选择器，整块合并没做。

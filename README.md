@@ -42,7 +42,7 @@ cd 01_ICT主工程
 | 前端生产构建（`vue-tsc -b` + `vite build`） | 通过 |
 | Playwright e2e 全量 | 62 个用例通过（含 2 条已知体验债，以 `test.fail` 标注） |
 | 50 条评测集：工具路由 | 首步命中 36/50，计划覆盖 42/50（`scripts/eval/route_eval.py`） |
-| 50 条评测集：答案级可核验项 | 见 `scripts/eval/evidence/answer_eval_2026*.md`（人工评分列留白） |
+| 50 条评测集：答案级可核验项 | 见 `scripts/eval/evidence/answer_eval_2026*.md`；人工评分 50/50 条：完全满足 34、部分 15、不满足 1，加权 0.83（模型自评，需人工抽检） |
 | CI | `.github/workflows/ci.yml`：后端单测、MCP 测试、评测静态校验、前端类型检查+构建 |
 
 复现方式见 `01_ICT主工程/README_TESTING.md`；线上/内网部署前请先读 `MCP_INTEGRATION.md` 的云端限制。
@@ -59,7 +59,7 @@ e2e 依赖 Edge（`channel: 'msedge'`）与本地数据，因此放在手动工�
 3. **实时语音 / 数字人处于禁用状态**：未配置实时语音通道时会回退到浏览器语音，并在页面上如实提示。
 4. **超大单文件仍在**：`backend/app/agents/orchestrator.py`、`backend/app/services/knowledge_hub.py`、
    `frontend-vue/src/profile-center.css`、`frontend-vue/src/pages/ExerciseCenterPage.vue` 等尚未拆分。
-5. **前端部分 chunk 超过 500KB**（`ExerciseCenterPage`、评估页），后续需要按路由或依赖手工分包。
+5. **前端已做第一轮分包**：`three` 改成「历史星系」页签按需加载（练习页 chunk 585KB → 102KB），`vue`/`markdown`/`three`/字体各自独立 chunk；仍剩 `vendor-three` 705KB 与 `vendor-markdown` 381KB 两个懒加载大块，如需进一步压缩要拆 `ExerciseCenterPage`（3353 行）本身。
 
 ## 仓库约定
 

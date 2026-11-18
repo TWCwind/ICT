@@ -4,8 +4,15 @@ import { useRoute } from 'vue-router'
 import { generatePathStageQuestions, getPathOverview, type PathOverview } from '@/api/learningApi'
 import { useStudent } from '@/composables/useStudent'
 import ExercisePage from '@/pages/ExercisePage.vue'
-// @ts-ignore - local three package is installed without package metadata in this workspace.
-import * as THREE from '../../node_modules/three/build/three.module.js'
+// three 只在「历史星系」页签里用到，改成按需加载：练习页首屏不再背 ~600KB 的 3D 引擎。
+let THREE: any = null
+async function ensureThree(): Promise<any> {
+  if (!THREE) {
+    // @ts-ignore - local three package is installed without package metadata in this workspace.
+    THREE = await import('../../node_modules/three/build/three.module.js')
+  }
+  return THREE
+}
 
 type ResourceItem = {
   id: string
@@ -1077,7 +1084,7 @@ async function refreshTagGalaxy() {
     galaxyZoom.value = 1
     Object.assign(galaxyMouse, { x: 0, y: 0, targetX: 0, targetY: 0, active: false })
     await nextTick()
-    startTagGalaxy()
+    await startTagGalaxy()
     galaxyRefreshFeedback.value = '已刷新'
   } else {
     galaxyRefreshFeedback.value = '刷新失败'
@@ -1096,7 +1103,8 @@ function hashText(text: string) {
   return Math.abs(hash)
 }
 
-function startTagGalaxy() {
+async function startTagGalaxy() {
+  await ensureThree()
   stopTagGalaxy()
   const nextSignature = [
     tagGalaxy.value.nodes.map((node: any) => `${node.tag}:${node.count}`).join('|'),
@@ -2660,7 +2668,7 @@ watch(activePage, async (page) => {
     await loadWrongBook()
     if (activePage.value !== 'tagGalaxy') return
     await nextTick()
-    startTagGalaxy()
+    await startTagGalaxy()
   } else {
     stopTagGalaxy()
   }
