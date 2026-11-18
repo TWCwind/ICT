@@ -41,8 +41,14 @@ cd 01_ICT主工程
 | 后端验收脚本 `tests/backend_acceptance.py` | 12/12 通过 |
 | 前端生产构建（`vue-tsc -b` + `vite build`） | 通过 |
 | Playwright e2e 全量 | 62 个用例通过（含 2 条已知体验债，以 `test.fail` 标注） |
+| 50 条评测集：工具路由 | 首步命中 36/50，计划覆盖 42/50（`scripts/eval/route_eval.py`） |
+| 50 条评测集：答案级可核验项 | 见 `scripts/eval/evidence/answer_eval_2026*.md`（人工评分列留白） |
+| CI | `.github/workflows/ci.yml`：后端单测、MCP 测试、评测静态校验、前端类型检查+构建 |
 
 复现方式见 `01_ICT主工程/README_TESTING.md`；线上/内网部署前请先读 `MCP_INTEGRATION.md` 的云端限制。
+e2e 依赖 Edge（`channel: 'msedge'`）与本地数据，因此放在手动工作流 `.github/workflows/e2e.yml`，
+不挂在每次 push 上——避免把「跑不动」误读成「不需要」。
+**还没做的、需要人做的清单**见 `REMAINING_WORK.md`。
 
 ## 当前明确的限制（不要当成已完成能力对外宣称）
 

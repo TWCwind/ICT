@@ -1,0 +1,9 @@
+{
+  "cases": 50,
+  "route_ok": 34,
+  "required_ok": 42,
+  "tools_ok": 50,
+  "answered": 50,
+  "model": "deepseek-chat",
+  "generated_at": "2026-11-18 12:18:13"
+}
