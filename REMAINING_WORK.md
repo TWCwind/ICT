@@ -44,7 +44,7 @@
 
 1. **前端分包（三轮已完成）**：①`three` 改成「历史星系」页签按需加载并把 `vue`/`markdown`/`three`/字体拆成独立 chunk；②`ExercisePage`（1346 行）改 `defineAsyncComponent`，专业目录与 localStorage 帮助函数抽成 `src/data/practiceCatalogs.ts` 与 `src/utils/practiceStorage.ts`；③星系 3D 渲染（约 1400 行）搬进 `src/composables/useTagGalaxyScene.ts`（工厂 + `TagGalaxyEngine` 类型），页面改成 `shallowRef` + `await import()` 懒加载，`hashText` 抽到 `src/utils/hashText.ts` 共享。练习中心首屏 chunk 585kB → 102kB → 70kB → **43.55kB**（另有 32kB `ExercisePage`、28kB `useTagGalaxyScene` 按需块），页面文件 3361 → **1923 行**。仍剩 `vendor-three` 705kB、`vendor-markdown` 381kB 两个懒加载大块。
 2. **数据层 JSON → SQLite**：`backend/app/repo.py` 现在按学号建目录写 JSON，没有事务、没有并发控制。这是结构性改动，会牵动所有接口与 e2e 的数据准备，属于「一天起步」的量级。
-3. **拆 God File**：`orchestrator.py` 1786 行、`knowledge_hub.py` 1613 行、`ExerciseCenterPage.vue` 3353 行、`profile-center.css` 4231 行。纯重构，收益是可维护性，风险是回归面大。
+3. **拆 God File（进行中）**：`knowledge_hub.py` 已完成拆分——1727 行拆成 `knowledge_data`（247）/`knowledge_text`（218）/`knowledge_graph`（581）/`knowledge_documents`（234）/`knowledge_state`（42）/`knowledge_mastery`（225）六个模块，`knowledge_hub.py` 只留 301 行门面并继续再导出全部历史公开名，老导入路径零改动；拆分后 `overview`/`graph_data`/`search_index`/`mastery_data` 四项输出与拆分前逐字节相同（sha256 一致），后端 47 项单测、17 项编排用例、12 项验收全绿。剩余：`orchestrator.py` 1786 行、`profile-center.css` 4231 行。
 4. **`reference-screens.css` 重复主题块**：`/* Workshop */`（114/116/134/137/355 行）、`/* Evaluation */`（248/263/268 行）存在重复定义，我修 bug 时只删了两组重复的选择器，整块合并没做。
 5. **大屏留白体验债**：旧 `final-density.spec.ts` 的固定课程/练习容器已不存在，现已迁移为当前题库表单、开始做题、空错题本与知识节点的 4 项真实行为检查（4/4 通过）。2048×1152 的短表单下方仍有较大空白；如要再提高大屏信息密度，应重新设计内容布局，不能用假数据填满。
 6. **`search_knowledge` 的章节/页码锚点**：现在返回 `title / excerpt / path`，能回溯到文件但回溯不到章节页码；要补需要索引侧记录偏移量。
