@@ -38,3 +38,10 @@ These numbers are routing-layer only. The historical AgentArts platform evaluati
 - After the frontend changes, `npm run check`, `npm run audit:ui`, `npm run build`, and `git diff --check` passed. `scripts/eval/test_evidence_regressions.py` passed 7/7; `scripts/eval/test_role_pipeline.py` passed 17/17; `scripts/eval/run_eval.py` passed static tool coverage 9/9. The static check does not assess answer quality.
 - Visual inspection: the old 2048×1152 exercise screenshot had unused lower-viewport space because the form had little content; it was not filled with fabricated data. A 1440×900 evaluation screenshot showed a fixed-height score card and a misleading `0/100` for a learner with no evidence. The card now follows content, and the score shows `—` with an explanation until evidence exists. The 1440×900 page audit found zero page-width overflow and zero visible text items below 11px after the typography fixes. The Three.js lazy chunk size remains a build warning.
 - No current AgentArts deployment, independent teacher scoring, or model-based semantic rerun was performed in this local acceptance.
+
+## PR #5 teammate refactor review, 2026-11-19
+
+- Reviewed teammate commits `841aece` through `7f4da48` in an isolated worktree. Backend unit tests **47/47**, frontend `npm run check` and `npm run build` passed; the lazy Three.js chunk still exceeds 500 kB.
+- Real local frontend/backend health checks returned HTTP 200. Edge/Playwright exercise, galaxy, knowledge, responsive, and teammate regression subset: **23/23 passed**.
+- Found a real evaluation regression after `knowledge_hub.py` was split: `cite_check.py` and `test_evidence_regressions.py` still imported `_chapter_documents` and `_read_text` from the old module, causing `ImportError`. Updated imports to their new owning modules. Evidence regression **7/7 passed**; real local citation call for the demo learner returned **13/13 source verified and 7/7 claimed chapters verified**.
+- Added the evidence regression command to the static evaluation CI job so the import break is checked on future PRs. No model routing or AgentArts cloud call was run in this review.

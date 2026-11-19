@@ -83,6 +83,9 @@ jobs:
       - name: Nine-step role pipeline determinism
         working-directory: 01_ICT主工程
         run: python scripts/eval/test_role_pipeline.py
+      - name: Citation and chapter evidence regressions
+        working-directory: 01_ICT主工程
+        run: python scripts/eval/test_evidence_regressions.py
       - name: Tool schema matches the eval set
         working-directory: 01_ICT主工程
         run: python scripts/eval/answer_eval.py --list-tools

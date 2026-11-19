@@ -42,7 +42,7 @@ def check_citation(item: dict, read_text, roots: list[pathlib.Path], metadata_di
         return result
     result["source_verified"] = True
     if chapter:
-        from app.services.knowledge_hub import _chapter_documents
+        from app.services.knowledge_documents import _chapter_documents
         textbook_id = str(item.get("id", "")).split(":", 1)[-1].split("#", 1)[0]
         metadata = metadata_dir / f"book_{textbook_id}.json"
         if not metadata.is_file():
@@ -68,7 +68,8 @@ async def run(student: str, limit: int, out: pathlib.Path) -> dict:
         if p not in sys.path:
             sys.path.insert(0, p)
     from app.core.config import settings
-    from app.services.knowledge_hub import _read_text, _chapter_knowledge_dir
+    from app.services.knowledge_text import _read_text
+    from app.services.knowledge_data import _chapter_knowledge_dir
     from mcp_server import server as srv
 
     cases = [json.loads(line) for line in EVAL_SET.read_text(encoding="utf-8").splitlines() if line.strip()]

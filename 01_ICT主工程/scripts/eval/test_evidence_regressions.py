@@ -9,7 +9,8 @@ from unittest.mock import Mock, patch
 MAIN = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(MAIN / "backend"))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from app.services.knowledge_hub import _chapter_documents, _read_text
+from app.services.knowledge_documents import _chapter_documents
+from app.services.knowledge_text import _read_text
 from cite_check import check_citation
 from route_eval import parse_tools, plan_tools
 
