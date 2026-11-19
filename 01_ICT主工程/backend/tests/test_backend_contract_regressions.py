@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,7 +16,7 @@ from app.api.routers.tutor import _with_legacy_tutor_fields
 from app.core.config import settings
 from app.db.sqlite import init_db
 from app.main import create_app
-from app.repo import get_user_events, read_json
+from app.repo import ensure_student, get_user_events, insert_resource_item, read_json
 from app.services.learning_state import _localize_profile_text, _profile_dimension_confidence, evaluation_overview, path_overview, profile_overview
 from app.services.exercise_bank import _ability_radar, build_exercise_session, wrong_book_summary
 from app.services.knowledge_hub import mastery_data
@@ -149,6 +150,8 @@ class BackendContractRegressionTest(unittest.TestCase):
         self.assertEqual(path["stage_count"], 0)
         self.assertEqual(evaluation["evidence"]["total"], 0)
         self.assertEqual(evaluation["score"], 0)
+        self.assertIn("规则加权值", evaluation["methodology"]["score"])
+        self.assertIn("代理值", evaluation["methodology"]["transfer_application"])
         self.assertTrue(all(item["value"] == 0 for item in evaluation["dimensions"]))
         self.assertEqual(build_exercise_session(student_id)["questions"], [])
         self.assertEqual(build_exercise_session(student_id)["source"], "no_generated_question_bank")
@@ -158,6 +161,47 @@ class BackendContractRegressionTest(unittest.TestCase):
         self.assertEqual(mastery["summary"]["average_mastery"], 0)
         self.assertTrue(all(item["mastery"] == 0 for item in mastery["nodes"]))
         self.assertTrue(all(item["evidence_count"] == 0 for item in mastery["nodes"]))
+
+    def test_generated_question_bank_is_available_without_resource_filter(self) -> None:
+        student_id = "regression-generated-bank"
+        ensure_student(student_id=student_id, major="", goals="")
+
+        relative_content_path = "files/generated-question-bank.json"
+        content_path = Path(self.temp_dir.name) / relative_content_path
+        content_path.parent.mkdir(parents=True, exist_ok=True)
+        content_path.write_text(
+            json.dumps(
+                {
+                    "meta": {"course": "隔离回归课程", "chapter": "题库加载"},
+                    "questions": [
+                        {
+                            "type": "single_choice",
+                            "stem": "自动生成的题库是否应能直接进入练习？",
+                            "options": ["A. 应该", "B. 不应该"],
+                            "answer": "A",
+                            "analysis": "没有指定资源筛选条件时，应加载该学生的可用题库。",
+                            "knowledge_point": "题库加载",
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        insert_resource_item(
+            student_id=student_id,
+            type="question_bank",
+            title="隔离生成题库",
+            tags=["test/generated"],
+            content_uri=relative_content_path,
+            meta={"requirement": {"constraints": {"source": "exercise_custom_bank"}}},
+        )
+
+        session = build_exercise_session(student_id, resource_ids=None)
+
+        self.assertEqual(session["source"], "generated_question_bank")
+        self.assertEqual(len(session["questions"]), 1)
+        self.assertEqual(session["questions"][0]["stem"], "自动生成的题库是否应能直接进入练习？")
 
     def test_profile_confidence_is_unknown_without_attached_evidence(self) -> None:
         snapshot = {"knowledge_base_level": "beginner", "cognitive_style": "visual"}

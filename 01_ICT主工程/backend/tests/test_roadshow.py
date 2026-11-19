@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -14,10 +16,15 @@ class RoadshowKnowledgeDataTest(unittest.TestCase):
         project_root = Path(__file__).resolve().parents[2]
         # 该用例断言的是 roadshow-seed 的语义课程契约；无条件指向 seed，
         # 避免本机 backend/data 里陈旧的哈希文件名数据导致裸跑单测时 resources=0。
-        settings.data_dir = str(project_root / "roadshow-seed")
+        # 但 seed 在仓库里是只读基线（CI 上也会被 git 跟踪），所以复制到临时目录再跑，
+        # 断言读不到写入副作用，也不会在只读挂载或沙箱下报 WinError 5。
+        self.seed_copy = Path(tempfile.mkdtemp(prefix="roadshow-seed-"))
+        shutil.copytree(project_root / "roadshow-seed", self.seed_copy, dirs_exist_ok=True)
+        settings.data_dir = str(self.seed_copy)
 
     def tearDown(self) -> None:
         settings.data_dir = self.original_data_dir
+        shutil.rmtree(self.seed_copy, ignore_errors=True)
 
     def test_demo_graph_has_semantic_course_structure(self) -> None:
         graph = graph_data("demo", max_nodes=56)

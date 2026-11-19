@@ -447,6 +447,10 @@ def evaluation_overview(student_id: str) -> dict[str, Any]:
             "learning_events": len(events),
         },
         "confidence": _evaluation_confidence(evidence_total),
+        "methodology": {
+            "score": "综合分为练习正确率35%、掌握度35%、投入度20%、资源匹配10%的规则加权值；不是教学效果实验结果。",
+            "transfer_application": "迁移应用为练习正确率乘以0.88的代理值，尚无独立迁移任务测量。",
+        },
         "dimensions": [
             {"label": "知识掌握", "value": mastery},
             {"label": "迁移应用", "value": round(accuracy * 0.88, 1)},

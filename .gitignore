@@ -11,4 +11,5 @@ roadshow-logs/
 **/roadshow-data/
 **/roadshow-logs/
 **/roadshow-seed/app.db
-
+# MCP 服务的 API Key 由 start_mcp.ps1 本地生成，绝不入库
+.mcp_api_key

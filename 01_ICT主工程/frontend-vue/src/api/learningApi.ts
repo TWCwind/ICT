@@ -133,6 +133,7 @@ export type EvaluationOverview = {
   weak_points: string[]
   evidence: Record<string, number>
   dimensions: Array<{ label: string; value: number }>
+  methodology?: { score: string; transfer_application: string }
   suggestions: Array<{ title: string; detail: string; route: string }>
   timeline: LearningActivity[]
   latest_report?: Record<string, any> | null
