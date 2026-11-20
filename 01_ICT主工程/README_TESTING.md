@@ -108,7 +108,7 @@ python .\scripts\verify\concurrency_check.py sqlite <DATA_DIR>
 
 | 项 | json 后端 | sqlite 后端 | 备注 |
 | --- | --- | --- | --- |
-| 后端单测 | 47/47 | 47/47 | 同一套 `backend/tests` |
+| 后端单测 | 60/60 | 60/60 | 同一套 `backend/tests`（47 旧 + 13 鉴权隔离新增） |
 | 16 条只读 API | — | — | 两个后端逐字段一致（忽略 `created_at` 等易变字段） |
 | Playwright e2e 全量 | 64/65（修复前） | 65/65（修复后） | 曾同败于 `full-flow-generated.spec.ts:72`，去掉面板 4 条上限后修复 |
 | 并发写入 | 0/20、1/20 | 20/20、20/20 | `scripts/verify/concurrency_check.py` |
@@ -119,6 +119,26 @@ python .\scripts\verify\concurrency_check.py sqlite <DATA_DIR>
 两个后端在同一轮跑出完全相同的失败，说明与存储层无关。2026-11-20 按「面板不设上限」的取舍修复：删除 `relatedResources`
 两处 `slice(0, 4)`——所有资源节点都直连课程根节点，去上限后按钮数恒等于 `stats.resources`；先造 6 资源状态单跑该用例通过（6.8s），
 sqlite 后端全量回归 65/65（18.8m）。
+
+## 多用户隔离（会话级）验收
+
+后端新增会话级隔离（2026-11-20）：`AUTH_REQUIRED=1` 开启后，所有带 `student_id` 的接口都要求
+`X-Session-Token`（或 `Authorization: Bearer`）头，且令牌绑定的学号必须与请求学号一致——
+query 参数、path 参数、JSON body 三处提取；不一致返回 403，缺/坏令牌返回 401；`/health` 与
+`/api/auth/*` 豁免。登录走 `POST /api/auth/login`（学号 + 服务端 SVG 验证码，一次性消费），
+令牌默认有效期 12 小时（`AUTH_TOKEN_TTL_SEC`），签名密钥 `AUTH_SECRET`（生产必须显式配置）。
+
+单测（13 项，双后端各跑一遍均通过，总数 47→60）：
+
+```powershell
+cd backend
+$env:DATA_DIR="<DATA_DIR>"; python -m unittest discover -s tests -p "test_auth_isolation.py" -v
+```
+
+开态实测矩阵（`AUTH_REQUIRED=1` 起第二后端，16 项全过）：config 上报 auth_required、/health 放行、
+无令牌 401、坏令牌 401、非学号接口放行、验证码 SVG 4 字符、错验证码拒登、小写验证码可登录、
+匹配令牌 200（query/path/body 三型）、跨学号 403（三型）、Bearer 头 200、`/api/auth/me` 返回学号。
+关态（默认）实测：无令牌访问 200。
 
 ## 验收重点
 

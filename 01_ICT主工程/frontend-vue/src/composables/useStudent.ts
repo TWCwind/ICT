@@ -1,5 +1,7 @@
 import { computed, ref, watch } from 'vue'
 
+import { AUTHED_STORAGE_KEY, authRequired, clearSessionToken } from '@/composables/useAuth'
+
 const key = 'las_student_id'
 const majorKey = 'las_major'
 const goalsKey = 'las_goals'
@@ -38,12 +40,22 @@ export const DEMO_STUDENT_ID = 'demo'
 
 /** 切到演示学生（后端有完整项目/路径/错题数据），切完刷新页面让各页重新取数。 */
 export function switchToDemoStudent() {
+  // 鉴权开态下切换学号必须重新登录：清掉旧会话令牌与登录标记
+  if (authRequired.value) {
+    clearSessionToken()
+    sessionStorage.removeItem(AUTHED_STORAGE_KEY)
+  }
   studentId.value = DEMO_STUDENT_ID
   localStorage.setItem(key, DEMO_STUDENT_ID)
 }
 
 /** 切回一个全新的个人学号（恢复“每个访客独立数据”的默认行为）。 */
 export function switchToOwnStudent() {
+  // 鉴权开态下切换学号必须重新登录：清掉旧会话令牌与登录标记
+  if (authRequired.value) {
+    clearSessionToken()
+    sessionStorage.removeItem(AUTHED_STORAGE_KEY)
+  }
   const next = createLearnerId()
   studentId.value = next
   localStorage.setItem(key, next)

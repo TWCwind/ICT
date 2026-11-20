@@ -37,7 +37,7 @@ cd 01_ICT主工程
 
 | 项 | 结果 |
 | --- | --- |
-| 后端单元测试 | 47 项全部通过（`STORAGE_BACKEND=json` 与 `sqlite` 各跑一遍，均 47/47） |
+| 后端单元测试 | 60 项全部通过（47 旧 + 13 多用户隔离新增；`STORAGE_BACKEND=json` 与 `sqlite` 各跑一遍，均 60/60） |
 | 后端验收脚本 `tests/backend_acceptance.py` | 11/12 通过——`generate-resources` 生成耗时 40s，超过脚本 25s 的客户端超时，json 与 sqlite 后端耗时一致，与存储层无关 |
 | 双后端 API 对比 | 16 条只读接口逐字段一致（profile / resources / exercise / path / knowledge / evaluate / dashboard / delivery / push / tutor） |
 | 并发写入 | 20 线程写学习事件 20/20、20 线程追加错题 20/20；json 基线 0/20、1/20（读-改-写覆盖丢失） |
@@ -59,7 +59,9 @@ e2e 依赖 Edge（`channel: 'msedge'`）与本地数据，因此放在手动工�
    两种后端（`STORAGE_BACKEND=json|sqlite`）共用 `backend/app/repo.py` 同一组签名，路由与服务不感知差异，
    迁移与核对命令见 `01_ICT主工程/README_TESTING.md`。并发写入已由单条 INSERT 与 `busy_timeout` 兜住
    （20 线程写事件 20/20、20 线程追加错题 20/20；JSON 基线为 0/20、1/20，读-改-写覆盖丢失已消除）。
-   仍未做：多用户隔离只有学号级目录/单库文件，账号体系与权限边界不在本版本范围内。
+   多用户隔离（会话级）已交付（2026-11-20）：登录发 HMAC 签名令牌（学号 + 服务端验证码），全接口校验令牌学号与请求学号一致
+   （query/path/body 三处提取；不一致 403、缺/坏令牌 401），`AUTH_REQUIRED` 开关默认关（关态零影响，e2e/CI 以关态跑，开态 16 项矩阵实测全过）。
+   仍未做：账号体系（密码/注册/角色）与权限边界。
 2. **AgentArts 云端接入未完成**：MCP 服务已完成加固（API Key + 限流 + 日志脱敏，9 个工具），
    并在本机与临时公网隧道下实测通过；正式注册仍缺固定公网 HTTPS 域名、团队空间与网关注册。
 3. **实时语音 / 数字人处于禁用状态**：未配置实时语音通道时会回退到浏览器语音，并在页面上如实提示。

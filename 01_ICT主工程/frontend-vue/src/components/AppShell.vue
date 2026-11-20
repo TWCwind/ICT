@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, nextTick, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   BrainCircuit,
@@ -21,6 +21,8 @@ import {
   X,
 } from 'lucide-vue-next'
 import { useStudent } from '@/composables/useStudent'
+import { AUTHED_STORAGE_KEY, useAuth } from '@/composables/useAuth'
+import { apiGet, apiPost } from '@/utils/api'
 import ConnectionNotice from '@/components/ConnectionNotice.vue'
 
 type NavItem = {
@@ -32,7 +34,7 @@ type NavItem = {
 
 const route = useRoute()
 const router = useRouter()
-const authStorageKey = 'zx-resource-agent-authed'
+const authStorageKey = AUTHED_STORAGE_KEY
 const isAuthed = ref(typeof window !== 'undefined' && sessionStorage.getItem(authStorageKey) === '1')
 const phone = ref('')
 const password = ref('')
@@ -61,6 +63,30 @@ const settingsMenuRef = ref<HTMLElement | null>(null)
 const settingsTriggerRef = ref<HTMLButtonElement | null>(null)
 const settingsPanelRef = ref<HTMLElement | null>(null)
 const { studentId, major, goals } = useStudent()
+const { authRequired, loadAuthConfig, setSessionToken, clearSessionToken } = useAuth()
+const studentIdInput = ref('')
+const serverCaptchaId = ref('')
+const serverCaptchaImage = ref('')
+const loginPending = ref(false)
+
+// 鉴权开态：验证码由后端签发（SVG 图片），点击刷新；关态沿用本地生成验证码。
+async function refreshServerCaptcha() {
+  captcha.value = ''
+  loginError.value = ''
+  const resp = await apiGet<{ captcha_id: string; image: string }>('/api/auth/captcha')
+  if (resp.success && resp.data) {
+    serverCaptchaId.value = resp.data.captcha_id
+    serverCaptchaImage.value = resp.data.image
+  } else {
+    serverCaptchaId.value = ''
+    serverCaptchaImage.value = ''
+    loginError.value = '验证码获取失败，请点击验证码重试'
+  }
+}
+
+watch(authRequired, (required) => {
+  if (required && !serverCaptchaId.value) void refreshServerCaptcha()
+})
 
 const nav: NavItem[] = [
   { to: '/', label: '总控首页', desc: '录屏演示主入口', icon: LayoutDashboard },
@@ -76,8 +102,12 @@ const nav: NavItem[] = [
 
 const current = computed(() => nav.find((n) => n.to === route.path) || nav[0])
 
-function submitLogin() {
+async function submitLogin() {
   loginError.value = ''
+  if (authRequired.value) {
+    await submitLoginAuthed()
+    return
+  }
   if (!/^1\d{10}$/.test(phone.value.trim())) {
     loginError.value = '请输入 11 位手机号'
     return
@@ -98,8 +128,49 @@ function submitLogin() {
   refreshCaptcha()
 }
 
+// 鉴权开态登录：学号 + 服务端验证码 → 后端签发绑定该学号的会话令牌。
+async function submitLoginAuthed() {
+  const sid = studentIdInput.value.trim()
+  if (!sid) {
+    loginError.value = '请输入学号'
+    return
+  }
+  if (!captcha.value.trim()) {
+    loginError.value = '请输入验证码'
+    return
+  }
+  if (!serverCaptchaId.value) {
+    await refreshServerCaptcha()
+    return
+  }
+  loginPending.value = true
+  const resp = await apiPost<{ student_id: string; token: string; expires_at: number }>('/api/auth/login', {
+    student_id: sid,
+    captcha_id: serverCaptchaId.value,
+    captcha_code: captcha.value.trim(),
+  })
+  loginPending.value = false
+  if (!resp.success || !resp.data?.token) {
+    void refreshServerCaptcha()
+    loginError.value = resp.error?.message || '登录失败，请重试'
+    return
+  }
+  const studentIdChanged = sid !== studentId.value
+  setSessionToken(resp.data.token)
+  studentId.value = resp.data.student_id
+  isAuthed.value = true
+  sessionStorage.setItem(authStorageKey, '1')
+  captcha.value = ''
+  studentIdInput.value = ''
+  if (studentIdChanged) {
+    // 学号从默认 learner-* 换成登录学号：整页刷新让各页按新学号重新取数
+    window.location.reload()
+  }
+}
+
 function logout() {
   sessionStorage.removeItem(authStorageKey)
+  clearSessionToken()
   isAuthed.value = false
   settingsOpen.value = false
   void router.replace('/')
@@ -141,6 +212,7 @@ function handleOutsidePointerDown(event: PointerEvent) {
 onMounted(() => {
   window.addEventListener('keydown', handleSettingsKeydown)
   document.addEventListener('pointerdown', handleOutsidePointerDown)
+  void loadAuthConfig()
   if (!isAuthed.value && route.path !== '/') {
     void router.replace('/')
   }
@@ -215,12 +287,17 @@ onBeforeUnmount(() => {
           <p>AI个性化学习智能体</p>
         </div>
 
-        <label class="login-field">
+        <label class="login-field" v-if="!authRequired">
           <Smartphone :size="28" stroke-width="2.2" />
           <input v-model="phone" inputmode="numeric" maxlength="11" placeholder="手机号" autocomplete="tel" />
         </label>
 
-        <label class="login-field login-field-active">
+        <label class="login-field login-field-active" v-else>
+          <UserRound :size="28" stroke-width="2.2" />
+          <input v-model="studentIdInput" placeholder="学号" autocomplete="username" aria-label="学号" />
+        </label>
+
+        <label class="login-field login-field-active" v-if="!authRequired">
           <LockKeyhole :size="28" stroke-width="2.2" />
           <input
             v-model="password"
@@ -237,13 +314,15 @@ onBeforeUnmount(() => {
         <div class="login-field login-captcha-field">
           <ShieldCheck :size="30" stroke-width="2.15" />
           <input v-model="captcha" maxlength="4" placeholder="验证码" aria-label="验证码" autocomplete="off" />
-          <button type="button" class="captcha-box captcha-clickable" aria-label="刷新验证码" title="看不清？点击切换验证码" @click="refreshCaptcha"><span v-for="(item, i) in captchaChars" :key="i" class="captcha-char" :style="`transform: rotate(${item.rotate}deg) translateY(${item.offsetY}px);`">{{ item.ch }}</span></button>
+          <button v-if="authRequired" type="button" class="captcha-box captcha-clickable" aria-label="刷新验证码" title="看不清？点击刷新验证码" @click="refreshServerCaptcha"><img v-if="serverCaptchaImage" :src="serverCaptchaImage" alt="验证码" style="width: 100%; height: 100%; object-fit: contain;" /></button>
+          <button v-else type="button" class="captcha-box captcha-clickable" aria-label="刷新验证码" title="看不清？点击切换验证码" @click="refreshCaptcha"><span v-for="(item, i) in captchaChars" :key="i" class="captcha-char" :style="`transform: rotate(${item.rotate}deg) translateY(${item.offsetY}px);`">{{ item.ch }}</span></button>
         </div>
 
-        <button class="login-submit" type="submit">登录并进入系统</button>
+        <button class="login-submit" type="submit">{{ loginPending ? '登录中…' : '登录并进入系统' }}</button>
 
         <div class="login-tip">
-          <span>测试账号：任意 11 位手机号，密码 demo123（验证码点击可刷新，字母不区分大小写）</span>
+          <span v-if="!authRequired">测试账号：任意 11 位手机号，密码 demo123（验证码点击可刷新，字母不区分大小写）</span>
+          <span v-else>请输入学号与服务端验证码登录，会话将绑定该学号（多用户隔离已启用）</span>
           <strong v-if="loginError">{{ loginError }}</strong>
         </div>
       </form>

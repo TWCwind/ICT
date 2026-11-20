@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.routers.auth import router as auth_router
 from app.api.routers.avatar import router as avatar_router
 from app.api.routers.config import router as config_router
 from app.api.routers.delivery import router as delivery_router
@@ -24,6 +25,7 @@ from app.evolution import router as evolution_router
 
 
 api_router = APIRouter()
+api_router.include_router(auth_router)
 api_router.include_router(avatar_router)
 api_router.include_router(config_router)
 api_router.include_router(dashboard_router)

@@ -4,13 +4,14 @@ import logging
 import os
 import time
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.agents.trace_log import record_request
 from app.api.app_router import api_router
+from app.api.routers.auth import enforce_student_isolation
 from app.core.config import settings
 from app.core.ids import new_id
 from app.core.logging import configure_logging, request_id_var
@@ -47,7 +48,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(api_router)
+    app.include_router(api_router, dependencies=[Depends(enforce_student_isolation)])
 
     files_dir = settings.files_path
     exports_dir = settings.data_path / "exports"

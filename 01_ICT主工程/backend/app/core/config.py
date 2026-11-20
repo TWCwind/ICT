@@ -19,6 +19,11 @@ class Settings(BaseModel):
     data_dir: str = "./data"
     storage_backend: str = "json"
 
+    auth_required: bool = False
+    auth_secret: str = ""
+    auth_token_ttl_sec: int = 43200
+    auth_captcha_ttl_sec: int = 300
+
     llm_provider: str = "openai_compatible"
     llm_base_url: str = ""
     llm_api_key: str = ""
@@ -90,6 +95,10 @@ settings = Settings(
     app_port=int(__import__("os").environ.get("APP_PORT") or "8000"),
     data_dir=(__import__("os").environ.get("DATA_DIR") or "./data"),
     storage_backend=((__import__("os").environ.get("STORAGE_BACKEND") or "json").strip().lower()),
+    auth_required=((__import__("os").environ.get("AUTH_REQUIRED") or "0").strip().lower() in ("1", "true", "yes", "on")),
+    auth_secret=(__import__("os").environ.get("AUTH_SECRET") or ""),
+    auth_token_ttl_sec=int(__import__("os").environ.get("AUTH_TOKEN_TTL_SEC") or "43200"),
+    auth_captcha_ttl_sec=int(__import__("os").environ.get("AUTH_CAPTCHA_TTL_SEC") or "300"),
     llm_provider=(__import__("os").environ.get("LLM_PROVIDER") or "openai_compatible"),
     llm_base_url=(__import__("os").environ.get("LLM_BASE_URL") or ""),
     llm_api_key=(__import__("os").environ.get("LLM_API_KEY") or ""),
