@@ -108,7 +108,7 @@ python .\scripts\verify\concurrency_check.py sqlite <DATA_DIR>
 
 | 项 | json 后端 | sqlite 后端 | 备注 |
 | --- | --- | --- | --- |
-| 后端单测 | 60/60 | 60/60 | 同一套 `backend/tests`（47 旧 + 13 鉴权隔离新增） |
+| 后端单测 | 73/73 | 73/73 | 同一套 `backend/tests`（47 旧 + 13 鉴权隔离 + 13 迁移窗口新增） |
 | 16 条只读 API | — | — | 两个后端逐字段一致（忽略 `created_at` 等易变字段） |
 | Playwright e2e 全量 | 64/65（修复前） | 65/65（修复后） | 曾同败于 `full-flow-generated.spec.ts:72`，去掉面板 4 条上限后修复 |
 | 并发写入 | 0/20、1/20 | 20/20、20/20 | `scripts/verify/concurrency_check.py` |
@@ -120,6 +120,33 @@ python .\scripts\verify\concurrency_check.py sqlite <DATA_DIR>
 两处 `slice(0, 4)`——所有资源节点都直连课程根节点，去上限后按钮数恒等于 `stats.resources`；先造 6 资源状态单跑该用例通过（6.8s），
 sqlite 后端全量回归 65/65（18.8m）。
 
+### 在线迁移窗口（不停机切库）
+
+离线迁移之外，后端提供进程内迁移窗口，可在服务运行中把 JSON 数据切到 SQLite：
+
+```powershell
+# 1) 查看当前窗口状态与后端
+GET /api/storage/migration-window
+
+# 2) 冻结写（同步写排队等待，async 端点写返回 503 + Retry-After: 5）
+POST /api/storage/migrate {"action": "prepare"}
+
+# 3) 迁移 + 逐学号核对 + 切换到 sqlite（核对不过保持 json 并解冻，差异进 status.errors）
+POST /api/storage/migrate {"action": "commit"}
+
+# 4) 放弃本次迁移（解冻，JSON 数据不动）
+POST /api/storage/migrate {"action": "abort"}
+```
+
+要点：
+
+- 冻结是进程内 `threading.Lock`：同步写（线程池端点/MCP/脚本）排队不拒绝；跑在事件循环上的 async 端点写会立刻拿到 503（`MIGRATION_FROZEN`，带 `Retry-After`），解冻后重试即可；
+- commit 先复用离线脚本的核对口径（逐学号去重 id 比对），核对不过不切换、保持 json 后端并解冻，差异写入 status.errors；
+- 窗口有 TTL 看门狗（`MIGRATION_WINDOW_TTL_SEC`，默认 300 秒），超时自动 abort，防止忘了解冻；
+- commit 之后 abort 会被拒绝并提示人工回退；JSON 文件迁移后原样保留，作为回退快照。
+
+实测（2026-11-20，真实 uvicorn 起服务 + 并发写 + 断言落库，`_runtime/live_migration_probe.py`）：happy/abort/TTL 三组共 20 个场景全部通过——含冻结期 3 个并发写全部 503、解冻后重试全部成功、commit 后 SQLite 逐表断言、abort 后写进 JSON、TTL 超时自动解冻。新增 13 项单测（`backend/tests/test_migration_window.py`），双后端全量 60→73 全绿。
+
 ## 多用户隔离（会话级）验收
 
 后端新增会话级隔离（2026-11-20）：`AUTH_REQUIRED=1` 开启后，所有带 `student_id` 的接口都要求
@@ -128,7 +155,7 @@ query 参数、path 参数、JSON body 三处提取；不一致返回 403，缺/
 `/api/auth/*` 豁免。登录走 `POST /api/auth/login`（学号 + 服务端 SVG 验证码，一次性消费），
 令牌默认有效期 12 小时（`AUTH_TOKEN_TTL_SEC`），签名密钥 `AUTH_SECRET`（生产必须显式配置）。
 
-单测（13 项，双后端各跑一遍均通过，总数 47→60）：
+单测（13 项，双后端各跑一遍均通过；含后续迁移窗口新增后总数 47→73）：
 
 ```powershell
 cd backend

@@ -37,10 +37,11 @@ cd 01_ICT主工程
 
 | 项 | 结果 |
 | --- | --- |
-| 后端单元测试 | 60 项全部通过（47 旧 + 13 多用户隔离新增；`STORAGE_BACKEND=json` 与 `sqlite` 各跑一遍，均 60/60） |
+| 后端单元测试 | 73 项全部通过（47 旧 + 13 多用户隔离 + 13 在线迁移窗口新增；`STORAGE_BACKEND=json` 与 `sqlite` 各跑一遍，均 73/73） |
 | 后端验收脚本 `tests/backend_acceptance.py` | 11/12 通过——`generate-resources` 生成耗时 40s，超过脚本 25s 的客户端超时，json 与 sqlite 后端耗时一致，与存储层无关 |
 | 双后端 API 对比 | 16 条只读接口逐字段一致（profile / resources / exercise / path / knowledge / evaluate / dashboard / delivery / push / tutor） |
 | 并发写入 | 20 线程写学习事件 20/20、20 线程追加错题 20/20；json 基线 0/20、1/20（读-改-写覆盖丢失） |
+| 在线迁移窗口 | 真实后端起服务实测 20/20 场景全过（happy 9 + abort 4 + TTL 3，`_runtime/live_migration_probe.py`），冻结期 async 端点写返回 503 + Retry-After，解冻重试成功 |
 | 前端生产构建（`vue-tsc -b` + `vite build`） | 通过 |
 | Playwright e2e 全量 | 65/65 通过（Edge，约 19 分钟/轮）。`full-flow-generated.spec.ts:72` 曾因面板截断 4 条稳定失败（两后端一致，与存储层无关）；2026-11-20 删除 `relatedResources` 的 4 条上限后修复，sqlite 后端全量 65/65 |
 | 50 条评测集：工具路由 | 首步命中 36/50，计划覆盖 42/50（`scripts/eval/route_eval.py`） |
@@ -61,7 +62,7 @@ e2e 依赖 Edge（`channel: 'msedge'`）与本地数据，因此放在手动工�
    （20 线程写事件 20/20、20 线程追加错题 20/20；JSON 基线为 0/20、1/20，读-改-写覆盖丢失已消除）。
    多用户隔离（会话级）已交付（2026-11-20）：登录发 HMAC 签名令牌（学号 + 服务端验证码），全接口校验令牌学号与请求学号一致
    （query/path/body 三处提取；不一致 403、缺/坏令牌 401），`AUTH_REQUIRED` 开关默认关（关态零影响，e2e/CI 以关态跑，开态 16 项矩阵实测全过）。
-   仍未做：账号体系（密码/注册/角色）与权限边界。
+   旧库在线迁移窗口已交付（2026-11-20）：`POST /api/storage/migrate`（prepare/commit/abort）+`GET /api/storage/migration-window`，冻结期间同步写排队、事件循环写 503 重试，commit 先核对再切换，JSON 文件保留作回退快照；TTL 看门狗超时自动 abort（`MIGRATION_WINDOW_TTL_SEC`）。仍未做：账号体系（密码/注册/角色）与权限边界。
 2. **AgentArts 云端接入未完成**：MCP 服务已完成加固（API Key + 限流 + 日志脱敏，9 个工具），
    并在本机与临时公网隧道下实测通过；正式注册仍缺固定公网 HTTPS 域名、团队空间与网关注册。
 3. **实时语音 / 数字人处于禁用状态**：未配置实时语音通道时会回退到浏览器语音，并在页面上如实提示。

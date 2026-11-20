@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.ids import new_id
 from app.core.logging import configure_logging, request_id_var
 from app.db import init_db
+from app.storage.migration_window import MigrationFrozenError
 
 
 _DEFAULT_CORS_ALLOWED_ORIGINS = (
@@ -35,6 +36,46 @@ def _cors_allowed_origins() -> list[str]:
     return list(dict.fromkeys(configured or _DEFAULT_CORS_ALLOWED_ORIGINS))
 
 
+class MigrationFrozenASGIMiddleware:
+    """把 MigrationFrozenError（BaseException）转成 503 的纯 ASGI 中间件。
+
+    为什么这么绕（2026-11-21 实测三连坑）：
+    1. 不能用 app.exception_handler：Starlette 注册时断言
+       issubclass(exc, Exception)，而 MigrationFrozenError 必须是
+       BaseException 才能穿透路由里普遍存在的 except Exception 兜底；
+    2. 不能在 @app.middleware("http") 里接：那是 BaseHTTPMiddleware，
+       call_next 把下游跑在子任务里，BaseException 冒到任务边界变成
+       EndOfStream -> RuntimeError("No response returned")，原始异常
+       永远到不了外层。
+    纯 ASGI 中间件与路由处理器在同一个 await 链上，没有任务边界，
+    BaseException 能完整冒上来，在这里消费掉并送出 503 响应。
+    注册顺序：本中间件先 add_middleware，request_log 装饰器后注册为
+    外层（add_middleware 是头插），于是 503 仍会被 access log 记录。
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        try:
+            await self.app(scope, receive, send)
+        except MigrationFrozenError as exc:
+            response = JSONResponse(
+                status_code=503,
+                headers={"Retry-After": "5"},
+                content={
+                    "request_id": new_id(),
+                    "success": False,
+                    "data": None,
+                    "error": {"code": exc.code, "message": str(exc)},
+                },
+            )
+            await response(scope, receive, send)
+
+
 def create_app() -> FastAPI:
     configure_logging("INFO")
     init_db()
@@ -47,6 +88,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.add_middleware(MigrationFrozenASGIMiddleware)
 
     app.include_router(api_router, dependencies=[Depends(enforce_student_isolation)])
 
