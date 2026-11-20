@@ -42,7 +42,7 @@ cd 01_ICT主工程
 | 双后端 API 对比 | 16 条只读接口逐字段一致（profile / resources / exercise / path / knowledge / evaluate / dashboard / delivery / push / tutor） |
 | 并发写入 | 20 线程写学习事件 20/20、20 线程追加错题 20/20；json 基线 0/20、1/20（读-改-写覆盖丢失） |
 | 前端生产构建（`vue-tsc -b` + `vite build`） | 通过 |
-| Playwright e2e 全量 | 64/65 通过（Edge，约 18–19 分钟/轮）。唯一失败 `full-flow-generated.spec.ts:72` 是既有用例与 UI 规则冲突：按钮探针 spec 会调用生成接口追加第 6 个资源，使该课程资源数变成 5，而详情面板「配套资源」最多渲染 4 条；json 与 sqlite 两后端结果一致，与本次改动无关 |
+| Playwright e2e 全量 | 65/65 通过（Edge，约 19 分钟/轮）。`full-flow-generated.spec.ts:72` 曾因面板截断 4 条稳定失败（两后端一致，与存储层无关）；2026-11-20 删除 `relatedResources` 的 4 条上限后修复，sqlite 后端全量 65/65 |
 | 50 条评测集：工具路由 | 首步命中 36/50，计划覆盖 42/50（`scripts/eval/route_eval.py`） |
 | 50 条评测集：答案级可核验项 | 见 `scripts/eval/evidence/answer_eval_2026*.md`；工具无业务错误 35/50；模型自评 50/50 条：完全满足 34、部分 15、不满足 1，加权 0.83。尚无独立人工评分。 |
 | CI | `.github/workflows/ci.yml`：后端单测、MCP 测试、评测静态校验、前端类型检查+构建 |
