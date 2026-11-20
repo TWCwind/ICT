@@ -33,14 +33,16 @@ cd 01_ICT主工程
 登录（demo）：手机号 `10000000000`，密码 `demo123`，验证码取登录框上方四个字符。
 切换 demo 学号：首页「切换演示学号」（课程、练习记录、评估证据都挂在学号下）。
 
-## 验证状态（2026-11-16 实测）
+## 验证状态（2026-11-20 实测）
 
 | 项 | 结果 |
 | --- | --- |
-| 后端单元测试 | 46 项全部通过 |
-| 后端验收脚本 `tests/backend_acceptance.py` | 12/12 通过 |
+| 后端单元测试 | 47 项全部通过（`STORAGE_BACKEND=json` 与 `sqlite` 各跑一遍，均 47/47） |
+| 后端验收脚本 `tests/backend_acceptance.py` | 11/12 通过——`generate-resources` 生成耗时 40s，超过脚本 25s 的客户端超时，json 与 sqlite 后端耗时一致，与存储层无关 |
+| 双后端 API 对比 | 16 条只读接口逐字段一致（profile / resources / exercise / path / knowledge / evaluate / dashboard / delivery / push / tutor） |
+| 并发写入 | 20 线程写学习事件 20/20、20 线程追加错题 20/20；json 基线 0/20、1/20（读-改-写覆盖丢失） |
 | 前端生产构建（`vue-tsc -b` + `vite build`） | 通过 |
-| Playwright e2e 全量 | 62 个用例通过（含 2 条已知体验债，以 `test.fail` 标注） |
+| Playwright e2e 全量 | 64/65 通过（Edge，约 18–19 分钟/轮）。唯一失败 `full-flow-generated.spec.ts:72` 是既有用例与 UI 规则冲突：按钮探针 spec 会调用生成接口追加第 6 个资源，使该课程资源数变成 5，而详情面板「配套资源」最多渲染 4 条；json 与 sqlite 两后端结果一致，与本次改动无关 |
 | 50 条评测集：工具路由 | 首步命中 36/50，计划覆盖 42/50（`scripts/eval/route_eval.py`） |
 | 50 条评测集：答案级可核验项 | 见 `scripts/eval/evidence/answer_eval_2026*.md`；工具无业务错误 35/50；模型自评 50/50 条：完全满足 34、部分 15、不满足 1，加权 0.83。尚无独立人工评分。 |
 | CI | `.github/workflows/ci.yml`：后端单测、MCP 测试、评测静态校验、前端类型检查+构建 |

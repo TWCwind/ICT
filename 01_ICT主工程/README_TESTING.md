@@ -102,7 +102,22 @@ python .\scripts\migrate\json_to_sqlite.py --data-dir <DATA_DIR> --verify-only
 python .\scripts\verify\concurrency_check.py sqlite <DATA_DIR>
 ```
 
-期望输出 `events=20/20 quizzes=20/20 errors=0`；把参数换成 `json` 即改造前基线，会看到大量覆盖丢失。
+期望输出 `events=20/20 quizzes=20/20 errors=0`；把参数换成 `json` 即改造前基线，会看到大量覆盖丢失（实测 0/20、1/20）。
+
+两后端对照的实测结论（2026-11-20，数据目录各复制一份 `ict-data` 起跑）：
+
+| 项 | json 后端 | sqlite 后端 | 备注 |
+| --- | --- | --- | --- |
+| 后端单测 | 47/47 | 47/47 | 同一套 `backend/tests` |
+| 16 条只读 API | — | — | 两个后端逐字段一致（忽略 `created_at` 等易变字段） |
+| Playwright e2e 全量 | 64/65 | 64/65 | 失败项相同：`full-flow-generated.spec.ts:72` |
+| 并发写入 | 0/20、1/20 | 20/20、20/20 | `scripts/verify/concurrency_check.py` |
+
+`full-flow-generated.spec.ts:72` 的失败与本轮改动无关：同一套用例里 `claude-round1-repro.spec.ts` 的按钮探针会点「生成资源」，
+往 demo 学号追加第 6 个资源，使该课程资源统计变成 5，而知识中枢详情面板的「配套资源」按 UI 规则最多渲染 4 条
+（`KnowledgePage.vue` 的 `relatedResources` 取 `slice(0, 4)`）。用例断言「按钮数 == 统计资源数」，因此只要前面跑过生成就必然失败；
+干净数据目录上该课程的 `stats.resources` 实测为 4（`/api/knowledge/graph?student_id=demo`），断言可通过；
+两个后端在同一轮跑出完全相同的失败，说明与存储层无关。要根治得改用例（断言上限）或改面板（不设上限），属于体验取舍，不在数据迁移范围内。
 
 ## 验收重点
 
