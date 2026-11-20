@@ -275,7 +275,7 @@ onMounted(loadProfile)
           </article>
 
           <article class="shot-matrix"><header><strong><Brain class="shot-panel-icon is-violet" :size="17" />画像维度矩阵</strong><span>{{ identifiedCount }}/{{ profile.dimensions.length }} 维度已识别</span></header>
-            <div class="shot-dimensions"><button v-for="(dimension, index) in profile.dimensions" :key="dimension.key" type="button" :class="[`tone-${index}`, { active: selectedDimension?.key === dimension.key }]" @click="selectedKey = dimension.key"><i><component :is="[Box, Lightbulb, TriangleAlert, Image, Clock3, Heart][index]" :size="22" /></i><span><strong>{{ dimension.label }}</strong><small>{{ dimension.value }}</small></span></button></div>
+            <div class="shot-dimensions"><button v-for="(dimension, index) in profile.dimensions" :key="dimension.key" type="button" data-action-kind="select" :class="[`tone-${index}`, { active: selectedDimension?.key === dimension.key }]" @click="selectedKey = dimension.key"><i><component :is="[Box, Lightbulb, TriangleAlert, Image, Clock3, Heart][index]" :size="22" /></i><span><strong>{{ dimension.label }}</strong><small>{{ dimension.value }}</small></span></button></div>
           </article>
         </div>
 
