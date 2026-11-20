@@ -43,7 +43,10 @@
 ## 三、工程债（我能做但没做，需要你点头）
 
 1. **前端分包（三轮已完成）**：①`three` 改成「历史星系」页签按需加载并把 `vue`/`markdown`/`three`/字体拆成独立 chunk；②`ExercisePage`（1346 行）改 `defineAsyncComponent`，专业目录与 localStorage 帮助函数抽成 `src/data/practiceCatalogs.ts` 与 `src/utils/practiceStorage.ts`；③星系 3D 渲染（约 1400 行）搬进 `src/composables/useTagGalaxyScene.ts`（工厂 + `TagGalaxyEngine` 类型），页面改成 `shallowRef` + `await import()` 懒加载，`hashText` 抽到 `src/utils/hashText.ts` 共享。练习中心首屏 chunk 585kB → 102kB → 70kB → **43.55kB**（另有 32kB `ExercisePage`、28kB `useTagGalaxyScene` 按需块），页面文件 3361 → **1923 行**。仍剩 `vendor-three` 705kB、`vendor-markdown` 381kB 两个懒加载大块。
-2. **数据层 JSON → SQLite**：`backend/app/repo.py` 现在按学号建目录写 JSON，没有事务、没有并发控制。这是结构性改动，会牵动所有接口与 e2e 的数据准备，属于「一天起步」的量级。
+2. **~~数据层 JSON → SQLite~~（已完成，分支 `feat/sqlite-storage`）**：新增 `backend/app/storage/`（协议 + JSON 实现 + SQLite 实现）与 `scripts/migrate/json_to_sqlite.py`，服务层全部改走 `app/repo.py` 门面；
+   `STORAGE_BACKEND=sqlite` 下 47 单测、16 条只读 API 双后端逐字段一致、12 项验收 11/12（唯一失败项为模型生成 40s 超过客户端 25s 超时，与存储无关）；
+   并发写入从 `0/20`、`1/20` 提升到 `20/20`、`20/20`（`scripts/verify/concurrency_check.py`）。JSON 后端保留这一版作为回退，下个版本再删。
+   仍未做：多用户隔离（账号体系/权限）与旧库在线迁移窗口，需产品侧确认。
 3. **拆 God File / 删死代码（基本完成）**：`knowledge_hub.py` 1727 → 301 行（6 模块 + 门面）；`orchestrator.py` 1786 → 927 行（`text_utils` 198 / `profile_tools` 203 / `path_tools` 221 / `content_audit` 248 / `agent_registry` 93 + 门面）。两次拆分都保持旧导入与 `patch("app.agents.orchestrator.*")` 目标不变，并逐字节验证输出等价（knowledge 四项 sha256 `184c6876…65f0`、orchestrator 26 项 `636a4ba2…4670`）。`profile-center.css`（4231 行）确认整份是上一版「学习 DNA」页的死样式（105/119 类名无组件使用、380 个选择器中仅 3 个能命中且无视觉效果、22 张全站截图像素级一致），已删除，全局 CSS 812 → 743 KB。
 4. **`reference-screens.css` 重复主题块**：`/* Workshop */`（114/116/134/137/355 行）、`/* Evaluation */`（248/263/268 行）存在重复定义，我修 bug 时只删了两组重复的选择器，整块合并没做。
 5. **大屏留白体验债**：旧 `final-density.spec.ts` 的固定课程/练习容器已不存在，现已迁移为当前题库表单、开始做题、空错题本与知识节点的 4 项真实行为检查（4/4 通过）。2048×1152 的短表单下方仍有较大空白；如要再提高大屏信息密度，应重新设计内容布局，不能用假数据填满。

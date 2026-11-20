@@ -62,6 +62,48 @@ npm run test:e2e -- --project=msedge --workers=1
 Pop-Location
 ```
 
+## 存储后端与数据迁移
+
+后端支持两种存储后端，通过环境变量 `STORAGE_BACKEND` 选择（默认 `json`）：
+
+| 后端 | 元数据落点 | 正文文件 | 适用场景 |
+| --- | --- | --- | --- |
+| `json` | `<DATA_DIR>/users/<学号>/*.json` | 磁盘（`content_uri` 指向） | 演示、离线、回退 |
+| `sqlite` | `<DATA_DIR>/app.db`（SQLite，WAL） | 磁盘（`content_uri` 指向） | 并发写入、多用户 |
+
+两种后端共用 `app/repo.py` 同一组签名，路由与服务不感知差异；表结构见 `backend/app/db/sqlite.py`。
+
+迁移与核对：
+
+```powershell
+# 1) 摸底：每类 JSON 的条数、字段并集、体积分布（只读）
+python .\scripts\migrate\report.py --data-dir <DATA_DIR>
+
+# 2) 迁移前先看会写多少行（不写库）
+python .\scripts\migrate\json_to_sqlite.py --data-dir <DATA_DIR> --dry-run
+
+# 3) 正式回填（幂等，主键已存在则跳过；--force 才覆盖）
+python .\scripts\migrate\json_to_sqlite.py --data-dir <DATA_DIR>
+
+# 4) 条数核对（逐表逐学号比对 JSON 与 DB）
+python .\scripts\migrate\json_to_sqlite.py --data-dir <DATA_DIR> --verify-only
+```
+
+迁移口径（`docs` 之外必须知道的四点）：
+
+1. `exercise_records.json` 历史上不带 `created_at`，迁移时用文件 mtime 补齐（`quiz_attempt.created_at` 为 NOT NULL）；
+2. `quiz_attempt` 用 `detail_json` 保存整条原始记录，列表读回时优先返回它，保证字段零丢失；
+3. `path_progress.json`、`knowledge_state.json` 第一版整块进 `state_json` / `nodes_json`，不做规范化；
+4. 同一 id 被复制到多个学号目录时，主键去重后只保留首次出现（`--verify-only` 会单独报出这些重复）。
+
+并发写入验收（20 线程写事件 + 20 线程追加错题）：
+
+```powershell
+python .\scripts\verify\concurrency_check.py sqlite <DATA_DIR>
+```
+
+期望输出 `events=20/20 quizzes=20/20 errors=0`；把参数换成 `json` 即改造前基线，会看到大量覆盖丢失。
+
 ## 验收重点
 
 - 登录页能够进入系统；
