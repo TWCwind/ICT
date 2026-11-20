@@ -75,7 +75,14 @@ CREATE TABLE IF NOT EXISTS quiz_attempt (
   resource_id TEXT,
   score INTEGER,
   weak_points_json TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  question_id TEXT,
+  is_correct INTEGER,
+  tags_json TEXT,
+  course TEXT,
+  major TEXT,
+  chapter TEXT,
+  detail_json TEXT
 );
 """,
     """
@@ -96,6 +103,24 @@ CREATE TABLE IF NOT EXISTS resource_usage (
   duration_sec INTEGER,
   feedback_json TEXT,
   created_at TEXT NOT NULL
+);
+""",
+    """
+CREATE TABLE IF NOT EXISTS path_progress_state (
+  student_id TEXT PRIMARY KEY,
+  version TEXT,
+  plan_key TEXT,
+  pass_threshold REAL,
+  current_stage_id TEXT,
+  state_json TEXT NOT NULL,
+  updated_at TEXT
+);
+""",
+    """
+CREATE TABLE IF NOT EXISTS knowledge_state (
+  student_id TEXT PRIMARY KEY,
+  nodes_json TEXT NOT NULL,
+  updated_at TEXT
 );
 """,
 ]
