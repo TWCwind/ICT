@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
 from app.core.config import settings
+
+_INIT_LOCK = threading.Lock()
 
 
 DDL = [
@@ -151,7 +154,12 @@ def _ensure_columns(conn: sqlite3.Connection, table: str, columns: dict[str, str
     for column, ddl_type in columns.items():
         if column in existing:
             continue
-        conn.execute("ALTER TABLE %s ADD COLUMN %s %s" % (table, column, ddl_type))
+        try:
+            conn.execute("ALTER TABLE %s ADD COLUMN %s %s" % (table, column, ddl_type))
+        except sqlite3.OperationalError as exc:
+            # 多线程 / 多进程同时初始化时，另一侧可能刚好补过这一列，视为成功。
+            if "duplicate column name" not in str(exc).lower():
+                raise
 
 
 def init_storage() -> None:
@@ -160,21 +168,25 @@ def init_storage() -> None:
 
 
 def init_db() -> None:
-    init_storage()
-    db_path: Path = settings.db_path
-    with closing(sqlite3.connect(db_path)) as conn:
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA foreign_keys=OFF;")
-        for sql in DDL:
-            conn.executescript(sql)
-        _ensure_columns(conn, "student", _STUDENT_EXTRA_COLUMNS)
-        _ensure_columns(conn, "quiz_attempt", _QUIZ_EXTRA_COLUMNS)
-        conn.commit()
+    """建表 + 补列；用进程内锁串行化，避免并发首次初始化互相踩 ALTER。"""
+    with _INIT_LOCK:
+        init_storage()
+        db_path: Path = settings.db_path
+        with closing(sqlite3.connect(db_path, timeout=15)) as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA foreign_keys=OFF;")
+            conn.execute("PRAGMA busy_timeout=15000;")
+            for sql in DDL:
+                conn.executescript(sql)
+            _ensure_columns(conn, "student", _STUDENT_EXTRA_COLUMNS)
+            _ensure_columns(conn, "quiz_attempt", _QUIZ_EXTRA_COLUMNS)
+            conn.commit()
 
 
 @contextmanager
 def db_conn() -> Iterator[sqlite3.Connection]:
-    conn = sqlite3.connect(settings.db_path)
+    # timeout / busy_timeout：并发写时 SQLite 自己排队，而不是直接抛 database is locked。
+    conn = sqlite3.connect(settings.db_path, timeout=15)
     conn.row_factory = sqlite3.Row
     try:
         yield conn

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import threading
+
 from app.core.config import settings
 from app.storage.base import StorageBackend
 
 _backend: StorageBackend | None = None
 _backend_key: tuple[str, str] | None = None
+_BACKEND_LOCK = threading.Lock()
 
 
 def backend_name() -> str:
@@ -20,22 +23,26 @@ def get_backend() -> StorageBackend:
     if _backend is not None and _backend_key == key:
         return _backend
 
-    if name == "json":
-        from app.storage.json_store import JsonStorage
+    with _BACKEND_LOCK:
+        if _backend is not None and _backend_key == key:
+            return _backend
 
-        backend: StorageBackend = JsonStorage()
-    elif name == "sqlite":
-        from app.db import init_db
-        from app.storage.sqlite_store import SqliteStorage
+        if name == "json":
+            from app.storage.json_store import JsonStorage
 
-        init_db()
-        backend = SqliteStorage()
-    else:
-        raise ValueError("未知的 STORAGE_BACKEND=%r，可选值：json / sqlite" % name)
+            backend: StorageBackend = JsonStorage()
+        elif name == "sqlite":
+            from app.db import init_db
+            from app.storage.sqlite_store import SqliteStorage
 
-    _backend = backend
-    _backend_key = key
-    return backend
+            init_db()
+            backend = SqliteStorage()
+        else:
+            raise ValueError("未知的 STORAGE_BACKEND=%r，可选值：json / sqlite" % name)
+
+        _backend = backend
+        _backend_key = key
+        return backend
 
 
 def reset_backend_cache() -> None:
