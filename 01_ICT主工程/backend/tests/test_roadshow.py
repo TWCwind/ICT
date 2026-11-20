@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +24,20 @@ class RoadshowKnowledgeDataTest(unittest.TestCase):
         self.seed_copy = Path(tempfile.mkdtemp(prefix="roadshow-seed-"))
         shutil.copytree(project_root / "roadshow-seed", self.seed_copy, dirs_exist_ok=True)
         settings.data_dir = str(self.seed_copy)
+        # SQLite 后端下 seed 里的 JSON 必须先回填进 app.db，否则图谱读不到资源；
+        # 这里直接调用户实际会用的迁移脚本，等于顺带验收「迁移后 seed 语义不变」。
+        if (getattr(settings, "storage_backend", "json") or "json").lower() == "sqlite":
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(project_root / "scripts" / "migrate" / "json_to_sqlite.py"),
+                    "--data-dir",
+                    str(self.seed_copy),
+                ],
+                check=True,
+                capture_output=True,
+                env={**os.environ, "DATA_DIR": str(self.seed_copy), "STORAGE_BACKEND": "sqlite"},
+            )
 
     def tearDown(self) -> None:
         settings.data_dir = self.original_data_dir

@@ -22,9 +22,11 @@ __all__ = [
     "read_json",
     "write_json",
     "ensure_student",
+    "get_student",
     "patch_student",
     "insert_profile_snapshot",
     "get_latest_profile_snapshot",
+    "list_profile_snapshots",
     "insert_resource_item",
     "get_resource_item",
     "list_resources",
@@ -33,11 +35,23 @@ __all__ = [
     "insert_resource_usage",
     "get_user_events",
     "get_user_usages",
+    "list_quiz_records",
+    "append_quiz_record",
+    "replace_quiz_records",
+    "get_path_progress",
+    "save_path_progress",
+    "get_knowledge_state",
+    "save_knowledge_state",
 ]
 
 
 def ensure_student(*, student_id: str, major: str | None, goals: str | None) -> None:
     get_backend().ensure_student(student_id=student_id, major=major, goals=goals)
+
+
+def get_student(student_id: str) -> dict[str, Any] | None:
+    """读取学生基本信息；不存在时返回 None（JSON 与 SQLite 语义一致）。"""
+    return get_backend().get_student(student_id)
 
 
 def patch_student(student_id: str, updates: dict[str, Any]) -> dict[str, Any]:
@@ -49,6 +63,11 @@ def insert_profile_snapshot(
     *, student_id: str, profile: dict[str, Any], evidence: dict[str, Any]
 ) -> dict[str, Any]:
     return get_backend().insert_profile_snapshot(student_id=student_id, profile=profile, evidence=evidence)
+
+
+def list_profile_snapshots(student_id: str) -> list[dict[str, Any]]:
+    """全部画像快照，按创建时间升序（JSON 与 SQLite 两种后端一致）。"""
+    return get_backend().list_profile_snapshots(student_id)
 
 
 def get_latest_profile_snapshot(student_id: str) -> dict[str, Any] | None:
@@ -111,3 +130,36 @@ def get_user_events(student_id: str) -> list[dict[str, Any]]:
 def get_user_usages(student_id: str) -> list[dict[str, Any]]:
     """获取用户的所有资源使用记录（包含反馈信息）"""
     return get_backend().get_user_usages(student_id)
+
+
+def list_quiz_records(student_id: str) -> list[dict[str, Any]]:
+    """练习作答记录（原 exercise_records.json 的内容），按追加顺序返回。"""
+    return get_backend().list_quiz_records(student_id)
+
+
+def append_quiz_record(student_id: str, record: dict[str, Any]) -> None:
+    """追加一条作答记录；SQLite 模式下是单条 INSERT，不读改写整份记录。"""
+    get_backend().append_quiz_record(student_id, record)
+
+
+def replace_quiz_records(student_id: str, records: list[dict[str, Any]]) -> None:
+    """整表替换练习记录（删除单条 / 清空错题用）。"""
+    get_backend().replace_quiz_records(student_id, records)
+
+
+def get_path_progress(student_id: str) -> dict[str, Any]:
+    """学习路径进度状态（原 path_progress.json）。"""
+    return get_backend().get_path_progress(student_id)
+
+
+def save_path_progress(student_id: str, state: dict[str, Any]) -> None:
+    get_backend().save_path_progress(student_id, state)
+
+
+def get_knowledge_state(student_id: str) -> dict[str, Any]:
+    """知识掌握状态（原 knowledge_state.json，返回 {"nodes": {...}}）。"""
+    return get_backend().get_knowledge_state(student_id)
+
+
+def save_knowledge_state(student_id: str, state: dict[str, Any]) -> None:
+    get_backend().save_knowledge_state(student_id, state)

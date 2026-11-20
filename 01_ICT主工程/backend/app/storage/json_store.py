@@ -32,6 +32,10 @@ class JsonStorage:
 
         write_json(student_file, data)
 
+    def get_student(self, student_id: str) -> dict[str, Any] | None:
+        data = read_json(get_user_dir(student_id) / "student.json", {})
+        return data or None
+
     def patch_student(self, student_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         """只写入非空且与现值不同的基本信息字段，返回落盘后的 student 数据。"""
         user_dir = get_user_dir(student_id)
@@ -75,6 +79,14 @@ class JsonStorage:
         profiles.append(snapshot)
         write_json(profiles_file, profiles)
         return snapshot
+
+    def list_profile_snapshots(self, student_id: str) -> list[dict[str, Any]]:
+        profiles = read_json(get_user_dir(student_id) / "profiles.json", [])
+        if not isinstance(profiles, list):
+            return []
+        snapshots = [item for item in profiles if isinstance(item, dict)]
+        snapshots.sort(key=lambda x: x.get("created_at", ""))
+        return snapshots
 
     def get_latest_profile_snapshot(self, student_id: str) -> dict[str, Any] | None:
         user_dir = get_user_dir(student_id)
@@ -202,6 +214,35 @@ class JsonStorage:
         user_dir = get_user_dir(student_id)
         usage_file = user_dir / "usage.json"
         return read_json(usage_file, [])
+
+
+    # ---------- 练习记录 / 路径进度 / 知识掌握状态 ----------
+
+    def list_quiz_records(self, student_id: str) -> list[dict[str, Any]]:
+        data = read_json(get_user_dir(student_id) / "exercise_records.json", [])
+        return [item for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+
+    def append_quiz_record(self, student_id: str, record: dict[str, Any]) -> None:
+        records = self.list_quiz_records(student_id)
+        records.append(record)
+        write_json(get_user_dir(student_id) / "exercise_records.json", records)
+
+    def replace_quiz_records(self, student_id: str, records: list[dict[str, Any]]) -> None:
+        write_json(get_user_dir(student_id) / "exercise_records.json", records)
+
+    def get_path_progress(self, student_id: str) -> dict[str, Any]:
+        data = read_json(get_user_dir(student_id) / "path_progress.json", {})
+        return data if isinstance(data, dict) else {}
+
+    def save_path_progress(self, student_id: str, state: dict[str, Any]) -> None:
+        write_json(get_user_dir(student_id) / "path_progress.json", state)
+
+    def get_knowledge_state(self, student_id: str) -> dict[str, Any]:
+        data = read_json(get_user_dir(student_id) / "knowledge_state.json", {"nodes": {}})
+        return data if isinstance(data, dict) else {"nodes": {}}
+
+    def save_knowledge_state(self, student_id: str, state: dict[str, Any]) -> None:
+        write_json(get_user_dir(student_id) / "knowledge_state.json", state)
 
 
 _STUDENT_TEXT_FIELDS = ("name", "major", "grade", "current_course", "goals")

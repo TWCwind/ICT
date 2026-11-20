@@ -4,17 +4,19 @@ from pathlib import Path
 from typing import Any
 import math
 
-from app.repo import get_user_dir
-from app.repo import read_json
+from app.repo import get_knowledge_state
+from app.repo import save_knowledge_state
 
 """掌握度状态文件的读写与衰减/更新公式：图谱与掌握度模块共用。"""
 
-def _state_file(student_id: str) -> Path:
-    return get_user_dir(student_id) / "knowledge_state.json"
-
-
 def _read_state(student_id: str) -> dict[str, Any]:
-    return read_json(_state_file(student_id), {"nodes": {}})
+    """掌握度状态统一走仓储层：JSON 模式读 knowledge_state.json，SQLite 模式读 knowledge_state 表。"""
+    state = get_knowledge_state(student_id)
+    return state if isinstance(state, dict) else {"nodes": {}}
+
+
+def _write_state(student_id: str, state: dict[str, Any]) -> None:
+    save_knowledge_state(student_id, state)
 
 
 def _infer_node_mastery(node: dict[str, Any], resources: list[dict[str, Any]], weak_text: str, idx: int) -> float:

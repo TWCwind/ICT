@@ -134,6 +134,18 @@ _STUDENT_EXTRA_COLUMNS = {
 }
 
 
+# 早期版本的 quiz_attempt 缺少这些列（阶段 2 迁移扩展），同样按需补齐。
+_QUIZ_EXTRA_COLUMNS = {
+    "question_id": "TEXT",
+    "is_correct": "INTEGER",
+    "tags_json": "TEXT",
+    "course": "TEXT",
+    "major": "TEXT",
+    "chapter": "TEXT",
+    "detail_json": "TEXT",
+}
+
+
 def _ensure_columns(conn: sqlite3.Connection, table: str, columns: dict[str, str]) -> None:
     existing = {row[1] for row in conn.execute("PRAGMA table_info(%s)" % table)}
     for column, ddl_type in columns.items():
@@ -156,6 +168,7 @@ def init_db() -> None:
         for sql in DDL:
             conn.executescript(sql)
         _ensure_columns(conn, "student", _STUDENT_EXTRA_COLUMNS)
+        _ensure_columns(conn, "quiz_attempt", _QUIZ_EXTRA_COLUMNS)
         conn.commit()
 
 

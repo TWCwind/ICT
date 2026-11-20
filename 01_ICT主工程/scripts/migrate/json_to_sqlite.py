@@ -35,7 +35,7 @@ BACKEND_DIR = PROJECT_DIR / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.db.sqlite import DDL, _STUDENT_EXTRA_COLUMNS, _ensure_columns  # noqa: E402
+from app.db.sqlite import DDL, _QUIZ_EXTRA_COLUMNS, _STUDENT_EXTRA_COLUMNS, _ensure_columns  # noqa: E402
 
 PROFILE_COLUMNS = (
     "knowledge_base_level",
@@ -106,6 +106,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     for sql in DDL:
         conn.executescript(sql)
     _ensure_columns(conn, "student", _STUDENT_EXTRA_COLUMNS)
+    _ensure_columns(conn, "quiz_attempt", _QUIZ_EXTRA_COLUMNS)
     conn.commit()
 
 

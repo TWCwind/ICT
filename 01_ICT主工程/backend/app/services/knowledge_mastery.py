@@ -14,7 +14,7 @@ from app.repo import write_json
 from app.services.knowledge_graph import graph_data
 from app.services.knowledge_state import _decayed_mastery
 from app.services.knowledge_state import _read_state
-from app.services.knowledge_state import _state_file
+from app.services.knowledge_state import _write_state
 from app.services.knowledge_state import _update_mastery
 from app.services.knowledge_text import _node_status
 
@@ -89,7 +89,7 @@ def track_node(student_id: str, node_id: str, score: float, note: str = "") -> d
             "history": history[-12:],
         }
     )
-    write_json(_state_file(student_id), state)
+    _write_state(student_id, state)
     insert_learning_event(student_id, "knowledge_mastery", {"node_id": node_id, "score": score, "mastery": new_mastery})
     return {"node_id": node_id, "mastery": new_mastery, "attempts": attempts}
 

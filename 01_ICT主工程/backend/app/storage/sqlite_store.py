@@ -74,6 +74,11 @@ class SqliteStorage:
                     (*updates.values(), student_id),
                 )
 
+    def get_student(self, student_id: str) -> dict[str, Any] | None:
+        with db_conn() as conn:
+            row = fetch_one(conn, "SELECT * FROM student WHERE id = ?", (student_id,))
+        return self._student_row(row)
+
     def patch_student(self, student_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         with db_conn() as conn:
             row = self._student_row(fetch_one(conn, "SELECT * FROM student WHERE id = ?", (student_id,)))
@@ -138,6 +143,25 @@ class SqliteStorage:
             "evidence": evidence,
             "created_at": created_at,
         }
+
+    @staticmethod
+    def _profile_row(row: dict[str, Any]) -> dict[str, Any]:
+        snapshot: dict[str, Any] = {"id": row["id"], "student_id": row["student_id"]}
+        for column in _PROFILE_COLUMNS:
+            if row.get(column) is not None:
+                snapshot[column] = row[column]
+        snapshot["evidence"] = _load(row.get("evidence_json"), {})
+        snapshot["created_at"] = row["created_at"]
+        return snapshot
+
+    def list_profile_snapshots(self, student_id: str) -> list[dict[str, Any]]:
+        with db_conn() as conn:
+            rows = fetch_all(
+                conn,
+                "SELECT * FROM profile_snapshot WHERE student_id = ? ORDER BY created_at ASC, rowid ASC",
+                (student_id,),
+            )
+        return [self._profile_row(row) for row in rows]
 
     def get_latest_profile_snapshot(self, student_id: str) -> dict[str, Any] | None:
         with db_conn() as conn:
@@ -317,3 +341,114 @@ class SqliteStorage:
             }
             for row in rows
         ]
+
+    # ---------- 练习记录（原始记录整体存 detail_json，列只用于查询）----------
+
+    @staticmethod
+    def _quiz_row(row: dict[str, Any]) -> dict[str, Any]:
+        detail = _load(row.get("detail_json"), None)
+        if isinstance(detail, dict):
+            return detail
+        return {
+            "id": row["id"],
+            "student_id": row["student_id"],
+            "question_id": row.get("question_id") or "",
+            "correct": bool(row.get("is_correct")),
+            "tags": _load(row.get("tags_json"), []),
+            "course": row.get("course") or "",
+            "major": row.get("major") or "",
+            "chapter": row.get("chapter") or "",
+        }
+
+    @staticmethod
+    def _insert_quiz(conn, record: dict[str, Any], student_id: str) -> None:
+        columns = (
+            "id", "student_id", "resource_id", "score", "weak_points_json", "created_at",
+            "question_id", "is_correct", "tags_json", "course", "major", "chapter", "detail_json",
+        )
+        correct = record.get("correct")
+        values = (
+            str(record.get("id") or new_id()),
+            str(student_id or record.get("student_id") or ""),
+            str(record.get("resource_id") or "") or None,
+            100 if correct is True else (0 if correct is False else None),
+            None,
+            str(record.get("created_at") or now_iso()),
+            str(record.get("question_id") or "") or None,
+            None if correct is None else (1 if correct else 0),
+            _dump(record.get("tags") if isinstance(record.get("tags"), list) else []),
+            str(record.get("course") or "") or None,
+            str(record.get("major") or "") or None,
+            str(record.get("chapter") or "") or None,
+            _dump(record),
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO quiz_attempt (%s) VALUES (%s)"
+            % (", ".join(columns), _placeholders(len(columns))),
+            values,
+        )
+
+    def list_quiz_records(self, student_id: str) -> list[dict[str, Any]]:
+        with db_conn() as conn:
+            rows = fetch_all(
+                conn,
+                "SELECT * FROM quiz_attempt WHERE student_id = ? ORDER BY rowid ASC",
+                (student_id,),
+            )
+        return [self._quiz_row(row) for row in rows]
+
+    def append_quiz_record(self, student_id: str, record: dict[str, Any]) -> None:
+        """单条 INSERT：并发作答不再读改写整份记录，天然不丢写。"""
+        with db_conn() as conn:
+            self._insert_quiz(conn, record, student_id)
+
+    def replace_quiz_records(self, student_id: str, records: list[dict[str, Any]]) -> None:
+        """整表替换（删除单条 / 清空错题走这里），与 JSON 模式语义一致。"""
+        with db_conn() as conn:
+            conn.execute("DELETE FROM quiz_attempt WHERE student_id = ?", (student_id,))
+            for record in records:
+                self._insert_quiz(conn, record, student_id)
+
+    # ---------- 路径进度 / 知识掌握状态（整块 JSON 存一列）----------
+
+    def get_path_progress(self, student_id: str) -> dict[str, Any]:
+        with db_conn() as conn:
+            row = fetch_one(conn, "SELECT * FROM path_progress_state WHERE student_id = ?", (student_id,))
+        if not row:
+            return {}
+        state = _load(row.get("state_json"), {})
+        return state if isinstance(state, dict) else {}
+
+    def save_path_progress(self, student_id: str, state: dict[str, Any]) -> None:
+        with db_conn() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO path_progress_state"
+                " (student_id, version, plan_key, pass_threshold, current_stage_id, state_json, updated_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    student_id,
+                    str(state.get("version") or "") or None,
+                    str(state.get("plan_key") or "") or None,
+                    state.get("pass_threshold"),
+                    str(state.get("current_stage_id") or "") or None,
+                    _dump(state),
+                    str(state.get("updated_at") or now_iso()),
+                ),
+            )
+
+    def get_knowledge_state(self, student_id: str) -> dict[str, Any]:
+        with db_conn() as conn:
+            row = fetch_one(conn, "SELECT * FROM knowledge_state WHERE student_id = ?", (student_id,))
+        if not row:
+            return {"nodes": {}}
+        nodes = _load(row.get("nodes_json"), {})
+        return {"nodes": nodes if isinstance(nodes, dict) else {}}
+
+    def save_knowledge_state(self, student_id: str, state: dict[str, Any]) -> None:
+        nodes = state.get("nodes") if isinstance(state, dict) else {}
+        with db_conn() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO knowledge_state (student_id, nodes_json, updated_at) VALUES (?, ?, ?)",
+                (student_id, _dump(nodes if isinstance(nodes, dict) else {}), now_iso()),
+            )
+

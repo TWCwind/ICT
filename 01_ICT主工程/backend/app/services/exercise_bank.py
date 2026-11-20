@@ -6,7 +6,16 @@ from typing import Any
 
 from app.core.config import settings
 from app.core.ids import new_id
-from app.repo import get_user_dir, insert_learning_event, list_resources, read_json, write_json
+from app.repo import (
+    append_quiz_record,
+    get_user_dir,
+    insert_learning_event,
+    list_quiz_records,
+    list_resources,
+    read_json,
+    replace_quiz_records,
+    write_json,
+)
 from app.services.path_progress import record_stage_answer
 from app.services.resource_structure import extract_questions_json
 
@@ -86,9 +95,8 @@ def submit_exercise_answer(student_id: str, question_id: str, answer: Any) -> di
         "path_question_target": int(question.get("path_question_target") or 0),
     }
 
-    records = _read_records(student_id)
-    records.append(record)
-    _write_records(student_id, records)
+    # 单条追加：SQLite 模式下是原子 INSERT，不再「读全量 → 追加 → 覆写全量」丢写
+    _append_record(student_id, record)
     path_progress = record_stage_answer(
         student_id,
         stage_id=str(question.get("path_stage_id") or ""),
@@ -558,14 +566,15 @@ def _normalise_answer(value: Any) -> str:
     return raw
 
 
-def _records_path(student_id: str):
-    return get_user_dir(student_id) / "exercise_records.json"
-
-
 def _read_records(student_id: str) -> list[dict[str, Any]]:
-    data = read_json(_records_path(student_id), [])
-    return [item for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+    """练习记录统一走仓储层：JSON 模式读 exercise_records.json，SQLite 模式读 quiz_attempt。"""
+    return list_quiz_records(student_id)
+
+
+def _append_record(student_id: str, record: dict[str, Any]) -> None:
+    append_quiz_record(student_id, record)
 
 
 def _write_records(student_id: str, records: list[dict[str, Any]]) -> None:
-    write_json(_records_path(student_id), records)
+    """整表替换（删除单条 / 清空错题）；追加一律走 _append_record。"""
+    replace_quiz_records(student_id, records)
