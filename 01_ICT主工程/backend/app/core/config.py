@@ -17,6 +17,7 @@ class Settings(BaseModel):
     app_port: int = 8000
 
     data_dir: str = "./data"
+    storage_backend: str = "json"
 
     llm_provider: str = "openai_compatible"
     llm_base_url: str = ""
@@ -88,6 +89,7 @@ settings = Settings(
     app_host=(__import__("os").environ.get("APP_HOST") or "127.0.0.1"),
     app_port=int(__import__("os").environ.get("APP_PORT") or "8000"),
     data_dir=(__import__("os").environ.get("DATA_DIR") or "./data"),
+    storage_backend=((__import__("os").environ.get("STORAGE_BACKEND") or "json").strip().lower()),
     llm_provider=(__import__("os").environ.get("LLM_PROVIDER") or "openai_compatible"),
     llm_base_url=(__import__("os").environ.get("LLM_BASE_URL") or ""),
     llm_api_key=(__import__("os").environ.get("LLM_API_KEY") or ""),
