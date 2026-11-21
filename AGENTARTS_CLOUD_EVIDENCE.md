@@ -6,13 +6,13 @@
 
 | 证据项 | 当前状态 | 验收所需材料 |
 | --- | --- | --- |
-| 团队空间与授权 | 未取得 | 空间标识、授权角色与时间 |
-| 固定 HTTPS MCP 地址 | 未取得 | 域名、证书有效性、健康检查与鉴权结果 |
+| 团队空间与授权 | 已核验（2026-11-21） | 账号ID `01a0ecfadedf721799b5fd12210ed09a`，IAM 用户名 `hid_jnslop3ow8y9tbu`（个人认证），区域 西南-贵阳一 `cn-southwest-2`，套餐 体验版；控制台无独立「团队空间」对象，资源均挂该 IAM 账号下；网关出网由服务委托 `AgentArtsGatewayAgency` 授权，网关与智能体运行时入站均为 IAM 认证；时间见第四节 |
+| 固定 HTTPS MCP 地址 | 已核验（2026-11-21） | `https://ict-mcp-gw-defaultgw-gjsdmztehf.cn-southwest-2.huaweicloud-agentarts.com/mcp`（华为云托管域名，非临时隧道）；TLS1.3 + GlobalSign OV 证书，有效期 2026-09-30 ~ 2027-04-17；匿名调用 401、IAM 签名调用 200（9 工具），证据见第五节 |
 | 工具注册 | 已完成（2026-11-21） | 网关 tools/list 实测发现 9 工具，与本地 schema 完全一致，见下方进行中记录 |
 | 智能体编排 | 已完成（2026-11-21） | 智能体 `ict-career-agent` 版本 `v1.0-agentarts-mcp-20261121`；单智能体节点 + MCP 技能 9 工具；试运行 2 次成功并回显工具名与参数，见下方第三节 |
 | 部署 | 已完成（2026-11-21） | 版本 `v1.0-agentarts-mcp-20261121` 部署成功，运行时 `agent-arts-42e60bcca4464da1b82ca8179055804e`，入站 IAM，日志/指标/调用链已开启 |
 | 真实调用 | 已完成（2026-11-21） | 经网关 IAM 鉴权调用 get_student_profile(demo) 返回 ok=true，请求 ID 03ff0984-6c4f-46ce-8c0c-26ad454f404f，见下方进行中记录 |
-| 云端评测 | 未执行 | 50 用例逐例结果、参考答案、人工评分和复核人 |
+| 云端评测 | 准备就绪（2026-11-21） | 评测集 `ict-career-50case-20261121`（50 条，列 input / reference_output，版本 0.0.1 已提交）已建；评估任务尚未跑通（运行时调用配置待验证），逐例结果/人工评分待补，见第六节 |
 
 本地复现入口见 `MCP_INTEGRATION.md` 与 `LOCAL_EVAL_REPORT.md`。若云端连接或数据授权未就绪，保持上述“未执行”状态。
 
@@ -57,3 +57,40 @@
 - 部署：版本 `v1.0-agentarts-mcp-20261121` → 部署成功，运行时名称 `agent-arts-42e60bcca4464da1b82ca8179055804e`，入站 IAM 认证，日志记录/指标/调用链均开启。
 
 **网关直连与平台 MCP 客户端的差异（如实记录）**：把 MCP 服务地址先填成 AgentArts 网关 URL（IAM 入站）时，平台报「部署失败：MCP 服务认证失败，无权访问」——平台侧 MCP 客户端不会自动完成网关的 IAM 入站签名。改为同一 9 工具服务的公网 HTTPS 地址（`/mcp`，无入站认证）后部署成功。生产化建议：把网关入站认证改为 API Key，并在 MCP 服务的「鉴权配置」里填对应 Key，即可让智能体经网关调用。
+
+### 第四步实测（2026-11-21，团队空间与授权）
+
+- 账号：账号ID `01a0ecfadedf721799b5fd12210ed09a`，IAM 用户名 `hid_jnslop3ow8y9tbu`，账号状态「个人认证」。
+- 区域：**西南-贵阳一 `cn-southwest-2`**（AgentArts 控制台只提供该区域）。
+- 套餐：AgentArts **体验版**（用量 0.35 / 20 CU）。
+- 空间形态：本控制台**没有独立的「团队空间 / 工作空间」对象**，网关、智能体、知识库、记忆库等资源都直接挂在上述 IAM 账号下；旧版 `versatile` 控制台的空间概念在新控制台不存在。
+- 授权链路：
+  - 网关出网（访问 MCP 服务）：服务委托 **`AgentArtsGatewayAgency`**；
+  - 网关入站：**IAM 认证**（委托 + defaultgw 入网）；
+  - 智能体运行时入站：**IAM 认证**（部署时默认选项）。
+- 时间线（2026-11-21）：网关 `ict-mcp-gw` 15:14:38 创建并关联 Target（1 分钟后 Target 在线）；智能体 `ict-career-agent` 15:52 创建、16:07 完成提示词与 MCP 技能配置、16:11:30 提交版本 `v1.0-agentarts-mcp-20261121`、随后部署成功。
+
+### 第五步实测（2026-11-21，固定 HTTPS MCP 地址）
+
+- 地址：`https://ict-mcp-gw-defaultgw-gjsdmztehf.cn-southwest-2.huaweicloud-agentarts.com/mcp`，属于网关 `ict-mcp-gw`（ID `1ac43424-882a-4603-aadd-bcf815f43e42`），域名由华为云托管，**不随本机 cloudflared 隧道变化**，可视为固定 HTTPS 入口。
+- 证书（2026-11-21 实测，Python `ssl` 直连 443）：
+  - 协议 TLS 1.3；
+  - 颁发者 `GlobalSign GCC R46 OV TLS CA 2025`（O=GlobalSign nv-sa）；
+  - 主体 O=`Huawei Software Technologies Co., Ltd.`，CN=`*.cn-southwest-2.huaweicloud-agentarts.com`；
+  - 有效期 `2026-09-30 01:21:37 GMT` ~ `2027-04-17 01:21:37 GMT`，实测剩余 146 天；
+  - SAN：`*.cn-southwest-2.huaweicloud-agentarts.com`、`cn-southwest-2.huaweicloud-agentarts.com`（覆盖当前域名）。
+- 健康检查与鉴权结果：
+  - 匿名 `POST /mcp`（JSON-RPC `ping`）→ **401**，响应体 `{"code":401,"data":null,"message":"Authentication failed!"}`，证明 IAM 入站拦截生效；
+  - 带 IAM 数据面签名的调用 → **200**，`tools/list` 返回 9 个工具，`tools/call get_student_profile {"student_id":"demo"}` 返回 `ok=true`、`isError=false`，请求 ID `03ff0984-6c4f-46ce-8c0c-26ad454f404f`（截图见用户侧留存）。
+- 现状边界（如实记录）：智能体侧的 MCP 技能当前指向同一 9 工具服务的公网 HTTPS 地址（隧道），因为平台侧 MCP 客户端不会完成网关 IAM 入站签名；要把智能体这条链路也切到上面这个固定 HTTPS 地址，需把网关入站认证改为 **API Key** 并在 MCP 服务「鉴权配置」里填 Key。
+
+### 第六步进展（2026-11-21，云端评测的数据侧已就绪）
+
+- 已在「评估 → 评测集」建好 **`ict-career-50case-20261121`**：50 条数据，列为 `input`（用户问题）与 `reference_output`（判据：应调用的工具与关键字段），版本 `0.0.1` 已提交，可在评估任务里选到。
+- 数据来源：`01_ICT主工程/scripts/eval/agentarts_eval_set.jsonl` 转 `input` / `reference_output` 两列（转换产���放 `D:\工作区\_runtime\agentarts-eval-50.csv`，无 BOM）。
+- 已踩过的两个坑（后人省时间）：
+  - CSV 必须**不带 BOM**，否则平台按列名匹配时报 `missing columns: input, extra columns: input`；
+  - 评测集「批量导入」支持 csv / xlsx / jsonl / zip，单文件 ≤50MB、≤5000 条。
+- 仍缺（如实）：
+  - 评估任务尚未创建成功——评估对象抽屉里 `ict-career-agent` 运行时显示「调用配置 ✗ 调用失败」（2026-10-14 的旧运行时），平台提示「针对运行时智能体，需先完成相关配置，待调用配置调试验证通过后方可选择」，且「当前暂不支持选择鉴权方式为 JWT 类型的智能体」。
+  - 因此**逐例结果、人工评分、复核人三列仍是空的**；下一步应先让运行时调用配置调试验证通过（或改用单智能体 Latest 版本作为评估对象），再发起 50 条离线评估任务。
