@@ -46,6 +46,7 @@ cd 01_ICT主工程
 | Playwright e2e 全量 | 65/65 通过（Edge，约 19 分钟/轮）。`full-flow-generated.spec.ts:72` 曾因面板截断 4 条稳定失败（两后端一致，与存储层无关）；2026-11-20 删除 `relatedResources` 的 4 条上限后修复，sqlite 后端全量 65/65 |
 | 50 条评测集：工具路由 | 首步命中 36/50，计划覆盖 42/50（`scripts/eval/route_eval.py`） |
 | 50 条评测集：答案级可核验项 | 见 `scripts/eval/evidence/answer_eval_2026*.md`；工具无业务错误 35/50；模型自评 50/50 条：完全满足 34、部分 15、不满足 1，加权 0.83。尚无独立人工评分。 |
+| 多 Agent 对照（3 任务 × 3 臂） | 规则流程 24–32ms 但九步缺数据即断；多 Agent 0.9–1.0s、5 工具全成功、5 个独立进程；单 Agent 2.5–4.3s、每轮过模型（`MULTI_AGENT_COMPARISON.md`） |
 | CI | `.github/workflows/ci.yml`：后端单测、MCP 测试、评测静态校验、前端类型检查+构建 |
 
 复现方式见 `01_ICT主工程/README_TESTING.md`；线上/内网部署前请先读 `MCP_INTEGRATION.md` 的云端限制。
