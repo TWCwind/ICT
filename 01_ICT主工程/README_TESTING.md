@@ -108,7 +108,7 @@ python .\scripts\verify\concurrency_check.py sqlite <DATA_DIR>
 
 | 项 | json 后端 | sqlite 后端 | 备注 |
 | --- | --- | --- | --- |
-| 后端单测 | 73/73 | 73/73 | 同一套 `backend/tests`（47 旧 + 13 鉴权隔离 + 13 迁移窗口新增） |
+| 后端单测 | 75/75 | 75/75 | 同一套 `backend/tests`（47 旧 + 13 鉴权隔离 + 13 迁移窗口 + 2 页码锚点新增） |
 | 16 条只读 API | — | — | 两个后端逐字段一致（忽略 `created_at` 等易变字段） |
 | Playwright e2e 全量 | 64/65（修复前） | 65/65（修复后） | 曾同败于 `full-flow-generated.spec.ts:72`，去掉面板 4 条上限后修复 |
 | 并发写入 | 0/20、1/20 | 20/20、20/20 | `scripts/verify/concurrency_check.py` |
@@ -146,6 +146,21 @@ POST /api/storage/migrate {"action": "abort"}
 - commit 之后 abort 会被拒绝并提示人工回退；JSON 文件迁移后原样保留，作为回退快照。
 
 实测（2026-11-20，真实 uvicorn 起服务 + 并发写 + 断言落库，`_runtime/live_migration_probe.py`）：happy/abort/TTL 三组共 20 个场景全部通过——含冻结期 3 个并发写全部 503、解冻后重试全部成功、commit 后 SQLite 逐表断言、abort 后写进 JSON、TTL 超时自动解冻。新增 13 项单测（`backend/tests/test_migration_window.py`），双后端全量 60→73 全绿。
+
+## 知识检索页码锚点验收
+
+`search_knowledge` 的引用现在能落到「第几章（第 X-Y 页）」（2026-11-21 交付）：PDF 教材提取时逐页记录
+字符偏移并随教材 payload 持久化，章节切分把字符区间映射为物理页区间，`search_index` 结果带
+`page_start / page_end`，`format_references` 输出「（第 X-Y 页）」。非 PDF 教材（md/txt/docx）与旧数据
+无页概念，字段为 0 诚实降级；页码是 PDF 物理页序，非印刷页码。
+
+单测（`backend/tests/test_page_anchor.py`，2 项：fitz 生成多页中文 PDF → ingest → 检索断言页码递增与
+输出格式；md 语义切分无页码降级）双后端 73→75 全绿。
+
+```powershell
+cd backend
+$env:DATA_DIR="<DATA_DIR>"; python -m unittest discover -s tests -p "test_page_anchor.py" -v
+```
 
 ## 多用户隔离（会话级）验收
 

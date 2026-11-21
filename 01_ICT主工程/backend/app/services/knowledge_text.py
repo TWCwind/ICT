@@ -136,7 +136,26 @@ def _read_text_cached(path_str: str, mtime: float) -> str:
                 return path.read_text(encoding=enc)[:12000]
             except UnicodeDecodeError:
                 continue
+    if suffix == ".pdf":
+        return _read_pdf(path)
     return ""
+
+
+def _read_pdf(path: Path) -> str:
+    """读取 PDF 全文用于知识检索（教材上传路径的统一文本读取入口）。
+
+    与上传链路不同：这里不做页偏移，只取可检索文本；空页跳过，
+    读取失败返回空串由调用方降级（回退章节关键字文本）。
+    """
+    try:
+        import fitz  # PyMuPDF
+
+        document = fitz.open(path)
+        parts = [page.get_text("text").strip() for page in document]
+        document.close()
+        return "\n\n".join(part for part in parts if part)
+    except Exception:
+        return ""
 
 
 def _read_docx(path: Path) -> str:

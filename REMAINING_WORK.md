@@ -49,7 +49,7 @@
 3. **拆 God File / 删死代码（基本完成）**：`knowledge_hub.py` 1727 → 301 行（6 模块 + 门面）；`orchestrator.py` 1786 → 927 行（`text_utils` 198 / `profile_tools` 203 / `path_tools` 221 / `content_audit` 248 / `agent_registry` 93 + 门面）。两次拆分都保持旧导入与 `patch("app.agents.orchestrator.*")` 目标不变，并逐字节验证输出等价（knowledge 四项 sha256 `184c6876…65f0`、orchestrator 26 项 `636a4ba2…4670`）。`profile-center.css`（4231 行）确认整份是上一版「学习 DNA」页的死样式（105/119 类名无组件使用、380 个选择器中仅 3 个能命中且无视觉效果、22 张全站截图像素级一致），已删除，全局 CSS 812 → 743 KB。
 4. ~~**`reference-screens.css` 重复规则块**~~（2026-11-21 完成）：按 (@media 上下文, 选择器, 声明体) 精确匹配删掉 73 处完全重复的规则块（166.1KB → 160.4KB），级联等价性校验证明 917 个选择器的最终计算样式逐属性一致（0 消失 / 0 变化）；同选择器不同体的历史层叠（351 组）是页面主题演进的一部分，保留不动。
 5. **大屏留白体验债**：旧 `final-density.spec.ts` 的固定课程/练习容器已不存在，现已迁移为当前题库表单、开始做题、空错题本与知识节点的 4 项真实行为检查（4/4 通过）。2048×1152 的短表单下方仍有较大空白；如要再提高大屏信息密度，应重新设计内容布局，不能用假数据填满。
-6. **`search_knowledge` 的章节/页码锚点（章节已完成，页码未做）**：教材按章切分后，`search_index` 已带上 `chapter / chapter_index`，`format_references` 会输出「第N章 章名」；页码级锚点仍未做——PDF 提取时页文本被 `join` 成整体、未保留页映射，要补需要索引侧记录偏移量。
+6. ~~**`search_knowledge` 的章节/页码锚点**~~（已完成，2026-11-21）：章节锚点此前已交付；页码锚点本轮补齐——PDF 提取层逐页记录字符偏移（`page_offsets` 随教材 payload 持久化），章节切分把字符区间映射为物理页区间（`page_start / page_end`），`search_index` 结果与 `format_references` 输出「（第 X-Y 页）」。非 PDF 教材与旧数据无页码，字段为 0 诚实降级；页码为 PDF 物理页序，非印刷页码。单测 `tests/test_page_anchor.py` 覆盖 PDF 往返与非 PDF 降级（2 例，双后端 75/75 全绿）。
 
 ## 四、可由任意一方执行、但需要环境
 

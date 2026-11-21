@@ -190,7 +190,14 @@ def _chapter_documents(
         position = chosen[0]
         previous = position
         keywords = [str(k).strip() for k in chapter.get("keywords") or [] if str(k).strip()]
-        located.append({"index": index, "title": title, "pos": position, "keywords": keywords})
+        located.append({
+            "index": index,
+            "title": title,
+            "pos": position,
+            "keywords": keywords,
+            "page_start": int(chapter.get("page_start") or 0),
+            "page_end": int(chapter.get("page_end") or 0),
+        })
     if len(located) < 2:
         return []
 
@@ -211,6 +218,8 @@ def _chapter_documents(
                 "text": body,
                 "chapter": item["title"],
                 "chapter_index": item["index"] + 1,
+                "page_start": item["page_start"],
+                "page_end": item["page_end"],
                 "source_start": start,
                 "source_end": end,
                 "tags": item["keywords"] or _guess_tags(body),

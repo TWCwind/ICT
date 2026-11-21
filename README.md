@@ -37,7 +37,7 @@ cd 01_ICT主工程
 
 | 项 | 结果 |
 | --- | --- |
-| 后端单元测试 | 73 项全部通过（47 旧 + 13 多用户隔离 + 13 在线迁移窗口新增；`STORAGE_BACKEND=json` 与 `sqlite` 各跑一遍，均 73/73） |
+| 后端单元测试 | 75 项全部通过（47 旧 + 13 多用户隔离 + 13 在线迁移窗口 + 2 页码锚点新增；`STORAGE_BACKEND=json` 与 `sqlite` 各跑一遍，均 75/75） |
 | 后端验收脚本 `tests/backend_acceptance.py` | 11/12 通过——`generate-resources` 生成耗时 40s，超过脚本 25s 的客户端超时，json 与 sqlite 后端耗时一致，与存储层无关 |
 | 双后端 API 对比 | 16 条只读接口逐字段一致（profile / resources / exercise / path / knowledge / evaluate / dashboard / delivery / push / tutor） |
 | 并发写入 | 20 线程写学习事件 20/20、20 线程追加错题 20/20；json 基线 0/20、1/20（读-改-写覆盖丢失） |
