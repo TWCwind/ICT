@@ -1,0 +1,34 @@
+MIT License
+
+Copyright (c) 2026 智学资源体（华为 ICT 大赛 应用赛道·赛题 2 参赛作品）
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## 附加说明：数据与素材不在许可范围内
+
+本许可以上仅覆盖仓库作者编写的**源代码**。
+
+下列内容的版权归原权利人所有，仅随本作品用于赛事评审与学习交流，
+不适用上面的 MIT 条款，也不得单独再分发或商用：
+
+- `02_岗位能力模块/` 下的结构化岗位画像与岗位图谱数据；
+- `01_主工程/backend/data/`、`01_主工程/roadshow-data/`、`01_主工程/roadshow-seed/` 下的演示数据与教材样例；
+- 前端引用的第三方字体、图标与图片素材。
