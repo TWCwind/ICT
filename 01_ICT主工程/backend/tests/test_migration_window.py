@@ -70,11 +70,12 @@ class MigrationWindowTestBase(unittest.TestCase):
 
         self._old_env = {
             key: os.environ.get(key)
-            for key in ("DATA_DIR", "STORAGE_BACKEND", "MIGRATION_WINDOW_TTL_SEC")
+            for key in ("DATA_DIR", "STORAGE_BACKEND", "MIGRATION_WINDOW_TTL_SEC", "MIGRATION_ADMIN_KEY")
         }
         os.environ["DATA_DIR"] = str(self.tmp)
         os.environ["STORAGE_BACKEND"] = "json"
         os.environ["MIGRATION_WINDOW_TTL_SEC"] = "300"
+        os.environ["MIGRATION_ADMIN_KEY"] = "test-only-migration-key"
 
         self._old_data_dir = settings.data_dir
         self._old_backend = settings.storage_backend
@@ -188,6 +189,33 @@ class WindowStateMachineTest(MigrationWindowTestBase):
         events = json.loads((self.users / "events.json").read_text(encoding="utf-8"))
         self.assertEqual(len(events), 2)
 
+    def test_prepare_waits_for_backend_write_to_finish(self):
+        from app import repo
+        from app.storage import get_backend
+
+        entered = threading.Event()
+        release = threading.Event()
+        original = get_backend().insert_learning_event
+
+        def slow_write(*args, **kwargs):
+            entered.set()
+            self.assertTrue(release.wait(5))
+            return original(*args, **kwargs)
+
+        with patch.object(get_backend(), "insert_learning_event", side_effect=slow_write):
+            writer = threading.Thread(target=lambda: repo.insert_learning_event("demo", "slow", {}))
+            writer.start()
+            self.assertTrue(entered.wait(5))
+            prepared = threading.Event()
+            opener = threading.Thread(target=lambda: (MIGRATION_WINDOW.prepare(), prepared.set()))
+            opener.start()
+            self.assertFalse(prepared.wait(0.2), "prepare must wait for the write itself")
+            release.set()
+            writer.join(5)
+            opener.join(5)
+            self.assertTrue(prepared.is_set())
+            MIGRATION_WINDOW.abort()
+
     def test_commit_verify_failure_keeps_json_backend(self):
         MIGRATION_WINDOW.prepare()
         # 在迁移源里塞一条缺 id 的脏数据：migrate 会记 problem -> verify 不通过口径
@@ -219,7 +247,17 @@ class StorageRouterTest(MigrationWindowTestBase):
 
         app = FastAPI()
         app.include_router(api_router)
-        return TestClient(app)
+        return TestClient(app, headers={"X-Migration-Admin-Key": "test-only-migration-key"})
+
+    def test_management_requires_admin_key_even_when_student_auth_disabled(self):
+        with self._client() as client:
+            self.assertEqual(client.post("/api/storage/migrate", json={"action": "prepare"},
+                headers={"X-Migration-Admin-Key": "wrong"}).status_code, 403)
+            self.assertEqual(client.get("/api/storage/migration-window",
+                headers={"X-Migration-Admin-Key": "wrong"}).status_code, 403)
+            self.assertEqual(MIGRATION_WINDOW.status_snapshot()["phase"], "idle")
+            with patch.dict(os.environ, {"MIGRATION_ADMIN_KEY": ""}):
+                self.assertEqual(client.post("/api/storage/migrate", json={"action": "prepare"}).status_code, 503)
 
     def test_status_endpoint_reports_idle(self):
         with self._client() as client:
@@ -296,7 +334,7 @@ class FrozenAsyncWriteTest(MigrationWindowTestBase):
         self.assertEqual(body["error"]["code"], "MIGRATION_FROZEN")
 
         # 冻结期读请求不受影响
-        resp = client.get("/api/storage/migration-window")
+        resp = client.get("/api/storage/migration-window", headers={"X-Migration-Admin-Key": "test-only-migration-key"})
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.json()["data"]["frozen"])
 

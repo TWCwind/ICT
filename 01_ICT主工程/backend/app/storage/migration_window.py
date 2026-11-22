@@ -27,6 +27,7 @@ from __future__ import annotations
 """
 
 import os
+from contextlib import contextmanager
 import sys
 import threading
 import time
@@ -120,6 +121,7 @@ class MigrationWindow:
         self._state = threading.Lock()
         self._status = WindowStatus()
         self._watchdog: threading.Thread | None = None
+        self._migration_pending = False
 
     # ---------- 状态 ----------
 
@@ -129,7 +131,8 @@ class MigrationWindow:
 
     # ---------- 写路径入口（app.repo 的每个写方法都调用） ----------
 
-    def write_guard(self) -> None:
+    @contextmanager
+    def write_guard(self):
         """窗口期间阻塞调用线程；窗口关闭后放行。
 
         空闲时是一次无竞争的锁获取，开销可忽略。注意不能改成 RLock：
@@ -139,14 +142,19 @@ class MigrationWindow:
         commit 请求就永远进不来（2026-11-20 实测）。所以事件循环上下文
         在冻结时抛 MigrationFrozenError，由 HTTP 层转 503 + Retry-After。
         """
-        if self._freeze.locked():
+        if self._migration_pending or self._status.frozen:
             # 快速路径之外才区分上下文：冻结中 + 事件循环 → 拒绝并让客户端重试。
             if _in_event_loop():
                 raise MigrationFrozenError(
                     "存储迁移窗口开启中，写请求暂时被拒，请稍后重试"
                 )
-        with self._freeze:
-            pass
+        # Hold the gate through the actual backend operation. Releasing it here
+        # let prepare start migration while a write was still in progress.
+        self._freeze.acquire()
+        try:
+            yield
+        finally:
+            self._freeze.release()
 
     # ---------- 三个动作 ----------
 
@@ -158,9 +166,11 @@ class MigrationWindow:
                 raise MigrationWindowError("已切换到 sqlite 后端，无需再次迁移")
             if str(settings.storage_backend).strip().lower() == "sqlite":
                 raise MigrationWindowError("当前已是 sqlite 后端，无需迁移")
+            self._migration_pending = True
 
         acquired = self._freeze.acquire(timeout=30)
         if not acquired:
+            self._migration_pending = False
             raise MigrationWindowError("等待在途写入完成超时，请重试 prepare")
         try:
             with self._state:
@@ -173,9 +183,11 @@ class MigrationWindow:
                     opened_at=time.time(),
                     ttl_sec=_window_ttl_sec(),
                 )
+                self._migration_pending = False
             self._start_watchdog()
             return self.status_snapshot()
         except BaseException:
+            self._migration_pending = False
             self._freeze.release()
             raise
 
@@ -276,6 +288,7 @@ class MigrationWindow:
             pass
         with self._state:
             self._status = WindowStatus()
+            self._migration_pending = False
 
     # ---------- 内部 ----------
 

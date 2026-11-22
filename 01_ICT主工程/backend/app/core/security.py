@@ -44,6 +44,8 @@ def _b64decode(text: str) -> bytes:
 
 def issue_token(student_id: str, ttl_sec: int | None = None) -> tuple[str, int]:
     """签发绑定 student_id 的 HMAC-SHA256 令牌，返回 (token, expires_at_unix)。"""
+    if settings.auth_required and not settings.auth_secret:
+        raise ValueError("AUTH_SECRET is required when authentication is enabled")
     ttl = int(ttl_sec if ttl_sec is not None else settings.auth_token_ttl_sec)
     expires_at = int(time.time()) + ttl
     payload = {
@@ -58,6 +60,8 @@ def issue_token(student_id: str, ttl_sec: int | None = None) -> tuple[str, int]:
 
 def verify_token(token: str) -> dict | None:
     """校验令牌签名与有效期；通过返回载荷 dict，任何篡改/过期/格式错误返回 None。"""
+    if settings.auth_required and not settings.auth_secret:
+        return None
     if not token or "." not in token:
         return None
     body, _, sig = token.partition(".")

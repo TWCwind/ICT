@@ -189,3 +189,10 @@ $env:DATA_DIR="<DATA_DIR>"; python -m unittest discover -s tests -p "test_auth_i
 - 用户画像、资源工坊、练习诊断、知识中枢、路径推送、智能辅导和评估进化页面可正常加载；
 - 无外部密钥时，受影响功能给出安全提示或使用演示回退，不泄露配置；
 - 前端生产构建和后端自动化测试通过。
+# PR #7 鉴权与在线迁移安全修复
+
+默认演示模式保持 `AUTH_REQUIRED=0`。启用用户身份验证前，需要在服务端环境配置 `AUTH_REQUIRED=1`、随机 `AUTH_SECRET` 和 `AUTH_STUDENT_KEYS_JSON`（学号到各自独立凭据的 JSON 映射）；只提供学号或验证码无法登录。请勿将实际凭据提交到仓库。此模式仍不具备账号注册、密码找回和角色管理，部署时应对凭据分发和轮换作单独安排。
+
+在线迁移管理接口始终要求独立的 `MIGRATION_ADMIN_KEY`，通过 `X-Migration-Admin-Key` 请求头传入；未配置时返回 503，错误凭据返回 403。该密钥与学习者令牌无关。迁移窗口仅适用于单进程服务；所有经过 `app.repo` 的写入会持有写入门锁直到落盘结束，再允许 prepare 开始迁移。部署前还应审计绕过 `app.repo` 的直接文件写入路径。
+
+回归命令：在 `backend` 目录运行 `python -m unittest tests.test_auth_isolation tests.test_migration_window -q`；完整后端测试运行 `python -m unittest discover -s tests -p "test*.py" -q`。

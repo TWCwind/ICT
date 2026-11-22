@@ -63,8 +63,9 @@ const settingsMenuRef = ref<HTMLElement | null>(null)
 const settingsTriggerRef = ref<HTMLButtonElement | null>(null)
 const settingsPanelRef = ref<HTMLElement | null>(null)
 const { studentId, major, goals } = useStudent()
-const { authRequired, loadAuthConfig, setSessionToken, clearSessionToken } = useAuth()
+const { authRequired, loadAuthConfig, getSessionToken, setSessionToken, clearSessionToken } = useAuth()
 const studentIdInput = ref('')
+const studentCredential = ref('')
 const serverCaptchaId = ref('')
 const serverCaptchaImage = ref('')
 const loginPending = ref(false)
@@ -86,6 +87,10 @@ async function refreshServerCaptcha() {
 
 watch(authRequired, (required) => {
   if (required && !serverCaptchaId.value) void refreshServerCaptcha()
+  if (required && !getSessionToken()) {
+    isAuthed.value = false
+    sessionStorage.removeItem(authStorageKey)
+  }
 })
 
 const nav: NavItem[] = [
@@ -135,6 +140,10 @@ async function submitLoginAuthed() {
     loginError.value = '请输入学号'
     return
   }
+  if (!studentCredential.value) {
+    loginError.value = '请输入登录凭据'
+    return
+  }
   if (!captcha.value.trim()) {
     loginError.value = '请输入验证码'
     return
@@ -146,6 +155,7 @@ async function submitLoginAuthed() {
   loginPending.value = true
   const resp = await apiPost<{ student_id: string; token: string; expires_at: number }>('/api/auth/login', {
     student_id: sid,
+      credential: studentCredential.value,
     captcha_id: serverCaptchaId.value,
     captcha_code: captcha.value.trim(),
   })
@@ -162,6 +172,7 @@ async function submitLoginAuthed() {
   sessionStorage.setItem(authStorageKey, '1')
   captcha.value = ''
   studentIdInput.value = ''
+  studentCredential.value = ''
   if (studentIdChanged) {
     // 学号从默认 learner-* 换成登录学号：整页刷新让各页按新学号重新取数
     window.location.reload()
@@ -258,7 +269,7 @@ onBeforeUnmount(() => {
         </button>
         <section v-if="settingsOpen" id="portal-settings-panel" ref="settingsPanelRef" class="portal-settings-panel" aria-label="用户设置面板">
           <header><strong>用户设置</strong><button type="button" aria-label="关闭用户设置" @click="closeSettings(true)"><X :size="17" /></button></header>
-          <label><span>学习者 ID</span><input v-model="studentId" autocomplete="off" /></label>
+            <label><span>学习者 ID</span><input v-model="studentId" autocomplete="off" :disabled="authRequired" /></label>
           <label><span>专业方向</span><input v-model="major" placeholder="例如：软件工程" autocomplete="off" /></label>
           <label><span>学习目标</span><textarea v-model="goals" rows="3" placeholder="描述希望达成的能力或成果"></textarea></label>
           <footer><RouterLink to="/profile" @click="closeSettings()">完善用户画像</RouterLink><button type="button" @click="logout">退出登录</button></footer>
@@ -296,6 +307,10 @@ onBeforeUnmount(() => {
           <UserRound :size="28" stroke-width="2.2" />
           <input v-model="studentIdInput" placeholder="学号" autocomplete="username" aria-label="学号" />
         </label>
+        <label v-if="authRequired" class="login-field login-field-active">
+          <LockKeyhole :size="28" stroke-width="2.2" />
+          <input v-model="studentCredential" type="password" placeholder="登录凭据" autocomplete="current-password" aria-label="登录凭据" />
+        </label>
 
         <label class="login-field login-field-active" v-if="!authRequired">
           <LockKeyhole :size="28" stroke-width="2.2" />
@@ -322,7 +337,7 @@ onBeforeUnmount(() => {
 
         <div class="login-tip">
           <span v-if="!authRequired">测试账号：任意 11 位手机号，密码 demo123（验证码点击可刷新，字母不区分大小写）</span>
-          <span v-else>请输入学号与服务端验证码登录，会话将绑定该学号（多用户隔离已启用）</span>
+            <span v-else>请输入学号、登录凭据和验证码；账户由管理员配置。</span>
           <strong v-if="loginError">{{ loginError }}</strong>
         </div>
       </form>

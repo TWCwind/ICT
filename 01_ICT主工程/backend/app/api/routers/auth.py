@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import base64
 import json
+import hmac
+import os
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -27,6 +29,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 class LoginRequest(BaseModel):
     student_id: str = Field(min_length=1)
+    credential: str = Field(min_length=1)
     captcha_id: str = Field(min_length=1)
     captcha_code: str = Field(min_length=1)
 
@@ -67,6 +70,15 @@ async def auth_login(req: LoginRequest) -> ApiResponse:
             success=False,
             error={"code": "AUTH_CAPTCHA_INVALID", "message": "验证码错误或已过期，请刷新后重试"},
         )
+    # A captcha is visible to the browser and is not proof of student identity.
+    # Credentials are supplied by the operator; no shared development password.
+    try:
+        credentials = json.loads(os.environ.get("AUTH_STUDENT_KEYS_JSON", "{}"))
+    except ValueError:
+        credentials = {}
+    expected = credentials.get(student_id) if isinstance(credentials, dict) else None
+    if not settings.auth_secret or not isinstance(expected, str) or not expected or not hmac.compare_digest(req.credential, expected):
+        raise HTTPException(status_code=401, detail="学号或登录凭据错误，或认证服务未配置")
     token, expires_at = security.issue_token(student_id)
     return ApiResponse(
         request_id=new_id(),

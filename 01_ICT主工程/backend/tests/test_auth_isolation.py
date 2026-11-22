@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import re
+import os
 import unittest
 
 from fastapi import APIRouter, Depends, FastAPI
@@ -68,18 +69,27 @@ class StudentIsolationEnforcementTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self._original = settings.auth_required
+        self._original_secret = settings.auth_secret
+        self._old_keys = os.environ.get("AUTH_STUDENT_KEYS_JSON")
         settings.auth_required = True
+        settings.auth_secret = "test-only-session-secret"
+        os.environ["AUTH_STUDENT_KEYS_JSON"] = '{"demo":"test-only-demo-key"}'
         self.client = _build_client()
 
     def tearDown(self) -> None:
         settings.auth_required = self._original
+        settings.auth_secret = self._original_secret
+        if self._old_keys is None:
+            os.environ.pop("AUTH_STUDENT_KEYS_JSON", None)
+        else:
+            os.environ["AUTH_STUDENT_KEYS_JSON"] = self._old_keys
         self.client.close()
 
     def _login(self, student_id: str) -> str:
         captcha_id, code = security.create_captcha()
         resp = self.client.post(
             "/api/auth/login",
-            json={"student_id": student_id, "captcha_id": captcha_id, "captcha_code": code},
+            json={"student_id": student_id, "credential": "test-only-demo-key", "captcha_id": captcha_id, "captcha_code": code},
         )
         self.assertEqual(resp.status_code, 200)
         payload = resp.json()
@@ -95,7 +105,7 @@ class StudentIsolationEnforcementTest(unittest.TestCase):
         captcha_id, _ = security.create_captcha()
         resp = self.client.post(
             "/api/auth/login",
-            json={"student_id": "demo", "captcha_id": captcha_id, "captcha_code": "ZZZZ"},
+            json={"student_id": "demo", "credential": "test-only-demo-key", "captcha_id": captcha_id, "captcha_code": "ZZZZ"},
         )
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(resp.json()["success"])
@@ -109,9 +119,26 @@ class StudentIsolationEnforcementTest(unittest.TestCase):
         self.assertEqual(len(code), 4)
         resp = self.client.post(
             "/api/auth/login",
-            json={"student_id": "demo", "captcha_id": data["captcha_id"], "captcha_code": code},
+            json={"student_id": "demo", "credential": "test-only-demo-key", "captcha_id": data["captcha_id"], "captcha_code": code},
         )
         self.assertTrue(resp.json()["success"])
+
+    def test_visible_captcha_cannot_impersonate_another_student(self) -> None:
+        captcha_id, code = security.create_captcha()
+        resp = self.client.post("/api/auth/login", json={
+            "student_id": "other", "credential": "test-only-demo-key",
+            "captcha_id": captcha_id, "captcha_code": code,
+        })
+        self.assertEqual(resp.status_code, 401)
+
+    def test_missing_session_secret_fails_closed(self) -> None:
+        settings.auth_secret = ""
+        captcha_id, code = security.create_captcha()
+        resp = self.client.post("/api/auth/login", json={
+            "student_id": "demo", "credential": "test-only-demo-key",
+            "captcha_id": captcha_id, "captcha_code": code,
+        })
+        self.assertEqual(resp.status_code, 401)
 
     def test_me_requires_valid_token(self) -> None:
         resp = self.client.get("/api/auth/me")

@@ -47,8 +47,8 @@ __all__ = [
 
 
 def ensure_student(*, student_id: str, major: str | None, goals: str | None) -> None:
-    MIGRATION_WINDOW.write_guard()
-    get_backend().ensure_student(student_id=student_id, major=major, goals=goals)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().ensure_student(student_id=student_id, major=major, goals=goals)
 
 
 def get_student(student_id: str) -> dict[str, Any] | None:
@@ -58,15 +58,15 @@ def get_student(student_id: str) -> dict[str, Any] | None:
 
 def patch_student(student_id: str, updates: dict[str, Any]) -> dict[str, Any]:
     """只写入非空且与现值不同的基本信息字段，返回落盘后的 student 数据。"""
-    MIGRATION_WINDOW.write_guard()
-    return get_backend().patch_student(student_id, updates)
+    with MIGRATION_WINDOW.write_guard():
+        return get_backend().patch_student(student_id, updates)
 
 
 def insert_profile_snapshot(
     *, student_id: str, profile: dict[str, Any], evidence: dict[str, Any]
 ) -> dict[str, Any]:
-    MIGRATION_WINDOW.write_guard()
-    return get_backend().insert_profile_snapshot(student_id=student_id, profile=profile, evidence=evidence)
+    with MIGRATION_WINDOW.write_guard():
+        return get_backend().insert_profile_snapshot(student_id=student_id, profile=profile, evidence=evidence)
 
 
 def list_profile_snapshots(student_id: str) -> list[dict[str, Any]]:
@@ -87,15 +87,15 @@ def insert_resource_item(
     content_uri: str,
     meta: dict[str, Any],
 ) -> dict[str, Any]:
-    MIGRATION_WINDOW.write_guard()
-    return get_backend().insert_resource_item(
-        student_id=student_id,
-        type=type,
-        title=title,
-        tags=tags,
-        content_uri=content_uri,
-        meta=meta,
-    )
+    with MIGRATION_WINDOW.write_guard():
+        return get_backend().insert_resource_item(
+            student_id=student_id,
+            type=type,
+            title=title,
+            tags=tags,
+            content_uri=content_uri,
+            meta=meta,
+        )
 
 
 def get_resource_item(resource_id: str) -> dict[str, Any] | None:
@@ -108,26 +108,26 @@ def list_resources(student_id: str) -> list[dict[str, Any]]:
 
 def delete_resource_item(student_id: str, resource_id: str) -> dict[str, Any] | None:
     """删除一条资源（档案袋条目）及正文文件；返回被删除的记录，未找到返回 None。"""
-    MIGRATION_WINDOW.write_guard()
-    return get_backend().delete_resource_item(student_id, resource_id)
+    with MIGRATION_WINDOW.write_guard():
+        return get_backend().delete_resource_item(student_id, resource_id)
 
 
 def insert_learning_event(student_id: str, event_type: str, payload: dict[str, Any]) -> None:
-    MIGRATION_WINDOW.write_guard()
-    get_backend().insert_learning_event(student_id, event_type, payload)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().insert_learning_event(student_id, event_type, payload)
 
 
 def insert_resource_usage(
     *, student_id: str, resource_id: str, action: str, duration_sec: int | None, feedback: dict[str, Any]
 ) -> None:
-    MIGRATION_WINDOW.write_guard()
-    get_backend().insert_resource_usage(
-        student_id=student_id,
-        resource_id=resource_id,
-        action=action,
-        duration_sec=duration_sec,
-        feedback=feedback,
-    )
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().insert_resource_usage(
+            student_id=student_id,
+            resource_id=resource_id,
+            action=action,
+            duration_sec=duration_sec,
+            feedback=feedback,
+        )
 
 
 def get_user_events(student_id: str) -> list[dict[str, Any]]:
@@ -147,14 +147,14 @@ def list_quiz_records(student_id: str) -> list[dict[str, Any]]:
 
 def append_quiz_record(student_id: str, record: dict[str, Any]) -> None:
     """追加一条作答记录；SQLite 模式下是单条 INSERT，不读改写整份记录。"""
-    MIGRATION_WINDOW.write_guard()
-    get_backend().append_quiz_record(student_id, record)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().append_quiz_record(student_id, record)
 
 
 def replace_quiz_records(student_id: str, records: list[dict[str, Any]]) -> None:
     """整表替换练习记录（删除单条 / 清空错题用）。"""
-    MIGRATION_WINDOW.write_guard()
-    get_backend().replace_quiz_records(student_id, records)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().replace_quiz_records(student_id, records)
 
 
 def get_path_progress(student_id: str) -> dict[str, Any]:
@@ -163,8 +163,8 @@ def get_path_progress(student_id: str) -> dict[str, Any]:
 
 
 def save_path_progress(student_id: str, state: dict[str, Any]) -> None:
-    MIGRATION_WINDOW.write_guard()
-    get_backend().save_path_progress(student_id, state)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().save_path_progress(student_id, state)
 
 
 def get_knowledge_state(student_id: str) -> dict[str, Any]:
@@ -173,5 +173,5 @@ def get_knowledge_state(student_id: str) -> dict[str, Any]:
 
 
 def save_knowledge_state(student_id: str, state: dict[str, Any]) -> None:
-    MIGRATION_WINDOW.write_guard()
-    get_backend().save_knowledge_state(student_id, state)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().save_knowledge_state(student_id, state)
