@@ -10,6 +10,15 @@ export type ApiResponse<T> = {
   error?: ApiError | null
 }
 
+// 会话令牌（多用户隔离）：登录后由 useAuth 写入 localStorage；
+// AUTH_REQUIRED=1 时后端校验该头与请求学号一致，缺失或不匹配返回 401/403。
+const sessionTokenKey = 'las_session_token'
+function sessionTokenHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {}
+  const token = localStorage.getItem(sessionTokenKey)
+  return token ? { 'X-Session-Token': token } : {}
+}
+
 // HTTP / 网络层失败的统一中文说明。页面捕获后直接展示，避免把
 // “Unexpected token …”/“Failed to fetch” 这类英文底层错误暴露给用户。
 function httpErrorMessage(status: number): string {
@@ -51,7 +60,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<ApiRespon
   try {
     const resp = await fetch(path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...sessionTokenHeaders() },
       body: JSON.stringify(body),
     })
     return await parseEnvelope<T>(resp, '请求失败')
@@ -62,7 +71,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<ApiRespon
 
 export async function apiGet<T>(path: string): Promise<ApiResponse<T>> {
   try {
-    const resp = await fetch(path)
+    const resp = await fetch(path, { headers: sessionTokenHeaders() })
     return await parseEnvelope<T>(resp, '请求失败')
   } catch {
     return { request_id: '', success: false, data: null as T, error: { code: 'NETWORK', message: '本地服务未连接，请确认后端已启动后重试' } }
@@ -71,7 +80,7 @@ export async function apiGet<T>(path: string): Promise<ApiResponse<T>> {
 
 export async function apiDelete<T>(path: string): Promise<ApiResponse<T>> {
   try {
-    const resp = await fetch(path, { method: 'DELETE' })
+    const resp = await fetch(path, { method: 'DELETE', headers: sessionTokenHeaders() })
     return await parseEnvelope<T>(resp, '请求失败')
   } catch {
     return { request_id: '', success: false, data: null as T, error: { code: 'NETWORK', message: '本地服务未连接，请确认后端已启动后重试' } }
@@ -102,6 +111,7 @@ export async function apiStream<T>(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
+        ...sessionTokenHeaders(),
       },
       body: JSON.stringify(body),
     })

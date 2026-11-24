@@ -79,7 +79,6 @@ const activeQuestionBankKey = computed(() => (props.questionBankIds || []).join(
 const configuredBankCount = computed(() => (props.questionBankIds || []).filter(Boolean).length)
 const configuredCourseName = computed(() => String(props.courseName || '').trim() || '待选择课程')
 const configuredKnowledgePoint = computed(() => String(props.knowledgePoint || '').trim() || '待设置具体知识点')
-const configuredQuestionTypeCount = computed(() => Math.max(0, Number(props.questionTypeCount) || 0))
 const activeQuestionLimit = computed(() => Math.max(1, Math.min(50, Number(props.questionLimit) || 12)))
 const activeDifficulty = computed(() => String(props.difficulty || 'mixed').toLowerCase())
 const storageKey = computed(() => `exercise_session_state:${studentId.value}:${activeQuestionBankKey.value}:${activeQuestionLimit.value}:${activeDifficulty.value}:${props.resetSeed || 0}`)
@@ -1262,34 +1261,8 @@ watch([loading, error, hasQuestions], async () => {
               <dd>{{ practiceStatusText }}</dd>
             </div>
           </dl>
-          <div v-if="!questions.length" class="practice-empty-side-guide">
-            <section>
-              <span>当前设置</span>
-              <strong>{{ configuredCourseName }}</strong>
-              <p>{{ configuredKnowledgePoint }}</p>
-              <small>{{ configuredBankCount ? '题库等待载入，刷新后显示实际题量与难度' : '尚未生成题库' }}</small>
-            </section>
-            <section>
-              <span>开始前准备</span>
-              <p><b :class="{ ready: configuredQuestionTypeCount > 0 }"></b>题量和题型配置</p>
-              <p><b :class="{ ready: Boolean(configuredKnowledgePoint) }"></b>诊断知识点范围</p>
-              <p><b :class="{ ready: configuredBankCount > 0 }"></b>练习专用题库</p>
-            </section>
-            <section>
-              <span>载入后将展示</span>
-              <p><b></b>当前题号与完成进度</p>
-              <p><b></b>未答、已标记和暂存状态</p>
-              <p><b></b>训练即时判题或考试统一交卷</p>
-              <p><b></b>错题与知识点诊断结果</p>
-            </section>
-            <div>
-              <button type="button" @click="emit('navigate', 'builder')">检查定制设置</button>
-              <button type="button" class="primary" @click="refreshQuestions">重新载入题库</button>
-            </div>
-          </div>
         </div>
-        <div v-if="!questions.length" class="exercise-compact-empty">载入后显示题号</div>
-        <div v-else class="exercise-question-nav">
+        <div v-if="questions.length" class="exercise-question-nav">
           <button
             v-for="(q, idx) in questions"
             :key="q.id"

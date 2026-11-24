@@ -1,115 +1,81 @@
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
-from pathlib import Path
+"""仓储层门面。
+
+对外暴露的函数签名、参数名与返回结构与改造前完全一致（路由 / 服务 / 测试的契约），
+具体实现由环境变量 STORAGE_BACKEND 决定：
+    json   —— data/users/<学号>/*.json（默认，保持原有行为）
+    sqlite —— data/app.db（元数据入库，正文文件仍在磁盘）
+
+底层 JSON 读写工具（read_json / write_json / get_user_dir / now_iso）继续从这里导出，
+因为 path_progress、knowledge_state、exercise_bank 等模块直接依赖它们。
+"""
+
 from typing import Any
 
-from app.core.ids import new_id
-from app.core.config import settings
+from app.storage import get_backend
+from app.storage.json_io import get_user_dir, now_iso, read_json, write_json
+from app.storage.migration_window import MIGRATION_WINDOW
 
-
-def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def get_user_dir(student_id: str) -> Path:
-    user_dir = settings.data_path / "users" / student_id
-    user_dir.mkdir(parents=True, exist_ok=True)
-    return user_dir
-
-
-def read_json(path: Path, default: Any) -> Any:
-    if not path.exists():
-        return default
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return default
-
-
-def write_json(path: Path, data: Any) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+__all__ = [
+    "now_iso",
+    "get_user_dir",
+    "read_json",
+    "write_json",
+    "ensure_student",
+    "get_student",
+    "patch_student",
+    "insert_profile_snapshot",
+    "get_latest_profile_snapshot",
+    "list_profile_snapshots",
+    "insert_resource_item",
+    "get_resource_item",
+    "list_resources",
+    "delete_resource_item",
+    "insert_learning_event",
+    "insert_resource_usage",
+    "get_user_events",
+    "get_user_usages",
+    "list_quiz_records",
+    "append_quiz_record",
+    "replace_quiz_records",
+    "get_path_progress",
+    "save_path_progress",
+    "get_knowledge_state",
+    "save_knowledge_state",
+]
 
 
 def ensure_student(*, student_id: str, major: str | None, goals: str | None) -> None:
-    user_dir = get_user_dir(student_id)
-    student_file = user_dir / "student.json"
-    data = read_json(student_file, {})
-    
-    if not data:
-        data = {
-            "id": student_id,
-            "major": major or "",
-            "grade": "",
-            "goals": goals or "",
-            "created_at": now_iso()
-        }
-    else:
-        if major is not None:
-            data["major"] = major
-        if goals is not None:
-            data["goals"] = goals
-            
-    write_json(student_file, data)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().ensure_student(student_id=student_id, major=major, goals=goals)
 
 
-_STUDENT_TEXT_FIELDS = ("name", "major", "grade", "current_course", "goals")
+def get_student(student_id: str) -> dict[str, Any] | None:
+    """读取学生基本信息；不存在时返回 None（JSON 与 SQLite 语义一致）。"""
+    return get_backend().get_student(student_id)
 
 
 def patch_student(student_id: str, updates: dict[str, Any]) -> dict[str, Any]:
     """只写入非空且与现值不同的基本信息字段，返回落盘后的 student 数据。"""
-    user_dir = get_user_dir(student_id)
-    student_file = user_dir / "student.json"
-    data = read_json(student_file, {})
-    if not data:
-        data = {"id": student_id, "created_at": now_iso()}
-
-    changed = False
-    for key in _STUDENT_TEXT_FIELDS:
-        value = str(updates.get(key) or "").strip()
-        if not value or str(data.get(key) or "").strip() == value:
-            continue
-        data[key] = value
-        changed = True
-
-    if changed:
-        data["updated_at"] = now_iso()
-        write_json(student_file, data)
-
-    return data
+    with MIGRATION_WINDOW.write_guard():
+        return get_backend().patch_student(student_id, updates)
 
 
-def insert_profile_snapshot(*, student_id: str, profile: dict[str, Any], evidence: dict[str, Any]) -> dict[str, Any]:
-    user_dir = get_user_dir(student_id)
-    profiles_file = user_dir / "profiles.json"
-    profiles = read_json(profiles_file, [])
-    
-    snapshot_id = new_id()
-    created_at = now_iso()
-    
-    snapshot = {
-        "id": snapshot_id,
-        "student_id": student_id,
-        **profile,
-        "evidence": evidence,
-        "created_at": created_at
-    }
-    
-    profiles.append(snapshot)
-    write_json(profiles_file, profiles)
-    return snapshot
+def insert_profile_snapshot(
+    *, student_id: str, profile: dict[str, Any], evidence: dict[str, Any]
+) -> dict[str, Any]:
+    with MIGRATION_WINDOW.write_guard():
+        return get_backend().insert_profile_snapshot(student_id=student_id, profile=profile, evidence=evidence)
+
+
+def list_profile_snapshots(student_id: str) -> list[dict[str, Any]]:
+    """全部画像快照，按创建时间升序（JSON 与 SQLite 两种后端一致）。"""
+    return get_backend().list_profile_snapshots(student_id)
 
 
 def get_latest_profile_snapshot(student_id: str) -> dict[str, Any] | None:
-    user_dir = get_user_dir(student_id)
-    profiles_file = user_dir / "profiles.json"
-    profiles = read_json(profiles_file, [])
-    if not profiles:
-        return None
-    # 按创建时间降序
-    profiles.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-    return profiles[0]
+    return get_backend().get_latest_profile_snapshot(student_id)
 
 
 def insert_resource_item(
@@ -121,126 +87,91 @@ def insert_resource_item(
     content_uri: str,
     meta: dict[str, Any],
 ) -> dict[str, Any]:
-    user_dir = get_user_dir(student_id)
-    resources_file = user_dir / "resources.json"
-    resources = read_json(resources_file, [])
-    
-    resource_id = new_id()
-    created_at = now_iso()
-    
-    item = {
-        "id": resource_id,
-        "student_id": student_id,
-        "type": type,
-        "title": title,
-        "tags": tags,
-        "content_uri": content_uri,
-        "meta": meta,
-        "created_at": created_at,
-    }
-    resources.append(item)
-    write_json(resources_file, resources)
-    return item
+    with MIGRATION_WINDOW.write_guard():
+        return get_backend().insert_resource_item(
+            student_id=student_id,
+            type=type,
+            title=title,
+            tags=tags,
+            content_uri=content_uri,
+            meta=meta,
+        )
 
 
 def get_resource_item(resource_id: str) -> dict[str, Any] | None:
-    users_dir = settings.data_path / "users"
-    if not users_dir.exists():
-        return None
-    for user_dir in users_dir.iterdir():
-        if user_dir.is_dir():
-            resources_file = user_dir / "resources.json"
-            resources = read_json(resources_file, [])
-            for r in resources:
-                if r.get("id") == resource_id:
-                    return r
-    return None
+    return get_backend().get_resource_item(resource_id)
 
 
 def list_resources(student_id: str) -> list[dict[str, Any]]:
-    user_dir = get_user_dir(student_id)
-    resources_file = user_dir / "resources.json"
-    resources = read_json(resources_file, [])
-    resources.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-    return resources
+    return get_backend().list_resources(student_id)
 
 
 def delete_resource_item(student_id: str, resource_id: str) -> dict[str, Any] | None:
     """删除一条资源（档案袋条目）及正文文件；返回被删除的记录，未找到返回 None。"""
-    user_dir = get_user_dir(student_id)
-    resources_file = user_dir / "resources.json"
-    resources = read_json(resources_file, [])
-    target = next((item for item in resources if item.get("id") == resource_id), None)
-    if target is None:
-        return None
-    remaining = [item for item in resources if item.get("id") != resource_id]
-    write_json(resources_file, remaining)
-    removed_file = _remove_content_file(str(target.get("content_uri") or ""))
-    return {**target, "removed_file": removed_file}
-
-
-def _remove_content_file(content_uri: str) -> bool:
-    uri = content_uri.strip().lstrip("/")
-    if not uri:
-        return False
-    data_root = settings.data_path.resolve()
-    candidate = (settings.data_path / uri).resolve()
-    try:
-        candidate.relative_to(data_root)
-    except ValueError:
-        return False
-    if not candidate.is_file():
-        return False
-    try:
-        candidate.unlink()
-        return True
-    except OSError:
-        return False
+    with MIGRATION_WINDOW.write_guard():
+        return get_backend().delete_resource_item(student_id, resource_id)
 
 
 def insert_learning_event(student_id: str, event_type: str, payload: dict[str, Any]) -> None:
-    user_dir = get_user_dir(student_id)
-    events_file = user_dir / "events.json"
-    events = read_json(events_file, [])
-    
-    events.append({
-        "id": new_id(),
-        "student_id": student_id,
-        "event_type": event_type,
-        "payload": payload,
-        "created_at": now_iso()
-    })
-    write_json(events_file, events)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().insert_learning_event(student_id, event_type, payload)
 
 
 def insert_resource_usage(
     *, student_id: str, resource_id: str, action: str, duration_sec: int | None, feedback: dict[str, Any]
 ) -> None:
-    user_dir = get_user_dir(student_id)
-    usage_file = user_dir / "usage.json"
-    usages = read_json(usage_file, [])
-    
-    usages.append({
-        "id": new_id(),
-        "resource_id": resource_id,
-        "student_id": student_id,
-        "action": action,
-        "duration_sec": duration_sec,
-        "feedback": feedback,
-        "created_at": now_iso()
-    })
-    write_json(usage_file, usages)
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().insert_resource_usage(
+            student_id=student_id,
+            resource_id=resource_id,
+            action=action,
+            duration_sec=duration_sec,
+            feedback=feedback,
+        )
 
 
 def get_user_events(student_id: str) -> list[dict[str, Any]]:
     """获取用户的所有学习事件（用于潜在问题发现等场景）"""
-    user_dir = get_user_dir(student_id)
-    events_file = user_dir / "events.json"
-    return read_json(events_file, [])
+    return get_backend().get_user_events(student_id)
 
 
 def get_user_usages(student_id: str) -> list[dict[str, Any]]:
-    """获取用户的资源使用记录（包含反馈信息）"""
-    user_dir = get_user_dir(student_id)
-    usage_file = user_dir / "usage.json"
-    return read_json(usage_file, [])
+    """获取用户的所有资源使用记录（包含反馈信息）"""
+    return get_backend().get_user_usages(student_id)
+
+
+def list_quiz_records(student_id: str) -> list[dict[str, Any]]:
+    """练习作答记录（原 exercise_records.json 的内容），按追加顺序返回。"""
+    return get_backend().list_quiz_records(student_id)
+
+
+def append_quiz_record(student_id: str, record: dict[str, Any]) -> None:
+    """追加一条作答记录；SQLite 模式下是单条 INSERT，不读改写整份记录。"""
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().append_quiz_record(student_id, record)
+
+
+def replace_quiz_records(student_id: str, records: list[dict[str, Any]]) -> None:
+    """整表替换练习记录（删除单条 / 清空错题用）。"""
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().replace_quiz_records(student_id, records)
+
+
+def get_path_progress(student_id: str) -> dict[str, Any]:
+    """学习路径进度状态（原 path_progress.json）。"""
+    return get_backend().get_path_progress(student_id)
+
+
+def save_path_progress(student_id: str, state: dict[str, Any]) -> None:
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().save_path_progress(student_id, state)
+
+
+def get_knowledge_state(student_id: str) -> dict[str, Any]:
+    """知识掌握状态（原 knowledge_state.json，返回 {"nodes": {...}}）。"""
+    return get_backend().get_knowledge_state(student_id)
+
+
+def save_knowledge_state(student_id: str, state: dict[str, Any]) -> None:
+    with MIGRATION_WINDOW.write_guard():
+        get_backend().save_knowledge_state(student_id, state)

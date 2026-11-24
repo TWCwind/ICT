@@ -8,12 +8,14 @@ from typing import Any
 from app.core.config import settings
 from app.llm import is_llm_configured
 from app.repo import (
+    get_knowledge_state,
     get_latest_profile_snapshot,
-    get_user_dir,
+    get_student,
+    list_profile_snapshots,
     get_user_events,
     get_user_usages,
+    list_quiz_records,
     list_resources,
-    read_json,
 )
 from app.services.knowledge_hub import mastery_data, overview as knowledge_overview
 from app.services.path_progress import mastery_snapshot, overlay_path_progress
@@ -208,11 +210,10 @@ def learning_overview(student_id: str) -> dict[str, Any]:
 
 
 def profile_overview(student_id: str) -> dict[str, Any]:
-    user_dir = get_user_dir(student_id)
-    learner = read_json(user_dir / "student.json", {}) or {"id": student_id}
-    snapshots = read_json(user_dir / "profiles.json", []) or []
+    learner = get_student(student_id) or {"id": student_id}
+    snapshots = list_profile_snapshots(student_id)
     snapshots = sorted(snapshots, key=lambda item: item.get("created_at", ""), reverse=True)
-    latest = snapshots[0] if snapshots else (get_latest_profile_snapshot(student_id) or {})
+    latest = snapshots[0] if snapshots else {}
     evidence = latest.get("evidence") or {}
     weak_points = [_localize_profile_text(item) for item in _string_list(evidence.get("weak_points"))]
     keywords = [_localize_profile_text(item) for item in _string_list(evidence.get("keywords"))]
@@ -385,9 +386,8 @@ def tutor_overview(student_id: str) -> dict[str, Any]:
 
 
 def evaluation_overview(student_id: str) -> dict[str, Any]:
-    user_dir = get_user_dir(student_id)
-    exercise_records = read_json(user_dir / "exercise_records.json", []) or []
-    knowledge_state = read_json(user_dir / "knowledge_state.json", {}) or {}
+    exercise_records = list_quiz_records(student_id)
+    knowledge_state = get_knowledge_state(student_id) or {}
     resources = list_resources(student_id)
     usages = get_user_usages(student_id)
     events = get_user_events(student_id)

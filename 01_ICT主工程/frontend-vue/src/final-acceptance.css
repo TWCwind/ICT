@@ -193,22 +193,7 @@ select {
   background: rgba(255,255,255,.23);
 }
 .exercise-practice-center:has(.exercise-empty) { align-items: stretch; }
-.exercise-practice-center:has(.exercise-empty) .practice-main-panel,
-.exercise-practice-center:has(.exercise-empty) .exercise-side,
-.exercise-practice-center:has(.exercise-empty) .exercise-nav-card { height: 100%; align-self: stretch; }
-.exercise-practice-center:has(.exercise-empty) .exercise-side { grid-template-rows: minmax(0,1fr); align-content: stretch; }
-.exercise-practice-center:has(.exercise-empty) .exercise-nav-card { min-height: 100% !important; }
-.practice-empty-side-guide { display: grid; gap: 12px; margin-top: 8px; border-top: 1px solid #ecf4fa; padding-top: 14px; }
-.practice-empty-side-guide > section { display: grid; gap: 6px; border-radius: 11px; padding: 12px; background: #f8fbfd; }
-.practice-empty-side-guide section > span { color: #a2c7e1; font-size: 12.5px; font-weight: 900; }
-.practice-empty-side-guide section > strong { overflow-wrap: anywhere; color: #2e4056; font-size: 13.5px; }
-.practice-empty-side-guide section > p,.practice-empty-side-guide section > small { margin: 0; overflow-wrap: anywhere; color: #a69fb4; font-size: 11px; line-height: 1.5; }
-.practice-empty-side-guide section > p { display: flex; align-items: center; gap: 7px; }
-.practice-empty-side-guide section > p b { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #f0c97f; }
-.practice-empty-side-guide section > p b.ready { background: #3e8b78; }
-.practice-empty-side-guide > div { display: grid; gap: 8px; }
-.practice-empty-side-guide button { min-height: 36px; border: 1px solid #ecf4fa; border-radius: 10px; color: #6a93b8; background: #fff; font-size: 12.5px; font-weight: 900; cursor: pointer; }
-.practice-empty-side-guide button.primary { border-color: #a2c7e1; color: #fff; background: #a2c7e1; }
+.exercise-practice-center:has(.exercise-empty) .practice-main-panel { height: 100%; align-self: stretch; }
 .exercise-practice-center .exercise-question strong { font-size: clamp(19px, 1.65vw, 24px) !important; line-height: 1.55 !important; }
 
 @media (max-width: 900px) { .exercise-empty-steps, .exercise-empty-config, .exercise-empty-preflight, .exercise-empty-outcomes > div { grid-template-columns: 1fr; } }

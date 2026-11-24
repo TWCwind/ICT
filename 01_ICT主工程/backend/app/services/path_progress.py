@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core.ids import new_id
+from app.repo import get_path_progress, save_path_progress
 from app.repo import get_user_dir, get_user_events, read_json, write_json
 
 
@@ -213,7 +214,7 @@ def record_stage_answer(
 
 
 def _ensure_state(student_id: str, *, plan_key: str, nodes: list[dict[str, Any]]) -> dict[str, Any]:
-    state = read_json(_state_path(student_id), {})
+    state = _read_state(student_id)
     if not isinstance(state, dict) or str(state.get("plan_key") or "") != str(plan_key or ""):
         state = _new_state(plan_key=plan_key, nodes=nodes)
         _write_state(student_id, state)
@@ -358,7 +359,7 @@ def mastery_snapshot(student_id: str) -> dict[str, Any]:
     而评估层原先只认知识图谱节点。图谱没有证据节点时，页面就会出现
     「练了 20 题、知识掌握还是 0%」——那不是数据少，是两套口径没接上。
     """
-    state = read_json(_state_path(student_id), {}) or {}
+    state = _read_state(student_id)
     stages = state.get("stages") if isinstance(state.get("stages"), dict) else {}
     rows: list[dict[str, Any]] = []
     for stage_id, item in stages.items():
@@ -387,12 +388,13 @@ def mastery_snapshot(student_id: str) -> dict[str, Any]:
     }
 
 
-def _state_path(student_id: str):
-    return get_user_dir(student_id) / "path_progress.json"
+def _read_state(student_id: str) -> dict[str, Any]:
+    state = get_path_progress(student_id)
+    return state if isinstance(state, dict) else {}
 
 
 def _write_state(student_id: str, state: dict[str, Any]) -> None:
-    write_json(_state_path(student_id), state)
+    save_path_progress(student_id, state)
 
 
 def _now_iso() -> str:

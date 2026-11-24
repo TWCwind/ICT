@@ -37,17 +37,19 @@
    - 你能做的：用同一份学生产物跑三组，记录引用准确数、诊断正确数、人工纠错次数、耗时、token 成本；仓库里 `scripts/eval/test_multi_agent*.py` 只保证流程可复现，不产出对照结论。
 4. **教师真实效果证据**（队友第 4 条）
    - 需要 1~2 位真实教师对真实学生产物独立评分，记录试用前后、建议采纳/驳回原因、样本量。这件事只能在有真人的场景做。
-5. **LICENSE 选型**
-   - 我按惯例不建议擅自替你选（涉及你对作品的授权意图）。常见选择：MIT（最宽松，利于传播）、Apache-2.0（带专利条款）、或暂不添加（保留全部权利）。你定一个，我 1 分钟加进去。
+5. ~~**LICENSE 选型**~~（已解决，2026-11-21）：仓库根已含 MIT LICENSE（版权行「2026 智学资源体（华为 ICT 大赛 应用赛道·赛题 2 参赛作品）」）。
 
 ## 三、工程债（我能做但没做，需要你点头）
 
 1. **前端分包（三轮已完成）**：①`three` 改成「历史星系」页签按需加载并把 `vue`/`markdown`/`three`/字体拆成独立 chunk；②`ExercisePage`（1346 行）改 `defineAsyncComponent`，专业目录与 localStorage 帮助函数抽成 `src/data/practiceCatalogs.ts` 与 `src/utils/practiceStorage.ts`；③星系 3D 渲染（约 1400 行）搬进 `src/composables/useTagGalaxyScene.ts`（工厂 + `TagGalaxyEngine` 类型），页面改成 `shallowRef` + `await import()` 懒加载，`hashText` 抽到 `src/utils/hashText.ts` 共享。练习中心首屏 chunk 585kB → 102kB → 70kB → **43.55kB**（另有 32kB `ExercisePage`、28kB `useTagGalaxyScene` 按需块），页面文件 3361 → **1923 行**。仍剩 `vendor-three` 705kB、`vendor-markdown` 381kB 两个懒加载大块。
-2. **数据层 JSON → SQLite**：`backend/app/repo.py` 现在按学号建目录写 JSON，没有事务、没有并发控制。这是结构性改动，会牵动所有接口与 e2e 的数据准备，属于「一天起步」的量级。
+2. **~~数据层 JSON → SQLite~~（已完成，分支 `feat/sqlite-storage`）**：新增 `backend/app/storage/`（协议 + JSON 实现 + SQLite 实现）与 `scripts/migrate/json_to_sqlite.py`，服务层全部改走 `app/repo.py` 门面；
+   `STORAGE_BACKEND=sqlite` 下 47 单测、16 条只读 API 双后端逐字段一致、12 项验收 11/12（唯一失败项为模型生成 40s 超过客户端 25s 超时，与存储无关）；
+   并发写入从 `0/20`、`1/20` 提升到 `20/20`、`20/20`（`scripts/verify/concurrency_check.py`）。JSON 后端保留这一版作为回退，下个版本再删。
+   多用户隔离（会话级）已于 2026-11-20 交付：登录令牌 + 全接口学号校验 + `AUTH_REQUIRED` 开关（默认关；开态 16 项矩阵实测全过，后端单测 47→60 双后端全绿）。旧库在线迁移窗口已于 2026-11-20 交付：`POST /api/storage/migrate`（prepare/commit/abort）+ 状态查询，冻结期写排队/503，commit 先核对再切换，TTL 超时自动 abort，真实后端 20/20 场景实测全过（单测 60→73 双后端全绿）。仍未做：账号体系（密码/注册/角色）与权限边界，需产品侧确认。
 3. **拆 God File / 删死代码（基本完成）**：`knowledge_hub.py` 1727 → 301 行（6 模块 + 门面）；`orchestrator.py` 1786 → 927 行（`text_utils` 198 / `profile_tools` 203 / `path_tools` 221 / `content_audit` 248 / `agent_registry` 93 + 门面）。两次拆分都保持旧导入与 `patch("app.agents.orchestrator.*")` 目标不变，并逐字节验证输出等价（knowledge 四项 sha256 `184c6876…65f0`、orchestrator 26 项 `636a4ba2…4670`）。`profile-center.css`（4231 行）确认整份是上一版「学习 DNA」页的死样式（105/119 类名无组件使用、380 个选择器中仅 3 个能命中且无视觉效果、22 张全站截图像素级一致），已删除，全局 CSS 812 → 743 KB。
-4. **`reference-screens.css` 重复主题块**：`/* Workshop */`（114/116/134/137/355 行）、`/* Evaluation */`（248/263/268 行）存在重复定义，我修 bug 时只删了两组重复的选择器，整块合并没做。
+4. ~~**`reference-screens.css` 重复规则块**~~（2026-11-21 完成）：按 (@media 上下文, 选择器, 声明体) 精确匹配删掉 73 处完全重复的规则块（166.1KB → 160.4KB），级联等价性校验证明 917 个选择器的最终计算样式逐属性一致（0 消失 / 0 变化）；同选择器不同体的历史层叠（351 组）是页面主题演进的一部分，保留不动。
 5. **大屏留白体验债**：旧 `final-density.spec.ts` 的固定课程/练习容器已不存在，现已迁移为当前题库表单、开始做题、空错题本与知识节点的 4 项真实行为检查（4/4 通过）。2048×1152 的短表单下方仍有较大空白；如要再提高大屏信息密度，应重新设计内容布局，不能用假数据填满。
-6. **`search_knowledge` 的章节/页码锚点**：现在返回 `title / excerpt / path`，能回溯到文件但回溯不到章节页码；要补需要索引侧记录偏移量。
+6. ~~**`search_knowledge` 的章节/页码锚点**~~（已完成，2026-11-21）：章节锚点此前已交付；页码锚点本轮补齐——PDF 提取层逐页记录字符偏移（`page_offsets` 随教材 payload 持久化），章节切分把字符区间映射为物理页区间（`page_start / page_end`），`search_index` 结果与 `format_references` 输出「（第 X-Y 页）」。非 PDF 教材与旧数据无页码，字段为 0 诚实降级；页码为 PDF 物理页序，非印刷页码。单测 `tests/test_page_anchor.py` 覆盖 PDF 往返与非 PDF 降级（2 例，双后端 75/75 全绿）。
 
 ## 四、可由任意一方执行、但需要环境
 

@@ -1,0 +1,241 @@
+[
+  {
+    "arm": "A_规则流程",
+    "elapsed_ms": 32,
+    "tool_calls": 5,
+    "tools": [
+      "get_role_competency",
+      "get_student_profile",
+      "search_knowledge",
+      "get_project_status",
+      "get_exercise_session"
+    ],
+    "text": "",
+    "error": "ToolCallFailed: 工具 get_exercise_session 返回失败：code=UNKNOWN message=",
+    "llm_calls": 0,
+    "token_est": 0,
+    "task": "T1",
+    "citations_ok": 0,
+    "citations_total": 0,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": true,
+      "给出可执行结论": false,
+      "无编造 id": true
+    },
+    "checks_passed": 2
+  },
+  {
+    "arm": "B_单Agent",
+    "elapsed_ms": 4228,
+    "tool_calls": 2,
+    "tools": [
+      "get_student_profile",
+      "get_role_competency"
+    ],
+    "text": "现有数据不支持。我尝试调用 get_student_profile(student_id=demo) 与 get_role_competency(role_name=前端开发工程师) 获取学生画像和目标岗位能力模型，但两次调用均返回 UNKNOWN_TOOL，即当前环境未提供这两个工具，因此无法拿到任何真实的画像数据或岗位能力条目。\n\n在没有真实数据的情况下，我不能编造差距项、证据或数字。建议：\n1) 确认工具服务是否已挂载（get_student_profile、get_role_competency 是否在可用工具列表中）；\n2) 工具恢复后，我会先取学生画像与前端开发工程师能力模型做逐项比对，再结合 get_project_status 与 get_wrong_book 给出带 title 和关键数字的证据；\n3) 若只需通用参考，可改用 search_knowledge 检索岗位能力说明，但同样需要工具可用。\n---\n第1步 调用 get_student_profile 参数 {\"student_id\": \"demo\"} → {\"ok\": false, \"error\": {\"code\": \"UNKNOWN_TOOL\", \"message\": \"get_student_profile\"}}\n第2步 调用 get_role_competency 参数 {\"role_name\": \"前端开发工程师\", \"student_id\": \"demo\"} → {\"ok\": false, \"error\": {\"code\": \"UNKNOWN_TOOL\", \"message\": \"get_role_competency\"}}",
+    "answer": "现有数据不支持。我尝试调用 get_student_profile(student_id=demo) 与 get_role_competency(role_name=前端开发工程师) 获取学生画像和目标岗位能力模型，但两次调用均返回 UNKNOWN_TOOL，即当前环境未提供这两个工具，因此无法拿到任何真实的画像数据或岗位能力条目。\n\n在没有真实数据的情况下，我不能编造差距项、证据或数字。建议：\n1) 确认工具服务是否已挂载（get_student_profile、get_role_competency 是否在可用工具列表中）；\n2) 工具恢复后，我会先取学生画像与前端开发工程师能力模型做逐项比对，再结合 get_project_status 与 get_wrong_book 给出带 title 和关键数字的证据；\n3) 若只需通用参考，可改用 search_knowledge 检索岗位能力说明，但同样需要工具可用。",
+    "error": null,
+    "llm_calls": 3,
+    "token_est": 707,
+    "task": "T1",
+    "citations_ok": 0,
+    "citations_total": 0,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": true,
+      "给出可执行结论": true,
+      "无编造 id": true
+    },
+    "checks_passed": 3
+  },
+  {
+    "arm": "C_多Agent九步",
+    "elapsed_ms": 1013,
+    "tool_calls": 5,
+    "tools": [
+      "get_role_competency",
+      "get_student_profile",
+      "search_knowledge",
+      "get_project_status",
+      "get_exercise_session"
+    ],
+    "distinct_pids": 5,
+    "text": "{\"ok\": false, \"student_id\": \"demo\", \"steps\": [{\"index\": 0, \"role\": \"controller\", \"tool\": \"get_role_competency\", \"arguments\": {\"role_name\": \"前端开发工程师\"}, \"ok\": true, \"pid\": 44072, \"elapsed_ms\": 3.0, \"handoff\": \"\", \"error\": \"\"}, {\"index\": 1, \"role\": \"profile\", \"tool\": \"get_student_profile\", \"arguments\": {\"student_id\": \"demo\"}, \"ok\": true, \"pid\": 30288, \"elapsed_ms\": 11.0, \"handoff\": \"weaknesses[0] = 用例图与需求访谈的边界\", \"error\": \"\"}, {\"index\": 2, \"role\": \"knowledge\", \"tool\": \"search_knowledge\", \"arguments\": {\"student_id\": \"demo\", \"query\": \"用例图与需求访谈的边界\"}, \"ok\": true, \"pid\": 52732, \"elapsed_ms\": 12.5, \"handoff\": \"\", \"error\": \"\"}, {\"index\": 3, \"role\": \"path\", \"tool\": \"get_project_status\", \"arguments\": {\"student_id\": \"demo\"}, \"ok\": true, \"pid\": 42000, \"elapsed_ms\": 4.5, \"handoff\": \"current_stage.id = roadshow-stage-2\", \"error\": \"\"}, {\"index\": 4, \"role\": \"diagnose\", \"tool\": \"get_exercise_session\", \"arguments\": {\"student_id\": \"demo\", \"limit\": 1}, \"ok\": false, \"pid\": 11660, \"elapsed_ms\": 5.1, \"handoff\": \"\", \"error\": \"NO_QUESTION_BANK: 该学生名下没有可用的题库资源，无法生成诊断练习。\"}], \"context\": {\"student_id\": \"demo\", \"answer\": \"B\", \"weak_point\": \"用例图与需求访谈的边界\", \"stage_id\": \"roadshow-stage-2\"}, \"workers\": {\"controller\": {\"pid\": 44072, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"diagnose\": {\"pid\": 11660, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"knowledge\": {\"pid\": 52732, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"path\": {\"pid\": 42000, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"profile\": {\"pid\": 30288, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"review\": {\"pid\": 61912, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"update\": {\"pid\": 36416, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}}, \"stop_reason\": {\"tool\": \"get_exercise_session\", \"code\": \"NO_QUESTION_BANK\", \"message\": \"NO_QUESTION_BANK: 该学生名下没有可用的题库资源，无法生成诊断练习。\"}}",
+    "error": null,
+    "llm_calls": 0,
+    "token_est": 0,
+    "task": "T1",
+    "citations_ok": 0,
+    "citations_total": 0,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": true,
+      "给出可执行结论": true,
+      "无编造 id": true
+    },
+    "checks_passed": 3
+  },
+  {
+    "arm": "A_规则流程",
+    "elapsed_ms": 25,
+    "tool_calls": 5,
+    "tools": [
+      "get_role_competency",
+      "get_student_profile",
+      "search_knowledge",
+      "get_project_status",
+      "get_exercise_session"
+    ],
+    "text": "",
+    "error": "ToolCallFailed: 工具 get_exercise_session 返回失败：code=UNKNOWN message=",
+    "llm_calls": 0,
+    "token_est": 0,
+    "task": "T2",
+    "citations_ok": 0,
+    "citations_total": 0,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": true,
+      "给出可执行结论": false,
+      "无编造 id": true
+    },
+    "checks_passed": 2
+  },
+  {
+    "arm": "B_单Agent",
+    "elapsed_ms": 2514,
+    "tool_calls": 1,
+    "tools": [
+      "search_knowledge"
+    ],
+    "text": "现有数据不支持。我尝试调用知识检索工具 search_knowledge 查询「需求和用例建模 关键概念」，但工具返回 UNKNOWN_TOOL 错误，未能取得任何教材条目、title 或原文片段，因此无法引用教材原文，也无法确认该章节的关键概念。建议确认知识库检索工具是否已正确注册后再试。\n---\n第1步 调用 search_knowledge 参数 {\"query\": \"需求和用例建模 关键概念\", \"student_id\": \"demo\", \"limit\": 5} → {\"ok\": false, \"error\": {\"code\": \"UNKNOWN_TOOL\", \"message\": \"search_knowledge\"}}",
+    "answer": "现有数据不支持。我尝试调用知识检索工具 search_knowledge 查询「需求和用例建模 关键概念」，但工具返回 UNKNOWN_TOOL 错误，未能取得任何教材条目、title 或原文片段，因此无法引用教材原文，也无法确认该章节的关键概念。建议确认知识库检索工具是否已正确注册后再试。",
+    "error": null,
+    "llm_calls": 2,
+    "token_est": 398,
+    "task": "T2",
+    "citations_ok": 0,
+    "citations_total": 1,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": true,
+      "给出可执行结论": true,
+      "无编造 id": true
+    },
+    "checks_passed": 3
+  },
+  {
+    "arm": "C_多Agent九步",
+    "elapsed_ms": 949,
+    "tool_calls": 5,
+    "tools": [
+      "get_role_competency",
+      "get_student_profile",
+      "search_knowledge",
+      "get_project_status",
+      "get_exercise_session"
+    ],
+    "distinct_pids": 5,
+    "text": "{\"ok\": false, \"student_id\": \"demo\", \"steps\": [{\"index\": 0, \"role\": \"controller\", \"tool\": \"get_role_competency\", \"arguments\": {\"role_name\": \"前端开发工程师\"}, \"ok\": true, \"pid\": 56992, \"elapsed_ms\": 3.1, \"handoff\": \"\", \"error\": \"\"}, {\"index\": 1, \"role\": \"profile\", \"tool\": \"get_student_profile\", \"arguments\": {\"student_id\": \"demo\"}, \"ok\": true, \"pid\": 59696, \"elapsed_ms\": 10.5, \"handoff\": \"weaknesses[0] = 用例图与需求访谈的边界\", \"error\": \"\"}, {\"index\": 2, \"role\": \"knowledge\", \"tool\": \"search_knowledge\", \"arguments\": {\"student_id\": \"demo\", \"query\": \"用例图与需求访谈的边界\"}, \"ok\": true, \"pid\": 23960, \"elapsed_ms\": 13.5, \"handoff\": \"\", \"error\": \"\"}, {\"index\": 3, \"role\": \"path\", \"tool\": \"get_project_status\", \"arguments\": {\"student_id\": \"demo\"}, \"ok\": true, \"pid\": 39392, \"elapsed_ms\": 3.5, \"handoff\": \"current_stage.id = roadshow-stage-2\", \"error\": \"\"}, {\"index\": 4, \"role\": \"diagnose\", \"tool\": \"get_exercise_session\", \"arguments\": {\"student_id\": \"demo\", \"limit\": 1}, \"ok\": false, \"pid\": 60832, \"elapsed_ms\": 5.5, \"handoff\": \"\", \"error\": \"NO_QUESTION_BANK: 该学生名下没有可用的题库资源，无法生成诊断练习。\"}], \"context\": {\"student_id\": \"demo\", \"answer\": \"B\", \"weak_point\": \"用例图与需求访谈的边界\", \"stage_id\": \"roadshow-stage-2\"}, \"workers\": {\"controller\": {\"pid\": 56992, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"diagnose\": {\"pid\": 60832, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"knowledge\": {\"pid\": 23960, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"path\": {\"pid\": 39392, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"profile\": {\"pid\": 59696, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"review\": {\"pid\": 11484, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"update\": {\"pid\": 60420, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}}, \"stop_reason\": {\"tool\": \"get_exercise_session\", \"code\": \"NO_QUESTION_BANK\", \"message\": \"NO_QUESTION_BANK: 该学生名下没有可用的题库资源，无法生成诊断练习。\"}}",
+    "error": null,
+    "llm_calls": 0,
+    "token_est": 0,
+    "task": "T2",
+    "citations_ok": 0,
+    "citations_total": 0,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": true,
+      "给出可执行结论": true,
+      "无编造 id": true
+    },
+    "checks_passed": 3
+  },
+  {
+    "arm": "A_规则流程",
+    "elapsed_ms": 24,
+    "tool_calls": 5,
+    "tools": [
+      "get_role_competency",
+      "get_student_profile",
+      "search_knowledge",
+      "get_project_status",
+      "get_exercise_session"
+    ],
+    "text": "",
+    "error": "ToolCallFailed: 工具 get_exercise_session 返回失败：code=UNKNOWN message=",
+    "llm_calls": 0,
+    "token_est": 0,
+    "task": "T3",
+    "citations_ok": 0,
+    "citations_total": 0,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": true,
+      "给出可执行结论": false,
+      "无编造 id": true
+    },
+    "checks_passed": 2
+  },
+  {
+    "arm": "B_单Agent",
+    "elapsed_ms": 4293,
+    "tool_calls": 2,
+    "tools": [
+      "get_student_profile",
+      "get_learning_evaluation"
+    ],
+    "text": "现有数据不支持。我尝试调用 get_student_profile 与 get_learning_evaluation 获取 demo 的学情数据，但两次均返回 UNKNOWN_TOOL 错误，未能拿到任何画像、错题或测评数据。因此无法基于真实数据为 demo 出 2 道诊断练习题，也无法说明选题依据。建议确认工具是否可用后重试。\n---\n第1步 调用 get_student_profile 参数 {\"student_id\": \"demo\"} → {\"ok\": false, \"error\": {\"code\": \"UNKNOWN_TOOL\", \"message\": \"get_student_profile\"}}\n第2步 调用 get_learning_evaluation 参数 {\"student_id\": \"demo\"} → {\"ok\": false, \"error\": {\"code\": \"UNKNOWN_TOOL\", \"message\": \"get_learning_evaluation\"}}",
+    "answer": "现有数据不支持。我尝试调用 get_student_profile 与 get_learning_evaluation 获取 demo 的学情数据，但两次均返回 UNKNOWN_TOOL 错误，未能拿到任何画像、错题或测评数据。因此无法基于真实数据为 demo 出 2 道诊断练习题，也无法说明选题依据。建议确认工具是否可用后重试。",
+    "error": null,
+    "llm_calls": 3,
+    "token_est": 644,
+    "task": "T3",
+    "citations_ok": 0,
+    "citations_total": 0,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": false,
+      "给出可执行结论": true,
+      "无编造 id": true
+    },
+    "checks_passed": 2
+  },
+  {
+    "arm": "C_多Agent九步",
+    "elapsed_ms": 1015,
+    "tool_calls": 5,
+    "tools": [
+      "get_role_competency",
+      "get_student_profile",
+      "search_knowledge",
+      "get_project_status",
+      "get_exercise_session"
+    ],
+    "distinct_pids": 5,
+    "text": "{\"ok\": false, \"student_id\": \"demo\", \"steps\": [{\"index\": 0, \"role\": \"controller\", \"tool\": \"get_role_competency\", \"arguments\": {\"role_name\": \"前端开发工程师\"}, \"ok\": true, \"pid\": 40532, \"elapsed_ms\": 2.5, \"handoff\": \"\", \"error\": \"\"}, {\"index\": 1, \"role\": \"profile\", \"tool\": \"get_student_profile\", \"arguments\": {\"student_id\": \"demo\"}, \"ok\": true, \"pid\": 52464, \"elapsed_ms\": 10.5, \"handoff\": \"weaknesses[0] = 用例图与需求访谈的边界\", \"error\": \"\"}, {\"index\": 2, \"role\": \"knowledge\", \"tool\": \"search_knowledge\", \"arguments\": {\"student_id\": \"demo\", \"query\": \"用例图与需求访谈的边界\"}, \"ok\": true, \"pid\": 60200, \"elapsed_ms\": 13.0, \"handoff\": \"\", \"error\": \"\"}, {\"index\": 3, \"role\": \"path\", \"tool\": \"get_project_status\", \"arguments\": {\"student_id\": \"demo\"}, \"ok\": true, \"pid\": 37404, \"elapsed_ms\": 4.2, \"handoff\": \"current_stage.id = roadshow-stage-2\", \"error\": \"\"}, {\"index\": 4, \"role\": \"diagnose\", \"tool\": \"get_exercise_session\", \"arguments\": {\"student_id\": \"demo\", \"limit\": 1}, \"ok\": false, \"pid\": 51356, \"elapsed_ms\": 6.0, \"handoff\": \"\", \"error\": \"NO_QUESTION_BANK: 该学生名下没有可用的题库资源，无法生成诊断练习。\"}], \"context\": {\"student_id\": \"demo\", \"answer\": \"B\", \"weak_point\": \"用例图与需求访谈的边界\", \"stage_id\": \"roadshow-stage-2\"}, \"workers\": {\"controller\": {\"pid\": 40532, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"diagnose\": {\"pid\": 51356, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"knowledge\": {\"pid\": 60200, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"path\": {\"pid\": 37404, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"profile\": {\"pid\": 52464, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"review\": {\"pid\": 20492, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}, \"update\": {\"pid\": 34868, \"tools\": [\"add_learning_branch\", \"get_exercise_session\", \"get_learning_evaluation\", \"get_project_status\", \"get_role_competency\", \"get_student_profile\", \"get_wrong_book\", \"search_knowledge\", \"submit_exercise_answer\"]}}, \"stop_reason\": {\"tool\": \"get_exercise_session\", \"code\": \"NO_QUESTION_BANK\", \"message\": \"NO_QUESTION_BANK: 该学生名下没有可用的题库资源，无法生成诊断练习。\"}}",
+    "error": null,
+    "llm_calls": 0,
+    "token_est": 0,
+    "task": "T3",
+    "citations_ok": 0,
+    "citations_total": 0,
+    "fabricated_ids": 0,
+    "checks": {
+      "引用可回溯": false,
+      "用了必需工具": true,
+      "给出可执行结论": true,
+      "无编造 id": true
+    },
+    "checks_passed": 3
+  }
+]

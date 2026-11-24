@@ -16,7 +16,7 @@ from app.api.routers.tutor import _with_legacy_tutor_fields
 from app.core.config import settings
 from app.db.sqlite import init_db
 from app.main import create_app
-from app.repo import ensure_student, get_user_events, insert_resource_item, read_json
+from app.repo import ensure_student, get_user_events, insert_resource_item, list_profile_snapshots, read_json
 from app.services.learning_state import _localize_profile_text, _profile_dimension_confidence, evaluation_overview, path_overview, profile_overview
 from app.services.exercise_bank import _ability_radar, build_exercise_session, wrong_book_summary
 from app.services.knowledge_hub import mastery_data
@@ -105,9 +105,8 @@ class BackendContractRegressionTest(unittest.TestCase):
         legacy_data = legacy.json()["data"]
         self.assertIn("dimensions_updated", legacy_data["delta"])
 
-        profile_file = Path(self.temp_dir.name) / "users" / student_id / "profiles.json"
-        profiles = read_json(profile_file, [])
-        self.assertEqual(len(profiles), 2)
+        # 断言走仓储层而不是直接读 profiles.json：JSON 与 SQLite 两种后端都应落两条快照
+        self.assertEqual(len(list_profile_snapshots(student_id)), 2)
 
         overview = self.client.get(f"/api/profile/{student_id}/overview").json()["data"]
         self.assertEqual(overview["learner"]["profile_version"], "v2.0")

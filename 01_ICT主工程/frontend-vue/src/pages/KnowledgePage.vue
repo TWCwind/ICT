@@ -331,7 +331,7 @@ const selectedConnections = computed(() => {
 const relatedResources = computed(() => {
   if (!selectedNode.value) return []
   const direct = selectedConnections.value.filter((item) => nodeKind(item) === 'resource')
-  if (direct.length) return direct.slice(0, 4)
+  if (direct.length) return direct
   const selectedTerms = new Set([
     nodeName(selectedNode.value),
     ...(selectedNode.value.keywords || []),
@@ -345,7 +345,6 @@ const relatedResources = computed(() => {
         .filter((value) => [...selectedTerms].some((term) => value.includes(term) || term.includes(value))).length,
     }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, 4)
     .map(({ item }) => item)
 })
 
