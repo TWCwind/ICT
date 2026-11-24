@@ -190,7 +190,7 @@
 .preview-toolbar strong {
   margin-left: auto;
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .preview-screen {
@@ -234,7 +234,7 @@
   padding: 7px 10px;
   color: #6a93b8;
   background: #f8fbfd;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 850;
 }
 
@@ -314,7 +314,7 @@
 
 .preview-bottom span {
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -556,7 +556,7 @@
   padding: 7px 10px;
   color: #b8924f;
   background: #fffdf8;
-  font-size: 13.5px;
+  font-size: 13px;
   font-style: normal;
   font-weight: 850;
   white-space: nowrap;

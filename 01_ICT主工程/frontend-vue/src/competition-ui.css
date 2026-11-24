@@ -117,7 +117,7 @@
 
 .competition-page .os-eyebrow {
   color: var(--cp-blue);
-  font-size: 11.5px;
+  font-size: 12px;
   letter-spacing: 0.14em;
 }
 
@@ -134,7 +134,7 @@
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 5px 16px rgba(126, 99, 168, 0.04);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 760;
 }
 
@@ -197,7 +197,7 @@
   color: #7a738c;
   border-color: rgba(126, 99, 168, 0.19);
   background: #faf7fe;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .competition-page .os-chip-active {
@@ -208,7 +208,7 @@
 
 .competition-page .os-kpi-label {
   color: #a69fb4;
-  font-size: 11.5px;
+  font-size: 12px;
 }
 
 .competition-page .os-alert {
@@ -220,7 +220,7 @@
 .competition-page .os-empty {
   min-height: 250px;
   color: var(--cp-muted);
-  font-size: 14.5px;
+  font-size: 14px;
 }
 
 .competition-page .os-spinner {
@@ -271,7 +271,7 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 15px;
   background: rgba(255, 255, 255, 0.12);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 850;
   letter-spacing: 0.08em;
 }
@@ -293,7 +293,7 @@
 
 .competition-page .module-context strong {
   overflow: hidden;
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.35;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -379,7 +379,7 @@
   border: 1px solid rgba(172, 147, 208, 0.22);
   border-radius: 999px;
   background: var(--cp-blue-soft);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 760;
 }
 
@@ -530,7 +530,7 @@
     width: 42px;
     height: 42px;
     border-radius: 12px;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .competition-page .module-context__flow {

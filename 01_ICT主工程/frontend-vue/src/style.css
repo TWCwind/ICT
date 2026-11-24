@@ -294,7 +294,7 @@ select {
 
 .portal-brand-copy small {
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -353,7 +353,7 @@ select {
   color: #23403a;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -400,7 +400,7 @@ select {
   align-items: center;
   gap: 8px;
   color: #7e63a8;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -437,7 +437,7 @@ select {
   gap: 12px;
   padding: 20px;
   color: #a69fb4;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 850;
 }
 
@@ -529,7 +529,7 @@ select {
   justify-content: space-between;
   gap: 12px;
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -624,7 +624,7 @@ select {
   padding: 8px 11px;
   color: #7e63a8;
   background: rgba(255, 255, 255, 0.8);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -661,7 +661,7 @@ select {
 
 .identity-panel label span {
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -760,7 +760,7 @@ select {
 
 .section-title span {
   color: #ac93d0;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
   letter-spacing: 0.1em;
 }
@@ -954,7 +954,7 @@ select {
   border-radius: 10px;
   background: #fff;
   font: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -990,14 +990,14 @@ select {
 .portal-settings-panel header { margin-bottom: 12px; }
 .portal-settings-panel header strong { color: #3a3149; font-size: 16px; }
 .portal-settings-panel header button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; background: #faf7fe; cursor: pointer; }
-.portal-settings-panel label { display: grid; gap: 5px; margin-top: 10px; color: #7a738c; font-size: 13.5px; font-weight: 700; }
+.portal-settings-panel label { display: grid; gap: 5px; margin-top: 10px; color: #7a738c; font-size: 13px; font-weight: 700; }
 .portal-settings-panel input,
 .portal-settings-panel textarea { width: 100%; box-sizing: border-box; padding: 9px 10px; color: #3a3149; border: 1px solid #efe7f8; border-radius: 9px; outline: none; background: #faf7fe; font: inherit; font-size: 14px; resize: vertical; }
 .portal-settings-panel input:focus,
 .portal-settings-panel textarea:focus { border-color: #ac93d0; box-shadow: 0 0 0 3px rgba(172, 147, 208,.1); }
 .portal-settings-panel footer { margin-top: 14px; padding-top: 12px; border-top: 1px solid #faf7fe; }
 .portal-settings-panel footer a,
-.portal-settings-panel footer button { color: #ac93d0; border: 0; background: transparent; font: inherit; font-size: 13.5px; font-weight: 750; cursor: pointer; }
+.portal-settings-panel footer button { color: #ac93d0; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
 .portal-settings-panel footer button { color: #ee9aab; }
 
 @media (max-width: 1180px) {
@@ -1032,7 +1032,7 @@ select {
   justify-content: space-between;
   gap: 12px;
   color: rgba(255, 253, 248, 0.72);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -1201,7 +1201,7 @@ select {
   justify-content: space-between;
   gap: 10px;
   color: #a69fb4;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -1241,7 +1241,7 @@ select {
   align-items: center;
   gap: 5px;
   color: #7e63a8;
-  font-size: 13.5px;
+  font-size: 13px;
   font-style: normal;
   font-weight: 950;
 }
@@ -1252,7 +1252,7 @@ select {
 
 .demo-proof small {
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 850;
 }
 
@@ -1291,7 +1291,7 @@ select {
   align-items: center;
   gap: 8px;
   color: #b87154;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
   letter-spacing: 0.08em;
 }
@@ -1321,7 +1321,7 @@ select {
 
 .pipeline-card span {
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -1337,7 +1337,7 @@ select {
   padding: 5px 9px;
   color: #23403a;
   background: rgba(62, 139, 120, 0.1);
-  font-size: 12.5px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 950;
 }
@@ -1446,7 +1446,7 @@ select {
   padding: 5px 9px;
   color: #7e63a8;
   background: rgba(172, 147, 208, 0.08);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 950;
   white-space: nowrap;
 }
@@ -1477,7 +1477,7 @@ select {
   border-radius: 999px;
   padding: 4px 8px;
   font-style: normal;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 950;
 }
 
@@ -1543,7 +1543,7 @@ select {
   justify-content: space-between;
   gap: 10px;
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -1588,7 +1588,7 @@ select {
   color: #7e63a8;
   background: rgba(172, 147, 208, 0.08);
   text-align: center;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -1615,7 +1615,7 @@ select {
   padding: 5px 9px;
   color: #7a738c;
   background: rgba(122, 115, 140, 0.08);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 950;
 }
 
@@ -1665,7 +1665,7 @@ select {
   padding: 7px 10px;
   color: #7a738c;
   background: rgba(122, 115, 140, 0.08);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 850;
 }
 
@@ -1730,7 +1730,7 @@ select {
 
 .activity-list strong {
   color: #7e63a8;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .activity-list small {
@@ -1857,7 +1857,7 @@ select {
 
 .mindmap-node {
   color: #f4f4f5;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -1872,7 +1872,7 @@ select {
   border-radius: 8px;
   background: rgba(39, 39, 42, 0.95);
   color: #a1a1aa;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.35;
   padding: 5px 7px;
 }
@@ -1895,7 +1895,7 @@ select {
   justify-content: space-between;
   gap: 8px;
   color: #cfe2f1;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1916,14 +1916,14 @@ select {
   border-radius: 8px;
   background: rgba(39, 39, 42, 0.95);
   color: #d4d4d8;
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.45;
   padding: 6px 8px;
 }
 
 .question-preview-card__answer {
   color: #77c2ae;
-  font-size: 13.5px;
+  font-size: 13px;
   margin-top: 8px;
 }
 
@@ -1980,7 +1980,7 @@ select {
   }
 
   .portal-nav-link {
-    font-size: 13.5px;
+    font-size: 13px;
     padding: 8px 10px;
   }
 

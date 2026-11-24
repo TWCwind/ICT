@@ -44,7 +44,7 @@ body {
 }
 
 .portal-brand-copy small {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.08em;
 }
 
@@ -398,7 +398,7 @@ body {
 
 .profile-dimension strong {
   margin-top: 5px;
-  font-size: 14.5px;
+  font-size: 14px;
 }
 
 .profile-dimension p {
@@ -744,7 +744,7 @@ body {
   gap: 12px;
   padding: 14px 16px;
   color: rgba(250, 247, 254, 0.76);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -786,7 +786,7 @@ body {
 
 .loop-node span {
   color: rgba(239, 231, 248, 0.62);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 950;
 }
 
@@ -795,12 +795,12 @@ body {
 }
 
 .loop-node strong {
-  font-size: 14.5px;
+  font-size: 14px;
 }
 
 .loop-node small {
   color: rgba(250, 247, 254, 0.62);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 850;
 }
 
@@ -844,7 +844,7 @@ body {
 
 .operator-bar label span {
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -909,7 +909,7 @@ body {
   border-radius: 10px;
   color: #ac93d0;
   background: #faf7fe;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .rail-step span {
@@ -919,7 +919,7 @@ body {
 }
 
 .rail-step strong {
-  font-size: 14.5px;
+  font-size: 14px;
 }
 
 .rail-step small {
@@ -935,7 +935,7 @@ body {
   padding: 4px 8px;
   color: #23403a;
   background: rgba(62, 139, 120, 0.1);
-  font-size: 12.5px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 950;
 }
@@ -1084,7 +1084,7 @@ body {
 .fusion-row small {
   margin-top: 3px;
   color: #7a738c;
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.35;
 }
 
@@ -1123,7 +1123,7 @@ body {
   gap: 7px 10px;
   margin: 0;
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .fusion-detail dt {
@@ -1168,7 +1168,7 @@ body {
 
 .home-score-card span {
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -1188,7 +1188,7 @@ body {
   padding: 0 12px;
   color: #ac93d0;
   background: #faf7fe;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
   white-space: nowrap;
 }
@@ -1256,7 +1256,7 @@ body {
 }
 
 .dock-card > strong {
-  font-size: 14.5px;
+  font-size: 14px;
 }
 
 .dock-button {

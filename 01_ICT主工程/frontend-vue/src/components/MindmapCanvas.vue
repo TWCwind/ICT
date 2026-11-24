@@ -395,7 +395,7 @@ function onPointerUp() {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13.5px;
+  font-size: 13px;
   color: #7a738c;
 }
 
@@ -407,7 +407,7 @@ function onPointerUp() {
   border-radius: 7px;
   background: #fff;
   color: #2e2833;
-  font-size: 13.5px;
+  font-size: 13px;
   cursor: pointer;
 }
 

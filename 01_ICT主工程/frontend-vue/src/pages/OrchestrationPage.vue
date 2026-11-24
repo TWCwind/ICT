@@ -564,7 +564,7 @@ onMounted(async () => {
 }
 
 .orchestration-section-head span {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-muted, #7a738c);
 }
 
@@ -603,7 +603,7 @@ onMounted(async () => {
 }
 
 .orchestration-stage-body code {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-muted, #7a738c);
 }
 
@@ -627,7 +627,7 @@ onMounted(async () => {
 
 .orchestration-tool-grid p {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--text-muted, #7a738c);
 }
@@ -652,7 +652,7 @@ onMounted(async () => {
 }
 
 .orchestration-metrics span {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-muted, #7a738c);
 }
 
@@ -671,7 +671,7 @@ onMounted(async () => {
   border-radius: 999px;
   padding: 6px 12px;
   background: var(--surface-soft, #faf7fe);
-  font-size: 13.5px;
+  font-size: 13px;
   display: inline-flex;
   gap: 6px;
 }
@@ -700,13 +700,13 @@ onMounted(async () => {
 }
 
 .orchestration-catalog span {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--accent, #ac93d0);
 }
 
 .orchestration-catalog p {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--text-muted, #7a738c);
 }
@@ -718,7 +718,7 @@ onMounted(async () => {
 
 .orchestration-note {
   margin: 12px 0 0;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.7;
   color: var(--text-muted, #7a738c);
 }
@@ -836,7 +836,7 @@ onMounted(async () => {
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--surface-sunken, #faf7fe);
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .orchestration-workers code {
@@ -847,7 +847,7 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-muted, #7a738c);
 }
 </style>

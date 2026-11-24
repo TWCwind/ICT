@@ -52,7 +52,7 @@
 
 .diagnosis-overview-strip span {
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -92,7 +92,7 @@
 .exercise-eyebrow {
   margin-bottom: 8px;
   color: #6a93b8;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 950;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -122,7 +122,7 @@
 
 .exercise-overview span {
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -134,7 +134,7 @@
 
 .exercise-overview em {
   color: #6a93b8;
-  font-size: 13.5px;
+  font-size: 13px;
   font-style: normal;
   font-weight: 950;
 }
@@ -186,7 +186,7 @@
   color: #6a93b8;
   background: transparent;
   cursor: pointer;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -455,7 +455,7 @@
   padding: 5px 9px;
   color: #6a93b8;
   background: rgba(162, 199, 225, 0.08);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 950;
 }
 
@@ -493,7 +493,7 @@
 
 .exercise-question-kicker span,
 .exercise-question-kicker em {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -679,7 +679,7 @@
 
 .exercise-side-head.compact em {
   color: #6a93b8;
-  font-size: 13.5px;
+  font-size: 13px;
   font-style: normal;
   font-weight: 950;
 }
@@ -718,7 +718,7 @@
 
 .exercise-score-ring span {
   color: #7a738c;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 950;
 }
 
@@ -730,7 +730,7 @@
 
 .exercise-stats span {
   color: #7a738c;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 950;
 }
 
@@ -852,14 +852,14 @@
 
 .exercise-wrong-book strong {
   color: #c2586f;
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.45;
 }
 
 .exercise-wrong-book span,
 .exercise-wrong-book em {
   color: #c2586f;
-  font-size: 12.5px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 850;
 }
@@ -1106,7 +1106,7 @@
 
 .practice-learning-card span {
   color: #a2c7e1;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -1220,7 +1220,7 @@
 
 .practice-question-count span {
   color: #a69fb4;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
 }
 
@@ -1373,12 +1373,12 @@
 }
 
 .practice-paused-banner strong {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 950;
 }
 
 .practice-paused-banner span {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 750;
 }
 
@@ -1632,7 +1632,7 @@
 
 .practice-workshop-eyebrow {
   color: #8acab5;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 950;
   letter-spacing: 0.08em;
 }
@@ -1726,7 +1726,7 @@
 
 .workshop-shell-practice .practice-workshop-copy strong {
   color: #2e4a42;
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.35;
 }
 
@@ -1737,7 +1737,7 @@
 .practice-workshop-copy small {
   overflow: hidden;
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 750;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -1756,14 +1756,14 @@
 
 .practice-learning-label {
   color: #a2c7e1 !important;
-  font-size: 13.5px !important;
+  font-size: 13px !important;
   font-weight: 950 !important;
 }
 
 .workshop-shell-practice .practice-learning-card strong {
   overflow: hidden;
   color: #2e4a42;
-  font-size: 14.5px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1804,7 +1804,7 @@
 .workshop-shell-practice .practice-learning-meta em {
   overflow: hidden;
   color: #a69fb4;
-  font-size: 12.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1815,7 +1815,7 @@
   border-radius: 9px;
   color: #8acab5;
   background: #fff;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 900;
   cursor: pointer;
 }
@@ -2047,7 +2047,7 @@
 .practice-config-summary__head span,
 .practice-config-summary__grid article > span {
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 850;
 }
 
@@ -2086,7 +2086,7 @@
 
 .practice-config-summary__grid small {
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .practice-config-summary__loop {
@@ -2111,7 +2111,7 @@
 
 .practice-config-summary__loop-copy > span {
   color: rgba(255, 255, 255, .78);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 900;
 }
 
@@ -2167,7 +2167,7 @@
   border-radius: 10px;
   color: #a69fb4;
   background: #f8fbfd;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .practice-config-summary__timeline li.is-ready b {
@@ -2189,7 +2189,7 @@
 .practice-config-summary__timeline small {
   overflow-wrap: anywhere;
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .practice-config-summary__evidence {
@@ -2210,7 +2210,7 @@
 
 .practice-config-summary__evidence span {
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 900;
 }
 
@@ -2221,7 +2221,7 @@
 
 .practice-config-summary__evidence small {
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.5;
 }
 
@@ -2266,7 +2266,7 @@
 
 .wrongbook-empty-state__intro span:not(.wrongbook-empty-state__mark) {
   color: #3e8b78;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 900;
 }
 
@@ -2310,7 +2310,7 @@
 .wrongbook-empty-evidence > header span,
 .wrongbook-empty-rules > header span {
   color: #a2c7e1;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -2318,7 +2318,7 @@
 .wrongbook-empty-evidence > header strong,
 .wrongbook-empty-rules > header strong {
   color: #2e4056;
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -2340,7 +2340,7 @@
 .wrongbook-empty-zone dt,
 .wrongbook-empty-zone dd {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .wrongbook-empty-zone dt { color: #a69fb4; font-weight: 800; }
@@ -2373,7 +2373,7 @@
   border-radius: 9px;
   color: #a2c7e1;
   background: #f8fbfd;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .wrongbook-empty-zone > ol span,
@@ -2393,13 +2393,13 @@
 .wrongbook-empty-zone > ol strong,
 .wrongbook-empty-rules > ol strong {
   color: #2e4056;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .wrongbook-empty-zone > ol small,
 .wrongbook-empty-rules > ol small {
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.45;
 }
 
@@ -2429,7 +2429,7 @@
 
 .wrongbook-empty-evidence article span {
   color: #a69fb4;
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.55;
 }
 

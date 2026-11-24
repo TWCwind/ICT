@@ -61,7 +61,7 @@
   align-items: center;
   gap: 6px;
   color: #a2c7e1;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: .04em;
 }
@@ -77,7 +77,7 @@
   align-items: center;
   gap: 7px;
   color: #3e8b78;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -155,7 +155,7 @@
   border-radius: 8px;
   background: #f8fbfd;
   color: #6a93b8;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -194,7 +194,7 @@
 .score-console-head {
   gap: 8px;
   color: #cfe2f1;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -233,7 +233,7 @@
 
 .score-orbit span {
   color: #a2c7e1;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .score-console h3 {
@@ -268,7 +268,7 @@
   border: 1px solid rgba(255, 255, 255, .13);
   border-radius: 7px;
   color: #ecf4fa;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -284,7 +284,7 @@
   border: 1px solid rgba(255, 255, 255, .16);
   background: rgba(255, 255, 255, .08);
   color: #f8fbfd;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .ability-radar-panel,
@@ -339,7 +339,7 @@
   align-items: center;
   gap: 7px;
   color: #7a738c;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .dimension-ledger strong {
@@ -350,7 +350,7 @@
 .dimension-ledger em {
   color: #a69fb4;
   font-style: normal;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -408,7 +408,7 @@
 .evidence-metric span,
 .evidence-metric em {
   color: #a69fb4;
-  font-size: 12.5px;
+  font-size: 12px;
   font-style: normal;
 }
 
@@ -426,7 +426,7 @@
 
 .confidence-panel strong {
   color: #2e4056;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .evidence-source-note {
@@ -437,7 +437,7 @@
   border-radius: 8px;
   background: #f3faf7;
   color: #3e8b78;
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.55;
 }
 
@@ -563,7 +563,7 @@
   border-radius: 999px;
   background: #fef5f7;
   color: #ee9aab;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .action-lane {
@@ -592,7 +592,7 @@
   border-radius: 50%;
   background: #ecf4fa;
   color: #a2c7e1;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -601,7 +601,7 @@
   border-radius: 999px;
   background: #f8fbfd;
   color: #a2c7e1;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -694,7 +694,7 @@
 .weakness-detail dt,
 .weakness-detail dd {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -731,7 +731,7 @@
 
 .wrong-evidence-card strong {
   color: #2e4056;
-  font-size: 14.5px;
+  font-size: 14px;
 }
 
 .wrong-evidence-card span,
@@ -776,7 +776,7 @@
   border-radius: 6px;
   background: #f8fbfd;
   color: #a2c7e1;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -820,14 +820,14 @@
 }
 
 .trigger-list strong {
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .trigger-list small {
   display: block;
   margin-top: 5px;
   color: #a69fb4;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -838,7 +838,7 @@
 
 .related-knowledge strong {
   color: #52372e;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .related-knowledge div {
@@ -853,7 +853,7 @@
   border-radius: 999px;
   background: #fffaf7;
   color: #f2ac8e;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -871,14 +871,14 @@
 
 .profile-diff-head {
   color: #a69fb4;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 900;
 }
 
 .profile-diff > div:not(.profile-diff-head) {
   border-top: 1px solid #eef4dc;
   color: #7a738c;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .profile-diff strong {
@@ -897,7 +897,7 @@
   border: 1px solid #a2c7e1;
   background: #a2c7e1;
   color: #fff;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .apply-button.full {
@@ -1081,7 +1081,7 @@
   border-radius: 50%;
   background: #ecf4fa;
   color: #a69fb4;
-  font-size: 11.5px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 950;
 }
@@ -1098,7 +1098,7 @@
 .assessment-flow-strip span {
   overflow: hidden;
   color: #a69fb4;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
