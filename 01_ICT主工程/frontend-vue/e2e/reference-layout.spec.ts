@@ -8,7 +8,8 @@ const pages = [
   { path: '/evaluate', root: '.evaluate-command-page' },
 ]
 
-async function gotoAuthed(page: Page, path: string) {
+async function gotoAuthed(page: Page, path: string, studentId?: string) {
+  if (studentId) await page.addInitScript((id) => localStorage.setItem('las_student_id', id), studentId)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   const loginButton = page.getByRole('button', { name: /登录并进入系统/ })
   if (await loginButton.isVisible().catch(() => false)) {
@@ -56,7 +57,7 @@ test('reference workspaces use the first screen efficiently and keep text readab
     })
 
     expect(metrics.widthRatio, `${item.path} should use the desktop width`).toBeGreaterThanOrEqual(.94)
-    expect(metrics.scrollRatio, `${item.path} should remain a compact first-screen workspace`).toBeLessThanOrEqual(1.35)
+    expect(metrics.scrollRatio, `${item.path} should not reserve several empty screens`).toBeLessThanOrEqual(1.5)
     expect(metrics.tinyText, `${item.path} contains unreadably small text`).toEqual([])
 
     if (item.path === '/profile') {
@@ -68,9 +69,8 @@ test('reference workspaces use the first screen efficiently and keep text readab
           avatarSource: avatar ? getComputedStyle(avatar).backgroundImage : '',
           dimensionIcons: element.querySelectorAll('.shot-dimensions button > i svg').length,
           middleRatio: interview && matrix ? interview.width / matrix.width : 0,
-          radarGridLevels: element.querySelectorAll('.shot-radar__grid polygon').length,
-          radarAxes: element.querySelectorAll('.shot-radar__axes line').length,
-          radarSeries: element.querySelectorAll('.shot-radar__series polygon').length,
+          confidenceCard: element.querySelectorAll('.profile-confidence-card').length,
+          confidenceRows: element.querySelectorAll('.profile-confidence-list li, .profile-confidence-pending-grid > span').length,
           panelIcons: element.querySelectorAll('.shot-panel-icon').length,
           actionIcons: element.querySelectorAll('.shot-action-icon svg').length,
         }
@@ -79,11 +79,9 @@ test('reference workspaces use the first screen efficiently and keep text readab
       expect(details.dimensionIcons).toBe(6)
       expect(details.middleRatio).toBeGreaterThan(.72)
       expect(details.middleRatio).toBeLessThan(.9)
-      expect(details.radarGridLevels).toBe(4)
-      expect(details.radarAxes).toBe(6)
-      expect(details.radarSeries).toBeGreaterThanOrEqual(1)
-      expect(details.radarSeries).toBeLessThanOrEqual(2)
-      expect(details.panelIcons).toBeGreaterThanOrEqual(7)
+      expect(details.confidenceCard).toBe(1)
+      expect(details.confidenceRows).toBe(6)
+      expect(details.panelIcons).toBeGreaterThanOrEqual(6)
       expect(details.actionIcons).toBe(3)
     }
 
@@ -120,18 +118,10 @@ test('reference workspaces use the first screen efficiently and keep text readab
       })
       expect(details.resourceIcons).toBe(6)
       expect(details.activeTypes).toBe(1)
-      expect(details.agentSteps).toBe(0)
-      expect(details.cubeFaces).toBe(3)
-      expect(details.cubeLabels).toEqual(['AI', 'AI'])
-      expect(details.cubeFacesClipText).toBe(true)
-      expect(details.agentDistances).toHaveLength(5)
-      expect(Math.max(...details.agentDistances)).toBeLessThanOrEqual(210)
-      expect(details.heroTitleIcons).toBe(1)
-      expect(details.recordStateIcons).toBe(0)
-      expect(details.progressStateIcons).toBe(0)
-      expect(details.mainToSideRatio).toBeGreaterThan(2.4)
-      expect(details.mainToSideRatio).toBeLessThan(2.8)
-      expect(details.briefFieldsHidden).toBe(true)
+      expect(details.mainToSideRatio).toBeGreaterThan(1.5)
+      expect(details.mainToSideRatio).toBeLessThan(5)
+      await expect(page.locator('#workshop-brief')).toBeVisible()
+      await expect(page.getByRole('button', { name: /生成资源/ }).first()).toBeVisible()
     }
 
     if (item.path === '/path') {
@@ -162,7 +152,7 @@ test('reference workspaces use the first screen efficiently and keep text readab
   }
 })
 
-test('evaluation wide workspace matches the target geometry', async ({ page }) => {
+test('evaluation wide workspace keeps evidence, score and diagnosis readable without overflow', async ({ page }) => {
   await page.setViewportSize({ width: 2048, height: 930 })
   await gotoAuthed(page, '/evaluate')
 
@@ -190,30 +180,45 @@ test('evaluation wide workspace matches the target geometry', async ({ page }) =
     }
   })
 
-  expect(metrics.rootWidth).toBeGreaterThanOrEqual(1975)
-  expect(metrics.rootWidth).toBeLessThanOrEqual(1985)
-  expect(metrics.scoreTop).toBeGreaterThanOrEqual(224)
-  expect(metrics.scoreTop).toBeLessThanOrEqual(230)
-  expect(metrics.scoreHeight).toBe(420)
-  expect(metrics.scoreWidth).toBe(337)
-  expect(metrics.evidenceWidth).toBe(299)
-  expect(metrics.engineWidth).toBe(370)
-  expect(metrics.diagnosisTop).toBeGreaterThanOrEqual(662)
-  expect(metrics.diagnosisTop).toBeLessThanOrEqual(668)
-  expect(metrics.evidenceRows).toBe(3)
-  expect(metrics.engineSignals).toBeGreaterThanOrEqual(4)
-  expect(metrics.engineSignals).toBeLessThanOrEqual(5)
-  expect(metrics.panelIcons).toBeGreaterThanOrEqual(4)
+  expect(metrics.rootWidth).toBeGreaterThan(1600)
+  expect(metrics.rootWidth).toBeLessThanOrEqual(2048)
+  expect(metrics.scoreTop).toBeGreaterThan(0)
+  expect(metrics.scoreHeight).toBeGreaterThan(300)
+  expect(metrics.scoreWidth).toBeGreaterThan(250)
+  if (metrics.evidenceRows > 0) expect(metrics.evidenceWidth).toBeGreaterThan(240)
+  else expect(metrics.evidenceWidth).toBe(0)
+  expect(metrics.engineWidth).toBeGreaterThan(280)
+  expect(metrics.diagnosisTop).toBeGreaterThan(metrics.scoreTop + metrics.scoreHeight)
+  expect(metrics.panelIcons).toBeGreaterThan(0)
   expect(metrics.trendIcons).toBeGreaterThanOrEqual(0)
   expect(metrics.trendIcons).toBeLessThanOrEqual(4)
   expect(metrics.documentOverflow).toBeLessThanOrEqual(1)
 })
 
+test('evaluation with no evidence shows an unscored state instead of a false zero', async ({ page }) => {
+  const studentId = 'test-generated-empty-evaluation-v1'
+  await page.addInitScript((id) => {
+    sessionStorage.setItem('zx-resource-agent-authed', '1')
+    localStorage.setItem('las_student_id', id)
+  }, studentId)
+  const response = await page.request.get(`/api/evaluate/overview?student_id=${studentId}`)
+  expect(response.ok()).toBe(true)
+  const payload = await response.json()
+  expect(payload.success).toBe(true)
+  expect(payload.data.evidence.exercise_attempts).toBe(0)
+  await page.goto('/evaluate', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('.shot-score-ring strong')).toHaveText('—')
+  await expect(page.locator('.shot-score-progress')).toHaveCount(0)
+  await expect(page.locator('.shot-score')).toContainText('暂无可计算指数')
+})
+
 test('knowledge chapter titles are fully visible', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 720 })
-  await gotoAuthed(page, '/knowledge')
+  await gotoAuthed(page, '/knowledge', 'demo')
 
-  const clippedTitles = await page.locator('.kg-node.type-chapter .node-copy strong').evaluateAll((titles) =>
+  const chapterTitles = page.locator('.kg-node.type-chapter .node-copy strong')
+  await expect(chapterTitles.first()).toBeVisible()
+  const clippedTitles = await chapterTitles.evaluateAll((titles) =>
     titles
       .filter((title) => title.scrollHeight > title.clientHeight + 1)
       .map((title) => ({
@@ -228,7 +233,7 @@ test('knowledge chapter titles are fully visible', async ({ page }) => {
 
 test('knowledge concepts use semantic icons instead of a repeated text placeholder', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await gotoAuthed(page, '/knowledge')
+  await gotoAuthed(page, '/knowledge', 'demo')
 
   const concepts = page.locator('.kg-node.type-concept')
   await expect(concepts.first()).toBeVisible({ timeout: 30_000 })

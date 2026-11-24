@@ -447,3 +447,36 @@ MCP 终验：`test_mcp.ps1` 在本地服务启动后通过 7/7 单元测试；�
 | `git diff --check` | 通过 |
 
 服务运行于本地 5173/8000，后端只读写 `%TEMP%\ict-pr3-roadshow-20261116` 的隔离数据副本。此次未接入 AgentArts 云端，也未验证未配置模型时的外部模型成功生成路径。
+
+## 2026-11-17 PR #5 三项问题修复验证
+
+测试在独立 worktree `C:\Users\xiajun\AppData\Local\Temp\ict-pr5-logic-fixes` 执行；MCP 与后端依赖安装在该 worktree 的忽略虚拟环境 `.venv-mcp`。原桌面工作区的未提交前端修改未触碰。
+
+| 命令/流程 | 结果 |
+|---|---|
+| `powershell -NoProfile -ExecutionPolicy Bypass -File .\test_mcp.ps1` | 30 个 MCP 单元测试通过；隔离服务健康检查通过；`tools/list` 发现 9 个工具；9/9 业务工具 HTTP 调用通过 |
+| `python -m unittest discover -s tests -p test_backend_contract_regressions.py -v`（在 `01_ICT主工程/backend`） | 24/24 通过，包含生成题库无 resource filter 时仍可开练的真实临时数据回归 |
+| 写操作数据隔离 | Smoke 脚本复制 `roadshow-seed` 到临时 `test/generated`，注入专用练习题和学习路径；答题和分支写入只影响该副本，运行结束后自动清理 |
+| MCP 加固启动失败 | 自动化测试确认加固初始化失败不会调用原生 `mcp.run()`；非 loopback 必须有 API Key 和正数限流；direct 排障模式仅允许 loopback |
+
+本轮未运行前端构建、Playwright 全站流程或 AgentArts 云端调用；未声称这些项目通过或已接入。
+
+## 2026-11-17 国奖证据口径复核
+
+| 实际执行 | 结果 |
+| --- | --- |
+| `python 01_ICT主工程/scripts/eval/run_eval.py --json` | 50 条用例，9/9 工具名称覆盖，非法工具引用 0，静态校验通过；50 条语义答案均未测 |
+| `python -m unittest discover -s tests -p test_backend_contract_regressions.py -k test_new_learner_overviews -v` | 1/1 通过；空证据场景的评估口径字段存在 |
+| `npm ci` | 成功安装 328 个包；npm 报告 24 个依赖漏洞（13 moderate、10 high、1 critical），本轮未擅自升级依赖 |
+| `npm run check` | 通过 |
+| `npm run build` | 通过；练习页 chunk 585.39 kB 警告仍在 |
+
+本轮未执行 50 条真实 Agent 答案评分、课程前后测、教师盲评或 AgentArts 云端部署。首页宣传文件未修改。
+
+## 2026-11-17 评测集多工具契约复核
+
+`python 01_ICT主工程/scripts/eval/run_eval.py --json`：50 条用例，9/9 工具名覆盖，未知工具 0，静态校验通过；E01、E02、E03、E11、E17、E42、E50 共 7 条已显式标出多工具序列。50 条语义结果仍未测。本轮没有声称它们已达到预期回答质量。
+
+## 2026-11-17 50 条本地 MCP 执行
+
+`python 01_ICT主工程/scripts/eval/run_local_mcp_eval.py --output 01_ICT主工程/scripts/eval/evidence/local_eval_20261117.jsonl`：50 条用例产生 62 次真实本地工具调用，61 次成功、1 次预期参数校验错误（E30 缺学生 ID），非预期错误 0，成功调用缺参考字段 0。逐例轨迹见 JSONL 与 `LOCAL_EVAL_REPORT.md`。50 条语义正确性仍未测；AgentArts 云端未执行。

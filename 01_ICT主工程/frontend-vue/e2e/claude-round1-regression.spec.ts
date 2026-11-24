@@ -65,17 +65,12 @@ test('多模态实验室：模式按钮切换与重复点击都有可观察结�
   await expect(quick).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('智能辅导：语音未配置时展示中文错误说明与禁用原因', async ({ page }) => {
+test('智能辅导：实时语音未配置时如实展示浏览器模式与文字入口', async ({ page }) => {
   await openAsFreshLearner(page, '/tutor')
-  const startCall = page.getByRole('button', { name: '开始通话', exact: true })
-  await expect(startCall).toBeDisabled()
-  await expect(startCall).toHaveAttribute('title', /暂时无法通话/)
-  await expect(startCall).toHaveAttribute('title', /语音通话服务未启用/)
-
-  const status = page.locator('.realtime-status-text')
-  await expect(status).toContainText('语音通话服务未启用', { timeout: 15_000 })
-  await expect(status).not.toContainText('Realtime voice is disabled')
-  await expect(page.getByText('语音辅导服务还没有配置完成，请先检查密钥和连接地址。')).toBeVisible()
+  await expect(page.getByText('语音辅导（浏览器模式）')).toBeVisible()
+  await expect(page.getByText(/实时语音通道未配置/)).toBeVisible()
+  await expect(page.getByPlaceholder(/也可以直接打字提问/)).toBeVisible()
+  await expect(page.getByRole('button', { name: '发送问题' })).toBeDisabled()
 })
 
 test('资源工坊：生成按钮说明禁用原因，填写需求后可真实生成', async ({ page }) => {
@@ -85,7 +80,7 @@ test('资源工坊：生成按钮说明禁用原因，填写需求后可真实�
   await expect(generate).toHaveAttribute('title', '请先填写课程、章节或薄弱点，再生成资源')
 
   // 参考布局里课程/章节输入框被隐藏，用户通过需求 textarea 触发生成
-  await page.locator('.shot-create > textarea').fill('生成《软件需求分析与建模》第一章的讲解文档，重点讲需求获取与用例建模。')
+  await page.locator('#workshop-brief').fill('生成《软件需求分析与建模》第一章的讲解文档，重点讲需求获取与用例建模。')
   await expect(generate).toBeEnabled()
 
   const [response] = await Promise.all([

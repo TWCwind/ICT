@@ -95,6 +95,13 @@ test('resource, exercise and multimodal buttons persist their real outputs', asy
     sessionStorage.setItem('zx-resource-agent-authed', '1')
     localStorage.setItem('las_student_id', id)
   }, resourceStudentId)
+  await page.goto('/path', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+  await page.locator('#path-real-goal').fill(`test/generated：为 ${resourceStudentId} 练习链表尾插边界条件`)
+  const [planResponse] = await Promise.all([
+    page.waitForResponse((response) => response.url().includes('/api/path/plan') && response.request().method() === 'POST', { timeout: 90_000 }),
+    page.getByRole('button', { name: /生成路径|重新规划/ }).first().click(),
+  ])
+  await successfulApi(planResponse)
   await page.goto('/workshop', { waitUntil: 'domcontentloaded', timeout: 30_000 })
   await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => undefined)
 
@@ -151,7 +158,13 @@ test('resource, exercise and multimodal buttons persist their real outputs', asy
   ])
   const stageBankResult = await successfulApi(stageBankResponse)
   expect(stageBankResult.question_bank.type).toBe('question_bank')
-  expect(stageBankResult.question_bank.meta.local_template).toBe(true)
+  // 阶段题库走「本地模板」还是「模型编排」取决于本机是否配好 LLM：
+  // 未配置时后端用 build_local_question_bank 并标 meta.local_template=true，
+  // 配置后走 orchestrator.generate，meta 里只有 agent/requirement。两种都算通过，
+  // 题目能否真的开练由下面的 .exercise-question-focus 断言负责。
+  if (stageBankResult.question_bank.meta?.local_template !== undefined) {
+    expect(stageBankResult.question_bank.meta.local_template).toBe(true)
+  }
   const question = page.locator('.exercise-question-focus')
   await expect(question).toBeVisible({ timeout: 30_000 })
   const firstChoice = page.locator('.exercise-options label:visible').first()
@@ -186,6 +199,11 @@ test('resource, exercise and multimodal buttons persist their real outputs', asy
     await expect(page.locator('.multi-message')).toContainText('代码案例生成模型尚未配置')
   } else {
     expect(multimodalStream).toMatch(/"event"\s*:\s*"final"/)
-    await expect(page.locator('.multi-message')).not.toContainText('代码案例生成模型尚未配置')
+    // `.multi-message` 是提示条，只在有文案时渲染（成功路径下根本不存在），
+    // 所以先看它是否出现：不存在即说明没有报「模型尚未配置」。
+    const multiMessage = page.locator('.multi-message')
+    if (await multiMessage.count()) {
+      await expect(multiMessage).not.toContainText('代码案例生成模型尚未配置')
+    }
   }
 })

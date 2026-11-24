@@ -74,7 +74,9 @@ test('every initially visible enabled page button produces an observable action'
         const focusChanged = beforeFocus !== afterFocus
         const navigated = beforeUrl !== page.url()
         const processingEvidence = apiRequest || fileChooser || download || popup || navigated
-        if (actionKind !== 'compose' && requiresProcessingEvidence(label)) {
+        // 选择型控件（页签、维度卡）的文案来自后端数据，不能据此判为「处理型按钮」；
+        // 它们只改变页面状态，不会也无法发起请求。
+        if (actionKind !== 'compose' && actionKind !== 'select' && requiresProcessingEvidence(label)) {
           expect(
             processingEvidence,
             `Processing button did not call an API or produce an external result: ${route} :: ${label}`,

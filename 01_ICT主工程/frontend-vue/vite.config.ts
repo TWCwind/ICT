@@ -20,6 +20,22 @@ const backendProxy = {
 export default defineConfig({
   build: {
     sourcemap: 'hidden',
+    // 分包：把稳定不动的大依赖拆成独立 chunk，页面 chunk 只留业务代码，二次访问直接命中缓存。
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/three/')) return 'vendor-three'
+          if (id.includes('node_modules/katex/') || id.includes('node_modules/markdown-it/') || id.includes('node_modules/dompurify/')) {
+            return 'vendor-markdown'
+          }
+          if (id.includes('node_modules/vue/') || id.includes('node_modules/@vue/') || id.includes('node_modules/vue-router/')) {
+            return 'vendor-vue'
+          }
+          if (id.includes('node_modules/@fontsource/')) return 'vendor-fonts'
+          return undefined
+        },
+      },
+    },
   },
   server: {
     strictPort: true,

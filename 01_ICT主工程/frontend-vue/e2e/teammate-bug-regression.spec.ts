@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readCaptcha } from './helpers/captcha'
 
 const routes = [
   ['总控首页', '/'],
@@ -18,7 +19,7 @@ async function login(page: Page) {
   if (await loginGate.isVisible().catch(() => false)) {
     await page.getByPlaceholder('手机号').fill('10000000000')
     await page.getByPlaceholder('密码', { exact: true }).fill('demo123')
-    await page.getByPlaceholder('验证码').fill('2VV3')
+    await page.getByPlaceholder('验证码').fill(await readCaptcha(page))
     await page.getByRole('button', { name: '登录并进入系统' }).click()
     await expect(loginGate).toBeHidden()
   }
@@ -433,7 +434,15 @@ test('profile and evaluation charts explain real values and missing evidence', a
   if (evidence.exercise_attempts > 0 && transfer) {
     await expect(rows.filter({ hasText: '迁移应用' })).toContainText(`${transfer.value}%`)
   }
-  await expect(page.locator('.shot-score-caveat')).toContainText('阶段参考')
+  // 「分值仅作阶段参考」提示条只在缺少知识掌握/资源反馈证据时出现；
+  // demo 数据集跑过真实练习后这两项都不为 0，此时页面按设计不渲染该提示，
+  // 因此这里按证据分支断言，空证据场景由下面的新学号用例覆盖。
+  const caveat = page.locator('.shot-score-caveat')
+  if (evidence.knowledge_nodes === 0 || evidence.feedback_items === 0) {
+    await expect(caveat).toContainText('阶段参考')
+  } else {
+    await expect(caveat).toHaveCount(0)
+  }
 })
 
 test('profile does not reuse snapshot evidence as dimension confidence and panels follow content height', async ({ page }) => {
